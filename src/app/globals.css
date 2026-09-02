@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * BWF design tokens — see docs/ARCHITECTURE.md for the visual-direction
+ * rationale. The public site runs on this dark, warm-metallic palette;
+ * admin/member surfaces (Phase 2+) intentionally do NOT inherit this theme
+ * wholesale — see the brief §14 "Admin panel should NOT use this design
+ * heavily". Keep admin tokens separate when that phase lands rather than
+ * reusing these.
+ */
+@theme {
+  --color-navy-950: #050810; /* near-black navy — footer, deepest contrast blocks */
+  --color-navy-900: #0a1220; /* midnight navy — dominant background */
+  --color-navy-800: #0f2436; /* deep petrol / blue-teal — secondary sections */
+  --color-navy-700: #1a3247; /* card borders, dividers on dark */
+  --color-navy-600: #26445c; /* hover states on dark surfaces */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-gold-300: #e4cd9c;
+  --color-gold-400: #d8b879; /* hover / lighter accent */
+  --color-gold-500: #c9a063; /* primary antique-gold accent */
+  --color-gold-600: #a97f45; /* pressed / deeper bronze */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ivory-100: #f4eee1; /* primary text on dark */
+  --color-ivory-200: #e8dfcb;
+
+  --color-slate-400: #92a5b7; /* secondary text on dark */
+  --color-slate-500: #6e8296; /* tertiary / meta text on dark */
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-navy-900);
+  color: var(--color-ivory-100);
+}
+
+::selection {
+  background: var(--color-gold-500);
+  color: var(--color-navy-950);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-gold-400);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  z-index: 100;
+  background: var(--color-gold-500);
+  color: var(--color-navy-950);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  left: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

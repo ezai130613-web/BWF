@@ -59,4 +59,56 @@ is complete and committed.
 
 ## Phase 1 — Public Website UI
 
+**Status:** Complete
+
+**What shipped:**
+- Design system: Fraunces (display) + Inter (functional) fonts; color tokens (navy/gold/ivory/
+  slate) in `src/app/globals.css`; `Button`, `Container`, `SectionLabel`, `MediaPlaceholder`
+  primitives in `src/components/ui/`. See `docs/ARCHITECTURE.md` for rationale.
+- Restructured routing: public pages moved under a `(public)` route group with their own layout
+  (header/footer/WhatsApp CTA) so `/admin` and `/member` don't inherit the public theme — the
+  brief is explicit admin should feel like functional enterprise software, not the theatrical
+  public site (§14).
+- Global chrome: `Header` (responsive nav with working mobile menu, verified via screenshot),
+  `Footer`, floating `WhatsAppCta` (renders nothing until `NEXT_PUBLIC_WHATSAPP_NUMBER` is set —
+  no dead link ships).
+- Homepage: hero, about/intro, why-BWF (3 pillars), chapters (generic placeholder panels, not
+  fabricated names), find-a-professional teaser, inside-BWF photo grid, an oversized-typography
+  statement section, insights/events teasers (honest "ships in Phase X" state — no fabricated
+  blog titles or event listings), closing membership CTA. Section copy and the two oversized
+  statement lines are adapted directly from the brief's own suggested copy (§17, §6), not
+  invented.
+- Placeholder pages for every nav/footer destination that doesn't have a real phase yet:
+  `/about`, `/chapters`, `/members`, `/insights`, `/events`, `/apply`, `/privacy`, `/terms` —
+  each names the phase that delivers real content, so nothing 404s.
+- Accessibility basics: skip-to-content link, visible focus states on all interactive elements,
+  `prefers-reduced-motion` handling, semantic landmarks (`header`/`main`/`footer`/`nav`).
+- Added Playwright as a dev-only tool for this developer's own visual QA (not a test suite).
+
+**Verification performed:**
+- `npm run build`, `npm run lint`, `npm run typecheck` — all clean. `npm audit` — 0
+  vulnerabilities.
+- All 13 routes compile (home + 8 placeholder pages + admin/member/health/not-found).
+- Screenshotted the homepage at desktop (1440px) and mobile (390px) via Playwright, plus the
+  mobile nav menu in its open state — reviewed visually, not just "it compiled." Iterated once
+  on `MediaPlaceholder` (initial version read as empty/flat; added texture + glow so it reads as
+  an intentional photography slot).
+- Did not verify: real cross-browser testing (Chromium only), Lighthouse/Core Web Vitals
+  (nothing to measure yet without real images/fonts under production conditions), screen-reader
+  pass (only structural a11y — landmarks, focus, skip link — verified, not an actual AT pass).
+
+**Known issues / follow-ups:**
+- No real photography — every image slot is a placeholder. This must be resolved before
+  production launch, not left for Phase 14.
+- Chapter section shows 3 generic placeholder panels; becomes data-driven in Phase 3.
+- Insights/Events sections are intentionally inert "coming soon" states until Phases 5/8 ship
+  real content — don't mistake this for a bug.
+- `/privacy` and `/terms` are placeholders, not real legal text — flagged in
+  `docs/ARCHITECTURE.md` open decisions, needs actual legal review before launch.
+- GA4/Search Console (brief §50) not wired up yet — that's Phase 10.
+
+---
+
+## Phase 2 — Database + Authentication + Admin Foundation
+
 **Status:** Not started

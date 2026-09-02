@@ -47,6 +47,33 @@ compatibility, no egress fees on R2 (matters once member photos/brochures/videos
 and to avoid vendor lock-in versus an all-in-one platform. Both are provisioned per-environment
 (dev/staging/production) per the brief's environment-separation requirement (§7).
 
+### Design system (Phase 1)
+- **Fonts**: Fraunces (display/headline, variable serif) + Inter (functional/UI — nav, buttons,
+  forms, admin, member portal), both self-hosted via `next/font/google`. Chosen to match the
+  brief's editorial-serif + clean-sans pairing without licensing cost; Inter specifically because
+  it's what Stripe/Linear/Notion use, matching the brief's explicit admin-panel quality bar.
+- **Color tokens** live in `src/app/globals.css` under `@theme` (Tailwind v4's CSS-first config):
+  `navy-950/900/800/700/600`, `gold-300/400/500/600`, `ivory-100/200`, `slate-400/500`. Public
+  site only for now — admin/member get their own lighter, denser token set when those phases
+  land (brief §14 is explicit that admin should not inherit the theatrical public theme).
+- **Component primitives**: hand-built (`src/components/ui/`), not a component library —
+  `Button` (via `class-variance-authority` for typed variants), `Container`, `SectionLabel`,
+  `MediaPlaceholder`. No Radix/shadcn — the brief is explicit the site must not read as a
+  default component-library template, and this component surface is small enough that a
+  headless-primitives dependency wasn't worth the tradeoff yet. Revisit if Phase 2+ needs real
+  overlay/dialog/combobox behavior (RBAC forms, admin tables) — Radix is the natural choice then
+  since it doesn't impose visual opinions.
+- **Photography**: real photography isn't sourced yet (still an open item below). Every image
+  slot uses `<MediaPlaceholder brief="...">` — a textured gradient block with a corner label
+  describing what should be shot/sourced for that exact slot. Swapping in real photography later
+  is a one-line change per slot (replace with `next/image`), and the `brief` text doubles as a
+  shot list.
+
+### Dev tooling
+**Playwright** (`devDependencies`) is used only for this developer's own visual QA (screenshotting
+pages during a build to verify layout/responsiveness before calling a phase done) — it is not
+wired into an automated test suite yet. Reuses this machine's already-cached browser binaries.
+
 ### Authentication
 **Auth.js (NextAuth)** + a custom OTP/second-factor flow, built in Phase 2. Chosen over a
 managed auth-as-a-service (Clerk, Supabase Auth) to avoid per-user recurring cost and vendor
@@ -70,15 +97,16 @@ they aren't lost, with the phase they'd first block:
 
 | Decision | Needed by | Notes |
 |---|---|---|
-| Display serif + UI sans-serif typefaces | Phase 1 | Brief specifies the *pairing strategy* (editorial serif + clean sans) but not specific fonts. |
-| Headless component primitives (Radix UI vs. build from scratch) | Phase 1 | Brief requires a custom-feeling design system, not a component-library look — either works if used carefully. |
-| Real chapter names/locations for the 3 active chapters | Phase 3 | Brief explicitly says don't trust old-site numbers as authoritative. |
+| ~~Display serif + UI sans-serif typefaces~~ | ~~Phase 1~~ | **Resolved Phase 1**: Fraunces + Inter. |
+| ~~Headless component primitives~~ | ~~Phase 1~~ | **Resolved Phase 1**: hand-built, no library — see Design System above. |
+| Real chapter names/locations for the 3 active chapters | Phase 3 | Brief explicitly says don't trust old-site numbers as authoritative. Homepage/chapters section currently shows generic "Chapter 01/02/03" placeholders, not fabricated names. |
 | Real business-category taxonomy (Plumbing, Architect, etc.) | Phase 3 | Needed to seed the category-exclusivity system. |
 | OTP delivery provider (email-only vs. SMS, and which SMS vendor if so) | Phase 2 | Affects admin MFA cost/complexity. |
 | Domain name + whether the old site stays live during build | Phase 14–15 | Affects redirect planning and DNS cutover timing. |
-| Real photography (or interim placeholder/stock strategy) | Phase 1 | Brief explicitly wants cinematic architectural imagery, not generic stock — worth starting to source early since it's slow to produce. |
+| Real photography (or interim placeholder/stock strategy) | Phase 1 (ongoing) | Every image slot is a `MediaPlaceholder` with a shot-list caption in the meantime — see Design System above. Still needs a real answer before launch; placeholders shouldn't ship to production. |
 | Founder/Super Admin seed account details | Phase 2 | Needed to create the first real login. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
+| Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII — placeholder pages exist (`/privacy`, `/terms`) but must not launch with AI-drafted legal text unreviewed. |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)
 
