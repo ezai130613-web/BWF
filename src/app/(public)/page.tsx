@@ -5,6 +5,7 @@ import { Chapters } from "@/components/marketing/chapters";
 import { FindProfessional } from "@/components/marketing/find-professional";
 import { InsideBwf } from "@/components/marketing/inside-bwf";
 import { StatementBanner } from "@/components/marketing/statement-banner";
+import { LatestInsights } from "@/components/marketing/latest-insights";
 import { ComingSoonSection } from "@/components/marketing/coming-soon-section";
 import { MembershipCta } from "@/components/marketing/membership-cta";
 
@@ -18,12 +19,7 @@ export default function Home() {
       <FindProfessional />
       <InsideBwf />
       <StatementBanner lines={["Business built", "through relationships."]} />
-      <ComingSoonSection
-        number="06"
-        label="Insights"
-        title="Construction guides, member success stories, and BWF news."
-        note="The blog ships in Phase 5 — this section activates once real content exists."
-      />
+      <LatestInsights />
       <ComingSoonSection
         number="07"
         label="Meetings & Events"

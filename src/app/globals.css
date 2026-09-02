@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /*
  * BWF design tokens — see docs/ARCHITECTURE.md for the visual-direction

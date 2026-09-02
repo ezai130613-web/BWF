@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
+import { slugify } from "../src/lib/slugify";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -21,13 +22,21 @@ const PERMISSIONS = [
   { key: "categories:manage", label: "Manage categories" },
   { key: "companies:manage", label: "Manage companies" },
   { key: "members:manage", label: "Manage members" },
+  { key: "blogs:manage", label: "Manage blog posts, categories, tags & authors" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   SUPER_ADMIN: PERMISSIONS.map((p) => p.key),
-  // Brief §10 — Central Admin manages members/companies/chapters/categories,
-  // but not other admin accounts or roles/permissions (that's Super-Admin-only, §9).
-  CENTRAL_ADMIN: ["audit_log:view", "chapters:manage", "categories:manage", "companies:manage", "members:manage"],
+  // Brief §10 — Central Admin manages members/companies/chapters/categories/
+  // blogs, but not other admin accounts or roles/permissions (Super-Admin-only, §9).
+  CENTRAL_ADMIN: [
+    "audit_log:view",
+    "chapters:manage",
+    "categories:manage",
+    "companies:manage",
+    "members:manage",
+    "blogs:manage",
+  ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), not this table.
   CHAPTER_ADMIN: [],
@@ -67,9 +76,21 @@ const CHAPTER_LEADERSHIP_ROLES = [
   { key: "COORDINATOR", label: "Coordinator" },
 ] as const;
 
-function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
+// Brief §30's suggested initial list — admin can add/edit via /admin/blog-categories.
+const BLOG_CATEGORIES = [
+  "Construction Guides",
+  "Architecture",
+  "Builders & Developers",
+  "Interior Design",
+  "Construction Materials",
+  "Engineering",
+  "Contractors",
+  "Chennai Construction Industry",
+  "Business Networking",
+  "BWF News",
+  "Member Success Stories",
+  "Construction FAQs",
+] as const;
 
 async function main() {
   for (const role of ROLES) {
@@ -108,6 +129,20 @@ async function main() {
   for (const role of CHAPTER_LEADERSHIP_ROLES) {
     await db.chapterLeadershipRole.upsert({ where: { key: role.key }, update: {}, create: role });
   }
+
+  for (const name of BLOG_CATEGORIES) {
+    const slug = slugify(name);
+    await db.blogCategory.upsert({ where: { slug }, update: {}, create: { name, slug } });
+  }
+
+  // Default author so admin can publish immediately — represents BWF itself,
+  // not a specific member. Additional authors (BWF Team, guest contributors,
+  // member-linked) are created via /admin/authors as needed.
+  await db.author.upsert({
+    where: { slug: "builders-world-forum" },
+    update: {},
+    create: { name: "Builders World Forum", slug: "builders-world-forum" },
+  });
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
   const seedPassword = process.env.SEED_SUPER_ADMIN_PASSWORD;

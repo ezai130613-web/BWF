@@ -300,6 +300,7 @@ model Member {
   updatedAt DateTime @updatedAt
 
   leadershipRoles ChapterLeadership[]
+  authorProfile   Author?
 
   @@map("members")
 }
@@ -331,4 +332,105 @@ model ChapterLeadership {
 
   @@unique([chapterId, roleId, memberId])
   @@map("chapter_leadership")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — blog / content management + SEO/AEO/GEO (brief §28-32).
+//
+// The member-initiated submission workflow from brief §31 ("member submits
+// article") can't be fully wired up until member login exists (Phase 11) —
+// Blog.authorId already supports linking a post to a Member-backed Author
+// now, so hooking up self-service submission later is additive, not a
+// restructure. For this phase, admin creates/edits everything directly.
+// ---------------------------------------------------------------------------
+
+enum BlogStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+model Author {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  bio      String?
+  photoUrl String?
+
+  /// Set when this author IS a BWF member (brief §32) — null for BWF Team,
+  /// guest contributors, or agency team authors who aren't members.
+  memberId String? @unique
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  posts Blog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("authors")
+}
+
+model BlogCategory {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  posts Blog[]
+
+  @@map("blog_categories")
+}
+
+model BlogTag {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  posts Blog[]
+
+  @@map("blog_tags")
+}
+
+model Blog {
+  id      String     @id @default(cuid())
+  title   String
+  slug    String     @unique
+  excerpt String?
+  /// Markdown — rendered server-side via `marked` (src/lib/blog/render.ts).
+  /// Trusted admin-authored content; even the future member-submission path
+  /// (Phase 11) stays behind admin approval before a post can reach
+  /// PUBLISHED, so this never renders unreviewed user input.
+  content String
+  status  BlogStatus @default(DRAFT)
+
+  /// FAQ entries for AEO/GEO (brief §29) — [{ question, answer }, ...].
+  /// Rendered as an on-page FAQ section and FAQPage structured data.
+  faq Json?
+
+  featuredImageUrl String?
+
+  seoTitle        String?
+  metaDescription String?
+  canonicalUrl    String?
+  ogTitle         String?
+  ogDescription   String?
+  ogImageUrl      String?
+
+  authorId   String
+  categoryId String
+
+  author   Author       @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  category BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  tags     BlogTag[]
+
+  scheduledAt DateTime?
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("blogs")
 }

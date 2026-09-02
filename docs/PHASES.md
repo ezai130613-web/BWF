@@ -309,4 +309,72 @@ is complete and committed.
 
 ## Phase 5 — Blogs + SEO/AEO/GEO + Author System
 
+**Status:** Complete
+
+**What shipped:**
+- Schema: `Author` (distinct from `Member`, optional 1:1 link), `BlogCategory`, `BlogTag`,
+  `Blog` (status workflow, FAQ, full SEO/OG field set). Full rationale — especially the
+  content-trust boundary that matters a lot once Phase 11 adds member self-submission — in
+  `docs/ARCHITECTURE.md`.
+- Full admin CMS: `/admin/blogs` (list + minimal-fields create, matching the "avoid
+  unnecessarily large forms at first interaction" pattern used elsewhere), `/admin/blogs/[id]`
+  (everything else — Markdown content, excerpt, tags, featured image, FAQ builder, full SEO/OG
+  fields, status/scheduling), `/admin/blog-categories`, `/admin/authors`.
+- Status workflow: Draft / Scheduled / Published / Unpublished / Archived. Archiving is a soft
+  delete (brief §43) — there's no hard-delete button in the UI. `publishedAt` is set once, the
+  first time a post ever goes live, and never reset by later edits — so "published" and
+  "updated" dates stay meaningfully different.
+- Scheduling needs no cron job — a `SCHEDULED` post becomes visible once `scheduledAt` passes,
+  checked lazily at read time. Full mechanism in `docs/ARCHITECTURE.md`.
+- Public `/insights` (category-filterable listing), `/insights/[slug]` (full post — rendered
+  Markdown, FAQ section, tags, related-posts-by-category, author byline), `/authors/[slug]`
+  (bio + their published posts, links back to a member profile when linked). Homepage's
+  Insights section now shows real published posts (or an honest empty state) instead of
+  Phase 1's "coming soon."
+- Article + FAQPage JSON-LD structured data on post pages — brought forward into this phase
+  rather than deferred to Phase 10, since brief §29 calls it out as part of the blog's own
+  SEO/AEO/GEO architecture specifically (see `docs/ARCHITECTURE.md` for how that's distinguished
+  from §53's more general, still-Phase-10 schema work).
+- `@tailwindcss/typography` added for rendering Markdown content with the site's own dark
+  editorial styling (`prose prose-invert`) rather than unstyled HTML.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Created a real post through the actual admin UI — title, excerpt, multi-heading Markdown
+  body with a bulleted list, three tags, SEO title, meta description, one FAQ entry — and
+  confirmed it correctly does **not** appear on the public `/insights` list while still
+  `DRAFT`. Screenshotted.
+- Published it, then confirmed: it appears on `/insights`, the individual post page renders the
+  Markdown correctly (headings, list, paragraphs via the typography plugin), the FAQ section
+  renders, both `Article` and `FAQPage` JSON-LD are present in the page source with the actual
+  entered content (not placeholders) — read back and diffed against what was typed in, not just
+  "a script tag exists." Screenshotted.
+- Confirmed the author byline links to a working `/authors/[slug]` page listing that post, and
+  that the homepage's Insights section now shows the real published post.
+- Caught my own test-script bug mid-run (navigated away from the edit page and forgot to
+  navigate back before trying to publish) — same category of mistake as Phase 3's, worth
+  naming again only because both times the actual app behavior was correct once the test
+  pointed at the right thing.
+
+**Known issues / follow-ups:**
+- Content editing is a plain Markdown textarea, not a WYSIWYG editor — deliberate scope call,
+  not a gap; brief doesn't demand rich-text editing and adding one (TipTap/ProseMirror etc.)
+  would be a meaningful dependency for a "nice to have."
+- No image upload for featured/OG images — URL fields only, same pending-storage pattern as
+  Company/Member media.
+- **Real risk flagged for later, not now**: `Blog.content` is rendered without HTML
+  sanitization because it's trusted admin content today. The moment Phase 11 lets a member's
+  own submission reach `PUBLISHED` without a human admin explicitly reviewing it first, that
+  trust boundary needs revisiting (sanitize, or keep a hard admin-approval gate — brief §31
+  already describes the latter, so as long as that workflow is respected this stays safe).
+- Programmatic SEO landing pages (brief §52) still deferred — noted again in
+  `docs/ARCHITECTURE.md`, not forgotten, just still without a clean phase home.
+- One duplicate-titled test post was left in the local dev database from a re-run during
+  verification (draft, never published) — harmless, same category as Phase 3's duplicate
+  company row.
+
+---
+
+## Phase 6 — Testimonials + Feedback + Website Content CMS
+
 **Status:** Not started

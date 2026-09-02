@@ -216,6 +216,45 @@ adjacent, but pushed out — they're really an SEO/content concern more than a d
 and don't have a clean home in the phase table. Revisit alongside Phase 5 (blog SEO/AEO/GEO) or
 Phase 10 (technical SEO), whichever ends up the more natural fit once that work starts.
 
+### Blog / content system (Phase 5)
+**`Author` is a distinct model from `Member`**, not a reuse of it — brief §32 lists BWF Team,
+guest contributors, and agency team as valid authors alongside members, so authorship needed
+its own identity. `Author.memberId` is an optional 1:1 link for when an author *is* a member
+(unique constraint — one author profile per member, checked explicitly in
+`authors/actions.ts` since Prisma's own error on that constraint isn't a friendly message).
+
+**Content is trusted Markdown**, rendered server-side via `marked` (`src/lib/blog/render.ts`)
+straight to `dangerouslySetInnerHTML`, deliberately without an HTML sanitizer on top. That's
+safe specifically because content is admin-authored-or-approved — see the schema comment on
+`Blog.content` and the render helper's own comment. If Phase 11's member self-submission path
+ever lets a post reach PUBLISHED without an admin review step in between, **this trust
+boundary breaks and sanitization (e.g. `dompurify`) must be added before that ships** — flagging
+this explicitly so it isn't missed.
+
+**Scheduling needs no cron job.** A `SCHEDULED` post becomes publicly visible once
+`scheduledAt` has passed, evaluated lazily at read time by `publiclyVisibleBlogWhere`
+(`src/lib/blog/query.ts`) rather than needing a background job to flip status to `PUBLISHED` at
+the right moment. The admin's own post list still shows the real stored status (`SCHEDULED`,
+not `PUBLISHED`) — only public-facing queries use the lazy-visibility filter. No infrastructure
+for actual background jobs exists yet in this project; this sidesteps needing any for this
+specific feature.
+
+**Structured data (Article + FAQPage JSON-LD) shipped in this phase**, not deferred to
+Phase 10 — brief §29 (literally the "SEO/AEO/GEO" section of the *blog* phase) calls out
+"structured data" as part of the blog's own content architecture, distinct from brief §53's
+more general, phase-unassigned schema list (Organization/Person/LocalBusiness/etc., which
+covers things like member profiles and stays Phase 10's job per the Phase 4 note above).
+
+**Tags use an implicit Prisma many-to-many** (`tags BlogTag[]` on both `Blog` and `BlogTag`,
+no explicit join model) — the only place in the schema doing this, everywhere else uses an
+explicit join table for consistency with the audit/metadata needs those joins have (chapter
+leadership, role permissions). Tags don't need that — they're just labels — so the simpler
+implicit approach was the right call here specifically.
+
+**FAQ storage**: `Blog.faq` is a `Json` column, `[{ question, answer }, ...]`, validated with
+zod only at the point of writing (`updateBlog` in `blogs/actions.ts`) — there's no schema-level
+guarantee of that shape, same tradeoff `AuditLog.metadata` already made in Phase 2.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production
