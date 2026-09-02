@@ -13,6 +13,7 @@ async function getChapter(slug: string) {
     include: {
       members: { where: { status: "ACTIVE" }, include: { category: true, company: true }, orderBy: { name: "asc" } },
       leadership: { include: { member: true, role: true } },
+      testimonials: { where: { status: "APPROVED" }, orderBy: [{ featured: "desc" }, { createdAt: "desc" }] },
     },
   });
 }
@@ -94,6 +95,23 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
               ) : null}
             </div>
           </div>
+
+          {chapter.testimonials.length > 0 ? (
+            <div>
+              <SectionLabel>Testimonials</SectionLabel>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {chapter.testimonials.map((t) => (
+                  <div key={t.id} className="rounded-sm border border-navy-700 p-5">
+                    <p className="text-slate-300">&ldquo;{t.content}&rdquo;</p>
+                    <p className="mt-3 text-sm text-ivory-100">{t.name}</p>
+                    {t.role || t.company ? (
+                      <p className="text-xs text-slate-500">{[t.role, t.company].filter(Boolean).join(" · ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <aside className="flex flex-col gap-8">

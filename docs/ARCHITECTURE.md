@@ -255,6 +255,44 @@ implicit approach was the right call here specifically.
 zod only at the point of writing (`updateBlog` in `blogs/actions.ts`) — there's no schema-level
 guarantee of that shape, same tradeoff `AuditLog.metadata` already made in Phase 2.
 
+### Testimonials, feedback & website content CMS (Phase 6)
+**Three different visibility models, one phase** — worth keeping straight since they look
+similar (all "small admin-managed records") but behave very differently:
+- **Testimonial**: public once `status: APPROVED`. Public submissions always land `PENDING`
+  (brief §33); admin-authored ones publish immediately (`createTestimonialDirect`) since brief
+  §33 explicitly allows that for admin-created content. Both paths require an explicit,
+  never-pre-checked consent checkbox (brief §58) — the admin form has one too, not just the
+  public one, so an admin can't silently bypass consent by typing on someone's behalf.
+- **Feedback**: never public, full stop. `/admin/feedback` requires `feedback:view`, which the
+  seed grants **only** to `SUPER_ADMIN` — deliberately left out of `CENTRAL_ADMIN`'s permission
+  list even though Central Admin gets nearly everything else, because brief §34 is explicit
+  that feedback visibility doesn't follow the usual pattern. Verified by actually logging in as
+  a Central Admin and confirming they're blocked, not just by reading the seed file.
+- **WebsiteContent / SiteFaq**: always public, only admin-*editable*. `content:manage` follows
+  the normal Super+Central pattern.
+
+**Public submission actions live under `src/app/(public)/.../actions.ts`, not
+`src/app/admin/.../actions.ts`** — `submitTestimonial` and `submitFeedback` originally got
+written into the admin route's `actions.ts` files (convenient since that's where the related
+admin actions already were) and then moved once the mismatch was obvious: a public, no-auth
+endpoint has no business living in the same module as permission-gated admin mutations, even
+though Next.js doesn't technically care where a Server Action file lives. Worth remembering as
+a pattern for any future public-submission feature.
+
+**Content blocks seeded as structure only** (`prisma/seed.ts`'s `WEBSITE_CONTENT` array) — keys
+and labels exist so admin knows what's editable, but values are `null` except
+`footer.tagline`, which carries forward the Phase 1 hardcoded string so nothing visually
+changes on first deploy. No fabricated "About BWF" copy or contact details were invented to
+fill the gaps — every page reading a content block has a sensible fallback for when the value
+is still empty (see `getContent()` in `src/lib/content.ts`).
+
+**Scope boundary, deliberate**: only `footer.tagline`, `contact.phone/email/address`, and
+`about.intro` are wired up as real content blocks — not the homepage hero, section headlines,
+or other typography-sensitive copy. Brief §62 itself warns against making "every pixel
+editable" to protect design consistency; hero/section copy stays code-controlled for that
+reason. Adding another block later is a one-line seed addition plus one `getContent()` call at
+the point of use — the mechanism doesn't need to change.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production

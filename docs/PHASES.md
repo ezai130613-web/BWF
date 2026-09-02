@@ -377,4 +377,65 @@ is complete and committed.
 
 ## Phase 6 — Testimonials + Feedback + Website Content CMS
 
+**Status:** Complete
+
+**What shipped:**
+- Schema: `Testimonial` (5 types, Pending/Approved/Rejected, consent, featured flag, optional
+  chapter link), `Feedback` (4 types, no status workflow — it's never published, just captured),
+  `WebsiteContent` (named key-value copy blocks), `SiteFaq`. Full rationale — especially the
+  three different visibility models living in one phase — in `docs/ARCHITECTURE.md`.
+- Testimonials: public submission (`/testimonials`, always lands Pending) and direct admin
+  entry (`/admin/testimonials`, publishes immediately per brief §33) both require an explicit,
+  never-pre-checked consent checkbox. Admin can approve/reject pending submissions and toggle a
+  featured flag. Approved testimonials now appear on `/testimonials`, the homepage (featured
+  only), and their linked chapter's page.
+- Feedback: public form at `/feedback`, admin view at `/admin/feedback` gated behind
+  `feedback:view` — granted **only** to Super Admin, deliberately excluded from Central Admin's
+  otherwise-broad permission set, matching brief §34 exactly.
+- Website Content CMS: `/admin/content`, grouped by section, each block a simple
+  textarea-plus-save. Wired up for real on Footer (tagline + contact info) and the About page
+  (intro paragraph) — a deliberately small, representative slice rather than converting every
+  page, per brief §62's own warning against making "every pixel editable."
+- FAQs: `/admin/faqs` (add + show/hide, ordered) and a public `/faqs` page with FAQPage
+  structured data — same JSON-LD pattern established in Phase 5.
+- Moved two Server Actions (`submitTestimonial`, `submitFeedback`) out of the admin route
+  folders into their public counterparts after noticing they'd been written alongside
+  permission-gated admin mutations by convenience rather than by correctness — noted in
+  `docs/ARCHITECTURE.md` as a pattern to remember for future public-submission features.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Submitted a real testimonial through the public form (not logged in) and confirmed it does
+  **not** appear on `/testimonials` while Pending. Approved and featured it as Super Admin,
+  then confirmed it now appears on `/testimonials`, and on the homepage. Screenshotted every
+  step.
+- Submitted real feedback through the public form, confirmed it appears in `/admin/feedback` as
+  Super Admin — then logged in as a **Central Admin** and confirmed they're cleanly blocked
+  ("Missing permission: feedback:view") while still correctly seeing Testimonials/Content/FAQs
+  in their sidebar. This is the phase's one genuinely distinctive rule (brief §34), so it got
+  the same login-and-verify treatment as Phase 2/3's RBAC tests, not just a seed-file read.
+- Edited `about.intro` through `/admin/content` and confirmed the real public `/about` page
+  rendered the new copy — proving the content-block mechanism actually works end-to-end, not
+  just that the admin form saves.
+- Added a real FAQ through `/admin/faqs` and confirmed it rendered on the public `/faqs` page.
+- Had to recreate the Phase 3 Central Admin test account (`central@bwf.local`) since the local
+  database it lived in was replaced during Phase 3's shadow-DB incident — not a new issue, just
+  a reminder that local test accounts don't survive a database swap.
+
+**Known issues / follow-ups:**
+- No image upload for testimonial photos — URL field only, same pending-storage pattern as
+  Company/Member/Blog media.
+- Website Content CMS covers a deliberately small set of fields (footer, contact, about intro).
+  Extending it to more sections (leadership bios, additional homepage copy) is a low-effort
+  follow-up whenever BWF actually wants a specific block editable — the mechanism doesn't need
+  to change, just the seed list and one `getContent()` call per new field.
+- Some pages that read content blocks or chapter lists (e.g. `/feedback`'s chapter dropdown)
+  aren't covered by the same broad revalidation as testimonials/content/FAQs — a brand-new
+  chapter might not appear there until the next full rebuild. Minor staleness, not a
+  correctness bug (submission still works), not chased down further this phase.
+
+---
+
+## Phase 7 — Membership Application + Category Availability + Waiting List
+
 **Status:** Not started

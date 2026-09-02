@@ -188,6 +188,8 @@ model Chapter {
   members       Member[]
   leadership    ChapterLeadership[]
   chapterAdmins UserRole[]
+  testimonials  Testimonial[]
+  feedback      Feedback[]
 
   @@map("chapters")
 }
@@ -433,4 +435,107 @@ model Blog {
 
   @@index([status, publishedAt])
   @@map("blogs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — testimonials + feedback + website content CMS (brief §33/§34/§62).
+// Three genuinely different visibility models living in one phase: a
+// testimonial is public once approved, feedback is never public (Super
+// Admin only, brief §34 is explicit about this), and content blocks are
+// always public but only editable by admin — worth keeping straight when
+// touching any of these three.
+// ---------------------------------------------------------------------------
+
+enum TestimonialType {
+  MEMBER
+  VISITOR
+  CLIENT
+  VIDEO
+  SUCCESS_STORY
+}
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Testimonial {
+  id      String            @id @default(cuid())
+  name    String
+  company String?
+  role    String?
+  content String
+  type    TestimonialType   @default(MEMBER)
+  status  TestimonialStatus @default(PENDING)
+
+  imageUrl String?
+  videoUrl String?
+  rating   Int?
+
+  /// True once whoever submitted this agreed to public display — brief §58:
+  /// "Do not pre-check consent boxes." Checked at the point of approval, not
+  /// just at submission, so admin-entered testimonials must set it deliberately too.
+  consent  Boolean @default(false)
+  featured Boolean @default(false)
+
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, featured])
+  @@map("testimonials")
+}
+
+enum FeedbackType {
+  MEETING
+  EVENT
+  MANAGEMENT
+  GENERAL
+}
+
+model Feedback {
+  id      String       @id @default(cuid())
+  type    FeedbackType @default(GENERAL)
+  name    String?
+  email   String?
+  message String
+
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@map("feedback")
+}
+
+/// Named, admin-editable copy blocks (brief §62) — deliberately NOT a full
+/// page builder ("do NOT make every pixel editable"). Each row is one piece
+/// of copy identified by a stable key (e.g. "about.intro",
+/// "contact.phone") that a page reads at render time instead of hardcoding
+/// the string. `section` is purely for grouping the admin UI.
+model WebsiteContent {
+  key     String  @id
+  label   String
+  section String
+  value   String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("website_content")
+}
+
+model SiteFaq {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site_faqs")
 }

@@ -23,12 +23,18 @@ const PERMISSIONS = [
   { key: "companies:manage", label: "Manage companies" },
   { key: "members:manage", label: "Manage members" },
   { key: "blogs:manage", label: "Manage blog posts, categories, tags & authors" },
+  { key: "testimonials:manage", label: "Manage testimonials" },
+  { key: "content:manage", label: "Manage website content & FAQs" },
+  { key: "feedback:view", label: "View feedback" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   SUPER_ADMIN: PERMISSIONS.map((p) => p.key),
   // Brief §10 — Central Admin manages members/companies/chapters/categories/
-  // blogs, but not other admin accounts or roles/permissions (Super-Admin-only, §9).
+  // blogs/testimonials/content, but not other admin accounts or roles/
+  // permissions (Super-Admin-only, §9). Feedback is deliberately excluded —
+  // brief §34 is explicit: "Feedback must only be visible to Super Admin
+  // unless Super Admin explicitly grants permission later."
   CENTRAL_ADMIN: [
     "audit_log:view",
     "chapters:manage",
@@ -36,6 +42,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "companies:manage",
     "members:manage",
     "blogs:manage",
+    "testimonials:manage",
+    "content:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), not this table.
@@ -143,6 +151,33 @@ async function main() {
     update: {},
     create: { name: "Builders World Forum", slug: "builders-world-forum" },
   });
+
+  // Website content blocks (brief §62) — seeded as structure only (key,
+  // label, section), values left null except where promoting an existing
+  // hardcoded string (the footer tagline) into the CMS so nothing visually
+  // changes on first deploy. No fabricated "about BWF" copy or contact
+  // details — admin fills those in via /admin/content once real info exists.
+  const WEBSITE_CONTENT = [
+    {
+      key: "footer.tagline",
+      label: "Footer tagline",
+      section: "Footer",
+      value:
+        "A private, chapter-based business community for Chennai's construction ecosystem — one category, one member, per chapter.",
+    },
+    { key: "contact.phone", label: "Phone number", section: "Contact", value: null },
+    { key: "contact.email", label: "Email address", section: "Contact", value: null },
+    { key: "contact.address", label: "Office address", section: "Contact", value: null },
+    { key: "about.intro", label: "About page introduction", section: "About", value: null },
+  ] as const;
+
+  for (const content of WEBSITE_CONTENT) {
+    await db.websiteContent.upsert({
+      where: { key: content.key },
+      update: {},
+      create: content,
+    });
+  }
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
   const seedPassword = process.env.SEED_SUPER_ADMIN_PASSWORD;
