@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Builders World Forum — Website V2
 
-## Getting Started
+Production platform for Builders World Forum: public website, member directory, admin panel,
+membership/chapter operations, and (progressively) events, analytics, and AI infrastructure.
 
-First, run the development server:
+Full product/technical brief: [`docs/master-brief.pdf`](docs/master-brief.pdf).
+Architecture decisions and conventions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Phase-by-phase build log: [`docs/PHASES.md`](docs/PHASES.md).
+
+## Stack
+
+Next.js (App Router, TypeScript) · Tailwind CSS · PostgreSQL · Prisma · Auth.js.
+See `docs/ARCHITECTURE.md` for the full rationale and provider choices.
+
+## Getting started
 
 ```bash
+cp .env.example .env   # fill in DATABASE_URL at minimum
+npm install
+npm run db:generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` | Production build (also type-checks) |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | Standalone TypeScript check |
+| `npm run db:generate` | Regenerate the Prisma client after a schema change |
+| `npm run db:migrate` | Create/apply a dev migration |
+| `npm run db:studio` | Open Prisma Studio |
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/
+    (public pages live directly under app/, e.g. app/page.tsx, app/chapters/...)
+    admin/     — admin panel (role-gated, Phase 2+)
+    member/    — member portal (role-gated, Phase 11+)
+    api/       — route handlers
+  components/  — shared UI (Phase 1+)
+  lib/         — db client, env validation, shared utilities
+  generated/   — Prisma client output (generated, not committed)
+prisma/
+  schema.prisma
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This is a single Next.js application with role-gated route segments rather than separate
+apps — see `docs/ARCHITECTURE.md` for why.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Development approach
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is built phase-by-phase per `docs/master-brief.pdf` §69–72. Each phase ends with
+lint + typecheck + build + manual verification + a documented entry in `docs/PHASES.md` before
+the next phase starts. Do not skip ahead to features from a later phase.
