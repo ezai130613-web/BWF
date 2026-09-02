@@ -15,13 +15,20 @@ See `docs/ARCHITECTURE.md` for the full rationale and provider choices.
 ## Getting started
 
 ```bash
-cp .env.example .env   # fill in DATABASE_URL at minimum
+cp .env.example .env   # fill in DATABASE_URL, AUTH_SECRET, SEED_SUPER_ADMIN_*
 npm install
-npm run db:generate
+
+# Local Postgres — swap DATABASE_URL for Neon (or similar) when you have one:
+npx prisma dev --name bwf --detach
+
+npm run db:migrate     # applies prisma/migrations/
+npm run db:seed        # creates roles/permissions + the Super Admin from .env
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000 (public site) or http://localhost:3000/admin/login (admin — sign in
+with the `SEED_SUPER_ADMIN_EMAIL`/`_PASSWORD` from your `.env`; with no email provider
+configured, the OTP code is printed to the terminal instead of emailed).
 
 ## Scripts
 
@@ -33,6 +40,7 @@ Open http://localhost:3000.
 | `npm run typecheck` | Standalone TypeScript check |
 | `npm run db:generate` | Regenerate the Prisma client after a schema change |
 | `npm run db:migrate` | Create/apply a dev migration |
+| `npm run db:seed` | Seed roles/permissions + the Super Admin account |
 | `npm run db:studio` | Open Prisma Studio |
 
 ## Project structure

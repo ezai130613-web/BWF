@@ -111,4 +111,77 @@ is complete and committed.
 
 ## Phase 2 — Database + Authentication + Admin Foundation
 
+**Status:** Complete
+
+**What shipped:**
+- Schema: `User`, `Role`, `Permission`, `RolePermission`, `UserRole`, `OtpChallenge`,
+  `AuditLog` (`prisma/migrations/20260902190702_auth_rbac_foundation`). Deliberately does not
+  include Member/Company/Chapter/Category or any other Phase 3+ entity — see the schema's own
+  header comment. `Role` is seeded with all four role keys (SUPER_ADMIN, CENTRAL_ADMIN,
+  CHAPTER_ADMIN, MEMBER) as reference data, but only SUPER_ADMIN/CENTRAL_ADMIN are functional —
+  Chapter Admin's per-chapter scoping is added alongside the Chapter model in Phase 3.
+- Two-step admin login: email+password (`/api/admin/auth/request-otp`, with account lockout
+  after 5 failed attempts) then a 6-digit OTP (NextAuth Credentials provider `admin-otp`,
+  10-minute expiry, 5 attempts). Full design rationale in `docs/ARCHITECTURE.md`.
+- JWT sessions with real server-side revocation via `User.sessionVersion`, checked against the
+  database on every request — not just relying on JWT expiry.
+- `src/proxy.ts` (Next.js 16's renamed `middleware.ts`) redirects unauthenticated visitors away
+  from `/admin/**`; every protected page/Server Action *also* calls
+  `requireAdminSession()`/`requirePermission()` directly, per Next's own guidance that proxy
+  matchers can silently stop covering a route.
+- Admin foundation UI at `/admin/login`, `/admin` (dashboard shell), `/admin/users` (list +
+  create admin users + suspend/reactivate), `/admin/roles` (permission matrix, Super Admin row
+  locked to prevent self-lockout), `/admin/activity` (audit log viewer). Admin uses its own
+  light/neutral theme (dark navy sidebar, white workspace) — does not inherit the public site's
+  dark luxury theme, per brief §14.
+- `requireRecentAuth()` — high-risk actions (suspending a user, changing role permissions)
+  require a sign-in within the last 15 minutes (brief §56).
+- Provider-agnostic email (`src/lib/email.ts`) — Resend wired up via plain `fetch` (no SDK
+  dependency), console-log fallback in dev when no provider is configured.
+- Prisma-CLI-bundled agent skill docs (`.agents/skills/`, installed at Phase 0) were actually
+  used here — Prisma 7's driver-adapter pattern and Next.js 16's `proxy.ts` rename both differ
+  from what pre-2026 training data would assume, and both were caught by reading the real docs
+  instead of guessing.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Full real login flow driven end-to-end with Playwright against a real (local) database: seed
+  → password step → OTP read from the dev-console log → verified → redirected to `/admin`.
+  Screenshotted every step, not just asserted status codes.
+- RBAC actually tested, not just written: created a Central Admin user through the real UI,
+  logged in as them, confirmed `/admin/users` and `/admin/roles` correctly render "You don't
+  have access to this" (`ForbiddenError` from `requirePermission`) while `/admin/activity`
+  (their granted permission) loads normally. Screenshotted.
+- Confirmed unauthenticated `curl` to `/admin` redirects to `/admin/login?from=%2Fadmin`.
+- Confirmed the audit log actually captures the full real sequence (otp_requested,
+  login_success, user.created, another login_success) — not just that the table exists.
+- Caught and fixed a real near-miss: `npm install prisma` / `create-next-app` pulled a Prisma 8
+  release-candidate with 13 known vulnerabilities in Phase 0; a fresh `npm install prisma`
+  during this phase would have repeated that if version weren't pinned — confirmed the pin
+  held.
+- Not yet verified: behavior against a real (non-local) Postgres instance; real email delivery
+  (Resend path is written but untested — no API key yet); MFA/lockout behavior under concurrent
+  requests; any load/rate-limit testing.
+
+**Known issues / follow-ups:**
+- Running against a local `prisma dev` database, not Neon — no real `DATABASE_URL` yet. Schema
+  migrations are already tracked and will apply cleanly once one exists.
+- Seeded Super Admin uses local-dev-only placeholder credentials
+  (`SEED_SUPER_ADMIN_EMAIL`/`_PASSWORD` in `.env`) — replace with real founder credentials
+  before this touches anything real.
+- No real email provider configured — OTP codes currently only work because they're logged to
+  the server console. This is fine for continued local development, not for staging.
+- `/api/admin/auth/request-otp` has account-level lockout but no IP-based rate limiting —
+  documented as an accepted gap for now in `docs/ARCHITECTURE.md`, worth revisiting before
+  real traffic.
+- Chapter Admin and Member roles exist as rows but have no working portal/scoping yet (Phase 3
+  and Phase 11 respectively) — don't mistake their presence in the roles list for functionality.
+- No password-reset flow yet (Super Admin can suspend/reactivate, but there's no self-service
+  "forgot password" — reasonable to add whenever real admin users other than the seeded one
+  exist and need it).
+
+---
+
+## Phase 3 — Chapters + Companies + Members + Categories
+
 **Status:** Not started

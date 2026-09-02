@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +8,134 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — auth / RBAC / admin foundation.
+//
+// Member, Company, Chapter, Category, and every other business entity from
+// the brief's §13 model list belong to their own phases (3+) and are NOT
+// added here yet — see docs/PHASES.md. Role rows for CHAPTER_ADMIN and
+// MEMBER are seeded now as reference data (the taxonomy is known), but the
+// scoping needed to actually enforce "Chapter Admin can only access their
+// assigned chapter" (brief §11) is added alongside the Chapter model in
+// Phase 3, not guessed at here.
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id       String     @id @default(cuid())
+  email    String     @unique
+  name     String
+  password String
+  status   UserStatus @default(ACTIVE)
+
+  /// Bumped to invalidate every JWT session already issued to this user
+  /// (e.g. on password change or an admin-initiated "sign out everywhere").
+  sessionVersion Int @default(0)
+
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles         UserRole[]
+  otpChallenges OtpChallenge[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(cuid())
+  /// Stable machine key — SUPER_ADMIN, CENTRAL_ADMIN, CHAPTER_ADMIN, MEMBER.
+  key         String  @unique
+  label       String
+  description String?
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  /// e.g. "users:manage", "roles:manage", "audit_log:view".
+  key         String  @unique
+  label       String
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model OtpChallenge {
+  id       String @id @default(cuid())
+  userId   String
+  codeHash String
+
+  /// Room for PASSWORD_RESET etc. later without a new table.
+  purpose String @default("LOGIN")
+
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("otp_challenges")
+}
+
+model AuditLog {
+  id     String  @id @default(cuid())
+  userId String?
+
+  /// e.g. "user.login", "user.created", "role.assigned".
+  action   String
+  entity   String?
+  entityId String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
