@@ -255,4 +255,58 @@ is complete and committed.
 
 ## Phase 4 — Member Directory + Individual Member Profiles + Search
 
+**Status:** Complete
+
+**What shipped:**
+- Extended `Member` with the brief's §19 public-profile fields — services, specialisations,
+  USP, years in business, areas served, certifications, major projects, clientele, contact
+  (whatsapp/website/address/maps), social (Instagram/LinkedIn/Facebook), and media URL fields
+  (photo/brochure/video). Added `Member.slug` (unique, generated once at creation, stable
+  afterward). Full rationale in `docs/ARCHITECTURE.md`.
+- Migration handled the "add a required unique column to a table with existing rows" case
+  properly: nullable add → backfill real slugs from existing member names → `NOT NULL` →
+  unique index, rather than just deleting the test data to dodge the problem. Same shadow-DB
+  workaround from Phase 3 was needed again (documented there, reused without fuss here).
+- `/admin/members/[id]` — full profile edit page (grouped into Personal / Business profile /
+  Contact / Social & media sections), linked from the Members list.
+- Public `/members` — searchable directory: keyword search (name/company/services/
+  specialisations via Postgres `ILIKE`), chapter filter, category filter, results grouped
+  chapter-wise per brief §18, all via plain URL query params (works without client JS, shareable
+  links).
+- Public `/members/[slug]` — full individual profile page per brief §19: hero, about, services,
+  specialisations, USP, years/areas/certifications, major projects, clientele, contact card,
+  social card, media links, leadership badge if applicable, link back to their chapter.
+- Chapter detail pages now link each member to their real profile instead of a plain div.
+- Revalidation extended to cover `/members` and `/members/[slug]` on every member mutation.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Filled in a real member's full profile through the actual admin edit form (bio, services,
+  specialisations, USP, years in business, areas served, certifications, WhatsApp, website,
+  LinkedIn) and confirmed every field rendered correctly on their live public profile page —
+  not just that the save succeeded. Screenshotted.
+- Confirmed the directory groups by chapter correctly with two members across two chapters, and
+  that keyword search ("sustainable") correctly returns only the matching member and excludes
+  the other — proving the search actually filters, not just that the UI renders.
+- Caught my own test-script mistake mid-verification (edited the wrong member because the list
+  sorts newest-first) — worth noting only because it confirms the admin list's sort order is
+  working as coded, and the actual save/render pipeline was never in doubt once pointed at the
+  right record.
+- Not yet verified: real photo/logo/video media (no object storage yet, so no upload was
+  possible to test — only URL text fields were exercised); behavior with a large member count
+  (search/filter tested with 2 members, not load-tested).
+
+**Known issues / follow-ups:**
+- No photo/brochure/video upload UI — URL fields only, pending Neon/R2 credentials.
+- Programmatic SEO landing pages (brief §52) deliberately deferred — see
+  `docs/ARCHITECTURE.md`.
+- Directory search has no pagination — fine at current scale, will need it once member counts
+  grow.
+- No structured data (Person/LocalBusiness schema) on profile pages yet — that's explicitly
+  Phase 10's job (brief §53), not skipped by oversight.
+
+---
+
+## Phase 5 — Blogs + SEO/AEO/GEO + Author System
+
 **Status:** Not started

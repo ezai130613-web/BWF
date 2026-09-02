@@ -185,6 +185,37 @@ role type* currently requires a seed-script edit, not an admin UI — reasonable
 since new role types should be rare, but worth a small admin form later if that assumption
 turns out wrong.
 
+### Member profiles & directory (Phase 4)
+**`MemberProfile` still isn't split out** — the Phase 3 decision holds. The brief's §19 profile
+fields (services, USP, years in business, certifications, etc.) were added directly onto
+`Member`. They're per-*member*, not per-*company* — deliberate, since brief §14's own example
+(one company, two reps, two chapters/categories) means two members at the same company can
+have genuinely different specialisations worth describing separately.
+
+**Public profile URLs** are `/members/{slug}`, where `slug` is generated once at creation
+(`generateUniqueMemberSlug()` in `members/actions.ts`) and never changes afterward, even if the
+member's name is later edited — so a published/shared link never breaks. Collisions get a
+numeric suffix.
+
+**Media fields (photo/brochure/video) are URL-only** — plain text columns, no upload UI, since
+object storage (Neon's sibling open item, R2) still isn't wired up. Same pattern as Company's
+`logoUrl` from Phase 3. `videoUrl`'s constraint to "direct file or Google Drive only" (brief
+§47) is documented in the field comment and the admin form's label, not enforced by validation
+— treated as a content-moderation judgment call for whoever fills it in, not something worth a
+regex fighting real Drive URL variations.
+
+**Search** (`/members`) is plain Postgres `ILIKE` (`contains`, `mode: "insensitive"`) across
+name/company/services/specialisations — no search index (Postgres full-text or external) yet.
+Fine at this scale; revisit if the member count grows enough that this gets slow, no earlier.
+Results are grouped chapter-wise per brief §18, with no ranking beyond that grouping (brief
+explicitly asks to avoid rankings that favor members).
+
+**Deferred, not forgotten**: brief §52's programmatic SEO landing pages
+(`/architects-in-chennai` style) were considered for this phase since they're directory-
+adjacent, but pushed out — they're really an SEO/content concern more than a directory concern,
+and don't have a clean home in the phase table. Revisit alongside Phase 5 (blog SEO/AEO/GEO) or
+Phase 10 (technical SEO), whichever ends up the more natural fit once that work starts.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production

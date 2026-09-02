@@ -230,12 +230,51 @@ enum MemberStatus {
 
 model Member {
   id          String       @id @default(cuid())
+  /// Public profile URL: /members/{slug}. Generated from name at creation
+  /// (see slugify() in members/actions.ts); stable afterwards even if the
+  /// name is later edited, so published links never break.
+  slug        String       @unique
   name        String
   designation String?
   bio         String?
   email       String?
   phone       String?
   status      MemberStatus @default(ACTIVE)
+
+  // --- Public profile content (brief §19) — describes THIS member's own
+  // specialisation, which can differ from another member at the same
+  // Company (brief §14's example: two reps of one company, different
+  // categories/chapters). Deliberately plain text fields, not a normalized
+  // sub-schema — "services" etc. are freeform lists an admin types in, not
+  // structured data the platform needs to query or filter on individually.
+  services        String?
+  specialisations String?
+  usp             String?
+  yearsInBusiness Int?
+  areasServed     String?
+  certifications  String?
+  majorProjects   String?
+  clientele       String?
+
+  // --- Contact (public, per brief §19 "Public contact details may be displayed") ---
+  whatsapp      String?
+  website       String?
+  address       String?
+  googleMapsUrl String?
+
+  // --- Social (brief §19 — "Other approved links" deferred; add if a real need shows up) ---
+  instagramUrl String?
+  linkedinUrl  String?
+  facebookUrl  String?
+
+  // --- Media — URL fields only until object storage (R2) is wired up; no
+  // upload UI yet. videoUrl is expected to be a direct file or an approved
+  // Google Drive link per brief §19/§47 (YouTube/Instagram embeds are
+  // explicitly disallowed there) — not enforced at the schema level since
+  // that's a content-moderation judgment call for whoever fills it in.
+  photoUrl    String?
+  brochureUrl String?
+  videoUrl    String?
 
   companyId  String
   chapterId  String

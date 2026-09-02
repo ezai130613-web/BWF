@@ -5,10 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
-
-function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
+import { slugify } from "@/lib/slugify";
 
 const createSchema = z.object({
   name: z.string().min(1, "Name is required"),

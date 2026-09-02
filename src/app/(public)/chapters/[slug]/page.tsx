@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
@@ -77,12 +78,16 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
             <SectionLabel>Members</SectionLabel>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {chapter.members.map((member) => (
-                <div key={member.id} className="rounded-sm border border-navy-700 p-4">
+                <Link
+                  key={member.id}
+                  href={`/members/${member.slug}`}
+                  className="rounded-sm border border-navy-700 p-4 transition-colors hover:border-gold-500/50"
+                >
                   <p className="text-ivory-100">{member.name}</p>
                   <p className="mt-1 text-sm text-slate-400">
                     {member.category.name} · {member.company.name}
                   </p>
-                </div>
+                </Link>
               ))}
               {chapter.members.length === 0 ? (
                 <p className="text-sm text-slate-500">No members listed yet.</p>

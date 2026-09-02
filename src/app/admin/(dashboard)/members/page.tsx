@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateMemberForm } from "@/components/admin/create-member-form";
@@ -63,16 +64,21 @@ export default async function MembersPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <form
-                    action={async () => {
-                      "use server";
-                      await updateMemberStatus(member.id, member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE");
-                    }}
-                  >
-                    <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
-                      {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
-                    </button>
-                  </form>
+                  <div className="flex items-center justify-end gap-4">
+                    <Link href={`/admin/members/${member.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
+                      Edit
+                    </Link>
+                    <form
+                      action={async () => {
+                        "use server";
+                        await updateMemberStatus(member.id, member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE");
+                      }}
+                    >
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                        {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}
