@@ -438,4 +438,63 @@ is complete and committed.
 
 ## Phase 7 — Membership Application + Category Availability + Waiting List
 
+**Status:** Complete
+
+**What shipped:**
+- Schema: `MembershipApplication` — full status workflow (New → Under Review → Contacted →
+  Meeting Scheduled → Approved in Principle → Waiting for Payment → Paid → Rejected /
+  Waitlisted per brief §17), optional chapter (null = waiting list), and a `convertedMemberId`
+  link recording the Visitor→Applicant→Member lineage once converted.
+- `getChapterAvailability()` (`src/lib/applications/availability.ts`) — the same availability
+  check both the public apply wizard and (implicitly, by sharing the underlying data) the
+  exclusivity constraint agree on. Full rationale in `docs/ARCHITECTURE.md`.
+- Public `/apply` — a real multi-step wizard (category → live availability per chapter →
+  available-chapter selection or waiting-list → basic details form), matching brief §17's exact
+  step sequence and its explicit "avoid unnecessarily large forms at first interaction"
+  guidance. Server-revalidates availability on submit rather than trusting stale client state.
+- Admin `/admin/applications` (list) and `/admin/applications/[id]` (status control, internal
+  notes, waiting-list chapter reassignment — including to `DRAFT`/internal chapters per
+  brief §16 — and the conversion step). Conversion is a single explicit admin action; approval
+  or payment status alone never auto-creates a member (brief §17 step 7).
+- New `applications:manage` permission, Super + Central Admin per the established pattern.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Ran the entire lifecycle for real, repeatedly, through the actual UI: submitted applications
+  as an anonymous visitor, watched available-chapter count correctly drop from 2 → 1 → 0 as
+  admin converted each one to a real Member, confirmed the "Currently unavailable in existing
+  chapters" + waiting-list UI appears with the brief's exact wording only once every chapter is
+  genuinely full, submitted a waitlisted application and confirmed it saved with `chapterId:
+  null` / `status: WAITLISTED`, then — as admin — created a brand-new chapter and assigned the
+  waitlisted applicant to it, watching the "assign a chapter" panel correctly disappear once
+  assigned. Screenshotted every stage.
+- **Found and confirmed a real edge case along the way, not by design**: converting an
+  application into a category+chapter slot that had since been filled by another conversion
+  correctly failed with the same `SLOT_TAKEN_ERROR` the exclusivity constraint uses elsewhere —
+  discovered because leftover test applications from an earlier (buggy) test run all happened
+  to target the same already-filled chapter. Worth recording because it's exactly the kind of
+  race condition the database-level constraint exists to prevent, and it held.
+- Hit real test-script flakiness twice this phase (re-logging in without signing out first hit
+  the same already-authenticated redirect Phase 3 hit; then too-short waits after the
+  conversion action caused "destination stream closed early" and made a working feature look
+  broken). Both traced to the test harness, not the app, by re-running the same action in
+  isolation with generous waits and full error surfacing before concluding either way — worth
+  remembering as the standard move when a Playwright script's result looks suspicious: isolate
+  and slow down before assuming the app is wrong.
+
+**Known issues / follow-ups:**
+- `convertApplicationToMember`'s error path (slot already taken) surfaces via the admin route's
+  generic error boundary rather than a friendly inline message — functionally correct, just
+  less polished than the rest of the admin's form handling. Noted in `docs/ARCHITECTURE.md`.
+- Company matching on conversion is exact-name-only, no fuzzy dedup — fine for now, revisit if
+  duplicate companies from spelling variants become a real problem.
+- No application-related emails yet (confirmation to applicant, notification to admin) —
+  that's explicitly Phase 13's job, not an oversight here.
+- Left a handful of test "Karthik Architect ..." applications and members in the local database
+  from verification — harmless, same category as prior phases' test-data leftovers.
+
+---
+
+## Phase 8 — Visitor Registration + Meetings + Events
+
 **Status:** Not started

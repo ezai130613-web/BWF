@@ -26,6 +26,7 @@ const PERMISSIONS = [
   { key: "testimonials:manage", label: "Manage testimonials" },
   { key: "content:manage", label: "Manage website content & FAQs" },
   { key: "feedback:view", label: "View feedback" },
+  { key: "applications:manage", label: "Manage membership applications" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -44,6 +45,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "blogs:manage",
     "testimonials:manage",
     "content:manage",
+    "applications:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), not this table.

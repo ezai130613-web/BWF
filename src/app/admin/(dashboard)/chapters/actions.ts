@@ -76,6 +76,7 @@ export async function updateChapter(_prevState: { error?: string } | undefined, 
   revalidatePath("/");
   revalidatePath("/chapters");
   revalidatePath("/chapters/[slug]", "page");
+  revalidatePath("/apply"); // chapter status affects category availability shown there
   return { error: undefined };
 }
 

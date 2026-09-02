@@ -293,6 +293,47 @@ editable" to protect design consistency; hero/section copy stays code-controlled
 reason. Adding another block later is a one-line seed addition plus one `getContent()` call at
 the point of use — the mechanism doesn't need to change.
 
+### Membership application & waiting list (Phase 7)
+**The availability check is the source of truth for the apply flow, and it's the same check
+the exclusivity constraint itself is built on** — `getChapterAvailability()`
+(`src/lib/applications/availability.ts`) queries `Member.activeSlotKey` pairs directly, so the
+public wizard can never show "Available" for a slot the database would actually reject. The
+whole per-category availability matrix (every category × every chapter) is computed once,
+server-side, in `/apply`'s page component and handed to a client wizard as plain data — the
+multi-step UI (category → availability → chapter-or-waitlist → form) runs entirely client-side
+off that one payload, no extra round-trips as the applicant moves through steps.
+
+**Applications don't reserve a slot** — only a converted Member does. Nothing stops two
+applications from both targeting the same open chapter+category before either is converted;
+the exclusivity constraint is enforced at conversion time (`convertApplicationToMember`,
+brief §17 step 7), and the *second* attempt correctly fails with the same
+`SLOT_TAKEN_ERROR` message the direct member-creation form uses. This was actually caught and
+verified during testing, not just reasoned about — see `docs/PHASES.md`.
+
+**Waiting list has no chapter, on purpose.** A `WAITLISTED` application's `chapterId` is `null`
+until an admin explicitly assigns one (brief §16) — the assignment dropdown
+(`ReassignChapterForm`) lists every chapter including `DRAFT` (internal-only, not yet public)
+ones, since brief §16 explicitly allows waitlisted applicants to be routed into a chapter that
+doesn't publicly exist yet.
+
+**The applicant's Company doesn't exist as a real record until conversion.** `companyName` is
+plain text on `MembershipApplication`; `convertApplicationToMember` matches an existing Company
+by exact name or creates a new one. No dedup/fuzzy-matching beyond exact name match — a
+deliberate simplicity tradeoff, not an oversight; revisit if duplicate companies from slightly
+different name spellings turn out to be a real problem in practice.
+
+**Known UX gap**: `convertApplicationToMember` is a plain form action (no `useActionState`), so
+when it throws — the slot-taken case above, mainly — the error surfaces via the admin route's
+generic error boundary (`Something went wrong.` + the real message) rather than a friendly
+inline message on the button itself. Functionally correct and the message is still readable,
+just not as polished as the rest of the admin's form error handling. Worth a small refactor
+later if this comes up often in practice.
+
+**No email notifications yet** — brief §49 lists application-related emails, but that's
+Phase 13's job (Email/Notification Automation) as its own phase; sending anything here now
+would be a partial, inconsistent implementation. The application record captures everything
+needed for Phase 13 to wire real emails on top of without a schema change.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production

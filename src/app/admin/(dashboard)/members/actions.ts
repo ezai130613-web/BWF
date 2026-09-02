@@ -74,6 +74,7 @@ export async function createMember(_prevState: { error?: string } | undefined, f
   revalidatePath("/");
   revalidatePath("/members");
   revalidatePath("/members/[slug]", "page");
+  revalidatePath("/apply");
   return { error: undefined };
 }
 
@@ -109,6 +110,7 @@ export async function updateMemberStatus(memberId: string, status: $Enums.Member
   revalidatePath("/");
   revalidatePath("/members");
   revalidatePath("/members/[slug]", "page");
+  revalidatePath("/apply");
 }
 
 const optionalText = () => z.string().optional().transform((v) => v || undefined);

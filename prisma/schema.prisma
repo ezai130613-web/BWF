@@ -190,6 +190,7 @@ model Chapter {
   chapterAdmins UserRole[]
   testimonials  Testimonial[]
   feedback      Feedback[]
+  applications  MembershipApplication[]
 
   @@map("chapters")
 }
@@ -204,7 +205,8 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members Member[]
+  members      Member[]
+  applications MembershipApplication[]
 
   @@map("categories")
 }
@@ -303,6 +305,7 @@ model Member {
 
   leadershipRoles ChapterLeadership[]
   authorProfile   Author?
+  fromApplication MembershipApplication?
 
   @@map("members")
 }
@@ -538,4 +541,61 @@ model SiteFaq {
   updatedAt DateTime @updatedAt
 
   @@map("site_faqs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — membership application + category availability + waiting list
+// (brief §16-17). The applicant's company doesn't exist as a Company record
+// yet at submission time — companyName is plain text here, and a real
+// Company row only gets created/matched when admin converts an approved
+// application into a Member (see applications/actions.ts).
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  NEW
+  UNDER_REVIEW
+  CONTACTED
+  MEETING_SCHEDULED
+  APPROVED_IN_PRINCIPLE
+  WAITING_FOR_PAYMENT
+  PAID
+  REJECTED
+  WAITLISTED
+}
+
+model MembershipApplication {
+  id              String            @id @default(cuid())
+  name            String
+  phone           String
+  email           String
+  companyName     String
+  designation     String?
+  yearsInBusiness Int?
+  referralSource  String?
+  companyInfo     String?
+  status          ApplicationStatus @default(NEW)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  /// Null when the applicant joined the waiting list because every active
+  /// chapter's slot for their category was already taken (brief §16) — an
+  /// admin assigns a chapter (possibly a DRAFT one not yet public) once one
+  /// opens up, via the application's own admin page.
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  /// Set once an admin creates the real Member record (brief §17 step 7 —
+  /// approval alone must never auto-create a public member). Keeps the
+  /// Visitor → Applicant → Member lineage the brief asks for (§23) visible
+  /// from the application side too.
+  convertedMemberId String? @unique
+  convertedMember   Member? @relation(fields: [convertedMemberId], references: [id], onDelete: SetNull)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("membership_applications")
 }

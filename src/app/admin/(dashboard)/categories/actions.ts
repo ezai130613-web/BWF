@@ -39,6 +39,7 @@ export async function createCategory(_prevState: { error?: string } | undefined,
   revalidatePath("/admin/categories");
   revalidatePath("/");
   revalidatePath("/chapters/[slug]", "page");
+  revalidatePath("/apply");
   return { error: undefined };
 }
 
@@ -58,4 +59,5 @@ export async function toggleCategoryActive(categoryId: string) {
   revalidatePath("/admin/categories");
   revalidatePath("/");
   revalidatePath("/chapters/[slug]", "page");
+  revalidatePath("/apply");
 }

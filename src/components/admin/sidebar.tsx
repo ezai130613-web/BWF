@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/admin/companies", label: "Companies", permission: "companies:manage" },
   { href: "/admin/categories", label: "Categories", permission: "categories:manage" },
   { href: "/admin/members", label: "Members", permission: "members:manage" },
+  { href: "/admin/applications", label: "Applications", permission: "applications:manage" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage" },
   { href: "/admin/blog-categories", label: "Blog Categories", permission: "blogs:manage" },
   { href: "/admin/authors", label: "Authors", permission: "blogs:manage" },
