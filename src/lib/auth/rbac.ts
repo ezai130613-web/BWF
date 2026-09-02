@@ -55,3 +55,41 @@ export function requireRecentAuth(session: Session, maxAgeMinutes = 15) {
     throw new ForbiddenError("Please sign in again to confirm this action.");
   }
 }
+
+/**
+ * Chapter-scoped access (brief §11: "Chapter Admin can only access their
+ * assigned chapter"). Unlike requirePermission(), this does NOT go through
+ * RolePermission — Chapter Admin intentionally holds no global permissions
+ * (see prisma/seed.ts) because their access is scoped by chapter, not by a
+ * blanket grant. Returns "ALL" for Super/Central Admin (who bypass scoping
+ * entirely via their global manage permission) or the specific chapterId a
+ * Chapter Admin is confirmed to have access to; throws otherwise.
+ */
+export async function requireChapterAccess(
+  chapterId: string,
+  globalPermissionKey: string,
+): Promise<"ALL" | string> {
+  const session = await requireAdminSession();
+  const permissions = await getUserPermissionKeys(session.user.id);
+
+  if (permissions.has(globalPermissionKey)) return "ALL";
+
+  if (session.user.roles.includes("CHAPTER_ADMIN") && session.user.chapterId === chapterId) {
+    return chapterId;
+  }
+
+  throw new ForbiddenError("You do not have access to this chapter.");
+}
+
+/** Chapter id a Chapter Admin is scoped to, or "ALL" for Super/Central Admin — for filtering a list view rather than a single-record check. */
+export async function getChapterScope(globalPermissionKey: string): Promise<"ALL" | string> {
+  const session = await requireAdminSession();
+  const permissions = await getUserPermissionKeys(session.user.id);
+
+  if (permissions.has(globalPermissionKey)) return "ALL";
+  if (session.user.roles.includes("CHAPTER_ADMIN") && session.user.chapterId) {
+    return session.user.chapterId;
+  }
+
+  throw new ForbiddenError();
+}

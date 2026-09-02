@@ -5,14 +5,35 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/roles", label: "Roles & Permissions" },
-  { href: "/admin/activity", label: "Activity Log" },
-];
+  { href: "/admin", label: "Dashboard", permission: null },
+  { href: "/admin/chapters", label: "Chapters", permission: "chapters:manage" },
+  { href: "/admin/companies", label: "Companies", permission: "companies:manage" },
+  { href: "/admin/categories", label: "Categories", permission: "categories:manage" },
+  { href: "/admin/members", label: "Members", permission: "members:manage" },
+  { href: "/admin/users", label: "Users", permission: "users:manage" },
+  { href: "/admin/roles", label: "Roles & Permissions", permission: "roles:manage" },
+  { href: "/admin/activity", label: "Activity Log", permission: "audit_log:view" },
+] as const;
 
-export function Sidebar({ userName }: { userName: string }) {
+export function Sidebar({
+  userName,
+  permissions,
+  isChapterAdmin,
+}: {
+  userName: string;
+  permissions: Set<string>;
+  isChapterAdmin: boolean;
+}) {
   const pathname = usePathname();
+
+  const items = NAV_ITEMS.filter((item) => {
+    if (item.permission === null) return true;
+    if (permissions.has(item.permission)) return true;
+    // Chapter Admin holds no global permissions but does get scoped access
+    // to Members (see requireChapterAccess) — show that one link for them.
+    if (isChapterAdmin && item.permission === "members:manage") return true;
+    return false;
+  });
 
   return (
     <aside className="flex w-64 flex-shrink-0 flex-col bg-navy-900 text-ivory-100">
@@ -22,7 +43,7 @@ export function Sidebar({ userName }: { userName: string }) {
       </div>
 
       <nav className="flex-1 px-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href;
           return (
             <Link

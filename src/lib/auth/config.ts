@@ -3,8 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { hashOtpCode } from "@/lib/auth/otp";
 import { logActivity } from "@/lib/audit";
-
-const ADMIN_ROLE_KEYS = ["SUPER_ADMIN", "CENTRAL_ADMIN"];
+import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
@@ -50,6 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const roleKeys = challenge.user.roles.map((r) => r.role.key);
         if (!roleKeys.some((key) => ADMIN_ROLE_KEYS.includes(key))) return null;
 
+        const chapterAdminAssignment = challenge.user.roles.find((r) => r.role.key === "CHAPTER_ADMIN");
+
         await db.$transaction([
           db.otpChallenge.update({
             where: { id: challenge.id },
@@ -71,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: challenge.user.email,
           name: challenge.user.name,
           roles: roleKeys,
+          chapterId: chapterAdminAssignment?.chapterId ?? null,
           sessionVersion: challenge.user.sessionVersion,
         };
       },
@@ -82,6 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Initial sign-in — `user` is whatever authorize() returned above.
         token.id = user.id as string;
         token.roles = (user as { roles: string[] }).roles;
+        token.chapterId = (user as { chapterId: string | null }).chapterId;
         token.sessionVersion = (user as { sessionVersion: number }).sessionVersion;
         token.issuedAt = Date.now();
         return token;
@@ -111,6 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.roles = (token.roles as string[]) ?? [];
+        session.user.chapterId = (token.chapterId as string | null | undefined) ?? null;
         session.user.authTime = (token.issuedAt as number) ?? 0;
       }
 

@@ -5,8 +5,8 @@ import { verifyPassword } from "@/lib/auth/password";
 import { generateOtpCode, hashOtpCode, otpExpiryDate } from "@/lib/auth/otp";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/audit";
+import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 
-const ADMIN_ROLE_KEYS = ["SUPER_ADMIN", "CENTRAL_ADMIN"];
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 

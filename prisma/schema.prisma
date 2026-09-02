@@ -92,6 +92,14 @@ model UserRole {
   userId String
   roleId String
 
+  /// Only meaningful when role.key == "CHAPTER_ADMIN" — the chapter this
+  /// assignment is scoped to (brief §11: "Chapter Admin can only access
+  /// their assigned chapter"). Null for global roles (Super Admin, Central
+  /// Admin). This is the scoping mechanism flagged as deferred to Phase 3
+  /// in the Phase 2 notes, now that Chapter exists.
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
@@ -138,4 +146,150 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — chapters, companies, members, categories.
+//
+// MemberProfile from the brief's §13 list is deliberately NOT a separate
+// table yet — its whole reason to exist is the pending-revision workflow
+// for member-submitted edits (§20), which only matters once members can log
+// in and edit their own profile (Phase 11). Splitting it out now, before
+// that workflow exists, would just be structure with no behavior behind it.
+// Profile fields live directly on Member for now; revisit if Phase 11
+// needs the split.
+// ---------------------------------------------------------------------------
+
+enum ChapterStatus {
+  /// Exists in the admin system, not shown publicly, not accepting members
+  /// yet — brief §16: "Upcoming chapters may exist internally... without
+  /// being publicly displayed."
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Chapter {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  location    String?
+  status      ChapterStatus @default(DRAFT)
+
+  meetingSchedule String?
+  meetingVenue    String?
+  meetingAddress  String?
+  googleMapsUrl   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members       Member[]
+  leadership    ChapterLeadership[]
+  chapterAdmins UserRole[]
+
+  @@map("chapters")
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Member[]
+
+  @@map("categories")
+}
+
+model Company {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  website     String?
+  logoUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Member[]
+
+  @@map("companies")
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Member {
+  id          String       @id @default(cuid())
+  name        String
+  designation String?
+  bio         String?
+  email       String?
+  phone       String?
+  status      MemberStatus @default(ACTIVE)
+
+  companyId  String
+  chapterId  String
+  categoryId String
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  chapter  Chapter  @relation(fields: [chapterId], references: [id], onDelete: Restrict)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  /// The category-exclusivity enforcement (brief §15 — CRITICAL rule).
+  /// Set to "{chapterId}:{categoryId}" only while status == ACTIVE, and to
+  /// null otherwise (see src/lib/members/slot.ts). Because SQL unique
+  /// constraints treat every NULL as distinct, this gives a real database-
+  /// level guarantee that at most one ACTIVE member can occupy a given
+  /// chapter+category pair — not just a check in application code that a
+  /// race condition could slip past. Prisma's schema DSL has no portable
+  /// way to express a *partial* unique index directly, so this computed-
+  /// column pattern is the standard workaround.
+  activeSlotKey String? @unique
+
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leadershipRoles ChapterLeadership[]
+
+  @@map("members")
+}
+
+model ChapterLeadershipRole {
+  id    String @id @default(cuid())
+  /// e.g. PRESIDENT, VICE_PRESIDENT, SECRETARY, COORDINATOR — admin-
+  /// manageable so new role types can be added without a code change
+  /// (brief §22: "Do not hardcode leadership roles").
+  key   String @unique
+  label String
+
+  assignments ChapterLeadership[]
+
+  @@map("chapter_leadership_roles")
+}
+
+model ChapterLeadership {
+  id        String @id @default(cuid())
+  chapterId String
+  memberId  String
+  roleId    String
+
+  chapter Chapter               @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  member  Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role    ChapterLeadershipRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  startedAt DateTime @default(now())
+
+  @@unique([chapterId, roleId, memberId])
+  @@map("chapter_leadership")
 }

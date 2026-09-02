@@ -6,10 +6,13 @@ import { toggleUserStatus } from "./actions";
 export default async function UsersPage() {
   await requirePermission("users:manage");
 
-  const users = await db.user.findMany({
-    include: { roles: { include: { role: true } } },
-    orderBy: { createdAt: "asc" },
-  });
+  const [users, chapters] = await Promise.all([
+    db.user.findMany({
+      include: { roles: { include: { role: true, chapter: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.chapter.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -38,7 +41,9 @@ export default async function UsersPage() {
                 <td className="px-4 py-3 text-neutral-900">{user.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{user.email}</td>
                 <td className="px-4 py-3 text-neutral-600">
-                  {user.roles.map((r) => r.role.label).join(", ") || "—"}
+                  {user.roles
+                    .map((r) => (r.chapter ? `${r.role.label} — ${r.chapter.name}` : r.role.label))
+                    .join(", ") || "—"}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -70,7 +75,7 @@ export default async function UsersPage() {
       <div>
         <h2 className="text-sm font-semibold text-neutral-900">Create admin user</h2>
         <div className="mt-3">
-          <CreateUserForm />
+          <CreateUserForm chapters={chapters} />
         </div>
       </div>
     </div>

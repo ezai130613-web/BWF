@@ -184,4 +184,75 @@ is complete and committed.
 
 ## Phase 3 — Chapters + Companies + Members + Categories
 
+**Status:** Complete
+
+**What shipped:**
+- Schema: `Chapter`, `Category`, `Company`, `Member`, `ChapterLeadershipRole`,
+  `ChapterLeadership`, plus `UserRole.chapterId` for Chapter Admin scoping. `MemberProfile`
+  deliberately not split out yet — see the schema's header comment for why. Full rationale in
+  `docs/ARCHITECTURE.md`.
+- Category exclusivity (brief §15) enforced by a real database unique constraint
+  (`Member.activeSlotKey`), not just a form check — see `src/lib/members/slot.ts`.
+- Chapter Admin scoping actually wired in, not just modeled: `requireChapterAccess()` /
+  `getChapterScope()` gate the Members admin page so a Chapter Admin only sees/edits their own
+  chapter, while Super/Central Admin see everything. Admin login now accepts Chapter Admin
+  (previously Super/Central only), and `/admin/users` can create one with a chapter assignment.
+- Admin CRUD: `/admin/chapters` (+ `/admin/chapters/[id]` for details, meeting info, and
+  leadership assignment), `/admin/companies`, `/admin/categories`, `/admin/members`. Sidebar nav
+  is now permission-aware — a Chapter Admin only sees Dashboard + Members.
+- Public site now data-driven instead of hardcoded: `/chapters` (list of ACTIVE chapters),
+  `/chapters/[slug]` (description, leadership, member list, available categories computed live,
+  meeting info), and the homepage's Chapters/Find-a-Professional sections now query the
+  database instead of the Phase 1 static arrays. Draft chapters stay internal (brief §16) —
+  only `status: ACTIVE` chapters appear publicly.
+- Seeded reference data: 3 placeholder chapters (Chennai), a 10-category starter taxonomy
+  grounded in the brief's own examples, 4 leadership role types. All admin-editable, none
+  fabricated as if final — see `docs/ARCHITECTURE.md` open decisions.
+- New permissions (`chapters:manage`, `categories:manage`, `companies:manage`,
+  `members:manage`) — Super Admin gets all, Central Admin gets all of these per brief §10,
+  Chapter Admin gets none globally (scoped instead, see above).
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- **Actually tried to break the category-exclusivity rule**, not just trusted the schema:
+  created a member (Ravi Kumar, Architect, Chapter 01) through the real admin UI, then tried to
+  create a second Architect in the same chapter — got "This category is already occupied by an
+  active member in this chapter," rejected at the database layer. Screenshotted. This was
+  attempted through the real UI, not typed directly against the database.
+- Verified the full vertical slice end-to-end through a browser: created a company, edited a
+  chapter's description/meeting info, assigned a member to a leadership role, then confirmed
+  all of it — description, leadership, member list, and the *correctly-filtered* available-
+  categories list (missing "Architect," present everything else) — rendered on the real public
+  `/chapters/chapter-01` page. Screenshotted.
+- Confirmed the homepage and `/chapters` list pull live data (real seeded chapter/category
+  names), not the old hardcoded placeholders.
+- Hit a real local-database incident mid-phase (Prisma's local dev shadow-database got stuck)
+  and resolved it without any destructive operation — full account in
+  `docs/ARCHITECTURE.md`'s "Local dev database operational note."
+- **Chapter Admin scoping actually tested**, not just modeled: created a member in Chapter 02,
+  created a Chapter Admin scoped to Chapter 02, logged in as them, and confirmed their sidebar
+  shows only Dashboard + Members, their Members list shows *only* Chapter 02's member (not
+  Chapter 01's Ravi Kumar), and `/admin/chapters` renders "You don't have access to this —
+  Missing permission: chapters:manage." Screenshotted, same rigor as Phase 2's Central-Admin
+  RBAC test.
+- Not yet verified: behavior against a real (non-local) Postgres/Neon instance; concurrent-
+  write race conditions on the exclusivity constraint (the DB constraint should hold regardless
+  under Postgres's own transaction isolation, but this wasn't specifically load-tested).
+
+**Known issues / follow-ups:**
+- Two duplicate "Acme Construction Pvt Ltd" company rows exist in the local dev database from
+  repeated test runs (Company has no unique-name constraint, unlike Chapter/Category) —
+  harmless local test data, not a schema bug, but worth a manual cleanup or a
+  `db.company.deleteMany()` before any demo.
+- No admin UI to add a *new* leadership role type (e.g. "Treasurer") — the four seeded roles
+  cover the brief's named examples; adding another currently means a seed-script edit.
+- Object storage still isn't wired up (Neon isn't either) — Company/Member logo/photo fields
+  exist in the schema but there's no upload UI yet; both are still open decisions.
+- Individual public member profile pages and the member-directory search are explicitly Phase 4
+  — the chapter detail page lists members inline but doesn't link to a profile page yet.
+
+---
+
+## Phase 4 — Member Directory + Individual Member Profiles + Search
+
 **Status:** Not started

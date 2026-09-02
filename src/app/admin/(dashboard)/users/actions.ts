@@ -7,14 +7,20 @@ import { hashPassword } from "@/lib/auth/password";
 import { requirePermission, requireRecentAuth } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 
-const ADMIN_ASSIGNABLE_ROLES = ["SUPER_ADMIN", "CENTRAL_ADMIN"] as const;
+const ADMIN_ASSIGNABLE_ROLES = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"] as const;
 
-const createUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.email(),
-  password: z.string().min(12, "Password must be at least 12 characters"),
-  roleKey: z.enum(ADMIN_ASSIGNABLE_ROLES),
-});
+const createUserSchema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    email: z.email(),
+    password: z.string().min(12, "Password must be at least 12 characters"),
+    roleKey: z.enum(ADMIN_ASSIGNABLE_ROLES),
+    chapterId: z.string().optional(),
+  })
+  .refine((data) => data.roleKey !== "CHAPTER_ADMIN" || !!data.chapterId, {
+    message: "Select a chapter for a Chapter Admin.",
+    path: ["chapterId"],
+  });
 
 export async function createAdminUser(_prevState: { error?: string } | undefined, formData: FormData) {
   const session = await requirePermission("users:manage");
@@ -24,13 +30,14 @@ export async function createAdminUser(_prevState: { error?: string } | undefined
     email: formData.get("email"),
     password: formData.get("password"),
     roleKey: formData.get("roleKey"),
+    chapterId: formData.get("chapterId") || undefined,
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const { name, email, password, roleKey } = parsed.data;
+  const { name, email, password, roleKey, chapterId } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) {
@@ -45,7 +52,9 @@ export async function createAdminUser(_prevState: { error?: string } | undefined
       name,
       email: email.toLowerCase(),
       password: passwordHash,
-      roles: { create: { roleId: role.id } },
+      roles: {
+        create: { roleId: role.id, chapterId: roleKey === "CHAPTER_ADMIN" ? chapterId : undefined },
+      },
     },
   });
 

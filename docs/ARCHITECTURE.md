@@ -47,6 +47,22 @@ compatibility, no egress fees on R2 (matters once member photos/brochures/videos
 and to avoid vendor lock-in versus an all-in-one platform. Both are provisioned per-environment
 (dev/staging/production) per the brief's environment-separation requirement (§7).
 
+**Local dev database operational note (Phase 3 incident)**: `npx prisma dev`'s shadow-database
+handling turned out to be unreliable in this environment — `migrate dev` repeatedly failed with
+"type already exists" against the shadow DB even after restarting the instance and manually
+resetting the shadow schema, and even a fresh `prisma dev --name <new>` instance shared
+underlying data with the old one (each new named instance was NOT actually isolated — port
+changes, same data). Since `migrate reset` is destructive and this harness blocks destructive
+commands even with in-conversation user consent (a separate, stricter gate than Prisma's own
+consent mechanism), the fix was the officially-supported non-destructive path: baseline the
+existing schema as already-applied (`prisma migrate resolve --applied <migration>`), generate
+the new migration's SQL via `prisma migrate diff --from-config-datasource --to-schema
+./prisma/schema.prisma --script` (bypasses the shadow DB entirely), apply it with `prisma db
+execute --file <sql>`, then `migrate resolve --applied` again to record it. Both migrations
+ended up properly tracked in `prisma/migrations/` with no data loss. If `migrate dev` ever
+throws a shadow-database P3006/P3018 error again in this environment, reach for this sequence
+before anything destructive.
+
 ### Design system (Phase 1)
 - **Fonts**: Fraunces (display/headline, variable serif) + Inter (functional/UI — nav, buttons,
   forms, admin, member portal), both self-hosted via `next/font/google`. Chosen to match the
@@ -138,6 +154,37 @@ attacker triggers OTP emails to an account they don't control; they still can't 
 login), but a real IP/device rate limiter (Upstash Redis or similar) is worth adding before
 this handles real member-facing traffic at scale, not just a handful of admins.
 
+### Business data & RBAC scoping (Phase 3)
+**Category exclusivity (brief §15, CRITICAL)** is enforced by `Member.activeSlotKey`, a
+computed column set to `"{chapterId}:{categoryId}"` only while `status == ACTIVE` (null
+otherwise) with a database `@unique` constraint on it — see the field's comment in
+`schema.prisma` and `src/lib/members/slot.ts`. SQL unique constraints treat every NULL as
+distinct, so inactive/suspended members never collide with each other, but two ACTIVE members
+in the same chapter+category are a real constraint violation, not just a form check —
+verified by actually trying it (see `docs/PHASES.md`). Every write to `Member.status` or its
+chapter/category must go through `computeActiveSlotKey()`, not set the field directly.
+
+**Chapter Admin scoping (brief §11)**: `UserRole.chapterId` (nullable, only meaningful for the
+CHAPTER_ADMIN role) plus `requireChapterAccess()`/`getChapterScope()` in
+`src/lib/auth/rbac.ts`. Chapter Admin intentionally holds zero rows in `RolePermission` —
+unlike Super/Central Admin, their access isn't a blanket grant, so it's checked separately from
+the permission system. Currently wired into the Members admin page (list is chapter-filtered,
+creation is chapter-checked); Chapters/Companies/Categories admin pages are still
+Super/Central-Admin-only (brief doesn't give Chapter Admin control over those). Extend the same
+`requireChapterAccess()` pattern if a chapter-scoped view of Events/Visitors is needed once
+those phases land.
+
+**Company ≠ Member (brief §14)** is a straightforward FK relationship — `Member.companyId`,
+many members per company, `onDelete: Restrict` so a company with members can't be deleted
+out from under them (soft-deactivate instead, per §43).
+
+**Configurable leadership roles (brief §22)**: `ChapterLeadershipRole` is a real table (key +
+label), not a hardcoded enum, seeded with President/Vice President/Secretary/Coordinator.
+Assigning members to roles is fully self-service via `/admin/chapters/[id]`; adding a *new
+role type* currently requires a seed-script edit, not an admin UI — reasonable gap for now
+since new role types should be rare, but worth a small admin form later if that assumption
+turns out wrong.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production
@@ -157,8 +204,8 @@ they aren't lost, with the phase they'd first block:
 |---|---|---|
 | ~~Display serif + UI sans-serif typefaces~~ | ~~Phase 1~~ | **Resolved Phase 1**: Fraunces + Inter. |
 | ~~Headless component primitives~~ | ~~Phase 1~~ | **Resolved Phase 1**: hand-built, no library — see Design System above. |
-| Real chapter names/locations for the 3 active chapters | Phase 3 | Brief explicitly says don't trust old-site numbers as authoritative. Homepage/chapters section currently shows generic "Chapter 01/02/03" placeholders, not fabricated names. |
-| Real business-category taxonomy (Plumbing, Architect, etc.) | Phase 3 | Needed to seed the category-exclusivity system. |
+| Real chapter names/locations for the 3 active chapters | Before launch | Seeded as "Chapter 01/02/03" (Chennai) — now live-editable at `/admin/chapters` (not a code change), so this no longer blocks any phase. Rename whenever real names exist. |
+| Real business-category taxonomy (Plumbing, Architect, etc.) | Before launch | Seeded with a 10-category starter list grounded in the brief's own examples — live-editable at `/admin/categories`. Refine/expand whenever BWF confirms the real list. |
 | Real email provider for OTP (Resend API key) | Phase 2 (before real use) | `sendEmail()` supports Resend already (`EMAIL_PROVIDER=resend` + `EMAIL_API_KEY`) — until set, OTP codes log to the server console instead of sending. Fine for local dev, not for staging/production. SMS OTP was considered and deliberately deferred — email-only for now, architecture doesn't block adding SMS later. |
 | Domain name + whether the old site stays live during build | Phase 14–15 | Affects redirect planning and DNS cutover timing. |
 | Real photography (or interim placeholder/stock strategy) | Phase 1 (ongoing) | Every image slot is a `MediaPlaceholder` with a shot-list caption in the meantime — see Design System above. Still needs a real answer before launch; placeholders shouldn't ship to production. |

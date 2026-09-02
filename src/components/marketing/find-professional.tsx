@@ -1,10 +1,15 @@
+import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 
-const SAMPLE_CATEGORIES = ["Architects", "Civil Contractors", "Interior Designers", "Plumbing"];
+export async function FindProfessional() {
+  const categories = await db.category.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    take: 8,
+  });
 
-export function FindProfessional() {
   return (
     <section className="bg-navy-800 py-28">
       <Container className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
@@ -23,12 +28,12 @@ export function FindProfessional() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {SAMPLE_CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <span
-              key={category}
+              key={category.id}
               className="rounded-full border border-navy-600 px-4 py-2 text-sm text-slate-400"
             >
-              {category}
+              {category.name}
             </span>
           ))}
         </div>
