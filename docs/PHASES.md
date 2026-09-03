@@ -45,15 +45,21 @@ is complete and committed.
 - Not yet applicable: no database, no tests, no responsive/visual check (no real UI yet).
 
 **Known issues / follow-ups:**
-- No database is provisioned yet (local or Neon) — `DATABASE_URL` in `.env` is a placeholder.
-  Prisma commands that need a live connection haven't been exercised end-to-end.
+- ~~No database is provisioned yet~~ **Resolved 2026-09-04** — see Phase 2 entry.
 - Font pairing, component-primitive library, and real brand assets are undecided — see Open
   Decisions in `docs/ARCHITECTURE.md`. Phase 1 shouldn't start design work until at least fonts
   are picked.
-- Repo has not been pushed to a GitHub remote yet (brief §6: "GitHub from Day 1") — local git
-  history exists; needs a remote to actually satisfy that requirement.
-- No CI configured yet (lint/typecheck/build-on-push) — reasonable to add once there's a
-  GitHub remote to run it against.
+- ~~Repo has not been pushed to a GitHub remote yet~~ **Resolved 2026-09-04**: pushed to
+  `github.com/ezai130613-web/BWF` (the remote already existed from an earlier point; this just
+  synced up commits that had accumulated locally since).
+- ~~No CI configured yet (lint/typecheck/build-on-push)~~ **Resolved 2026-09-04**:
+  `.github/workflows/ci.yml` runs `lint` and `typecheck` in parallel (no DB dependency) plus a
+  `build` job against a disposable Postgres service container, migrated fresh each run — no
+  secrets, never touches real Neon infra. First real run caught two genuine bugs: the
+  migration-ordering issue recorded in Phase 2, and a `typecheck` failure on a truly clean
+  checkout (`Cannot find name 'LayoutProps'` — a Next.js-generated ambient type that only existed
+  locally because of a stale `.next/` directory). Fixed by changing the `typecheck` script to
+  `next typegen && tsc --noEmit`. All three jobs are green as of commit `9796daa`.
 
 ---
 
