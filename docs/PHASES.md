@@ -164,8 +164,19 @@ is complete and committed.
   requests; any load/rate-limit testing.
 
 **Known issues / follow-ups:**
-- Running against a local `prisma dev` database, not Neon — no real `DATABASE_URL` yet. Schema
-  migrations are already tracked and will apply cleanly once one exists.
+- ~~Running against a local `prisma dev` database, not Neon~~ **Resolved 2026-09-04**: real Neon
+  project provisioned (region: AWS Asia Pacific/Singapore), with separate `dev`/`staging`/`main`
+  (production) branches per `docs/ARCHITECTURE.md`'s environment split. Local `.env` now points at
+  the `dev` branch. Applying migrations via `prisma migrate deploy` to a real, empty Postgres
+  surfaced a genuine bug the local dev database's history had masked: migration
+  `20260903095736_phase14_indexes_rate_limit` created indexes on `blogs`/`events`/
+  `membership_applications`/`testimonials`/`visitors` — tables that later migrations create, not
+  earlier ones — so a clean replay failed with `relation "blogs" does not exist` partway through
+  staging deploy. Fixed by trimming that migration back to only what could legitimately exist at
+  that point (the new `rate_limit_hits` table + `members` indexes) and moving the rest into a new
+  migration, `20260903235600_blogs_events_visitors_indexes`, ordered after the migrations that
+  create those tables. All three branches (`dev`, `staging`, `main`) now apply cleanly from empty
+  via `prisma migrate deploy`.
 - Seeded Super Admin uses local-dev-only placeholder credentials
   (`SEED_SUPER_ADMIN_EMAIL`/`_PASSWORD` in `.env`) — replace with real founder credentials
   before this touches anything real.
