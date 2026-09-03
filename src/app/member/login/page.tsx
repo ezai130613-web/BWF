@@ -11,7 +11,12 @@ export default function MemberLoginPage() {
         <h1 className="mt-2 text-xl font-semibold text-neutral-900">Member sign in</h1>
         <div className="mt-6">
           <Suspense fallback={null}>
-            <OtpLoginForm requestOtpUrl="/api/member/auth/request-otp" providerId="member-otp" defaultRedirectTo="/member" />
+            <OtpLoginForm
+              requestOtpUrl="/api/member/auth/request-otp"
+              providerId="member-otp"
+              defaultRedirectTo="/member"
+              forgotPasswordUrl="/member/reset-password"
+            />
           </Suspense>
         </div>
       </div>

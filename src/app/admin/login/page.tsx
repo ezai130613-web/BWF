@@ -11,7 +11,12 @@ export default function AdminLoginPage() {
         <h1 className="mt-2 text-xl font-semibold text-neutral-900">Admin sign in</h1>
         <div className="mt-6">
           <Suspense fallback={null}>
-            <OtpLoginForm requestOtpUrl="/api/admin/auth/request-otp" providerId="admin-otp" defaultRedirectTo="/admin" />
+            <OtpLoginForm
+              requestOtpUrl="/api/admin/auth/request-otp"
+              providerId="admin-otp"
+              defaultRedirectTo="/admin"
+              forgotPasswordUrl="/admin/reset-password"
+            />
           </Suspense>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import { generateOtpCode, hashOtpCode, otpExpiryDate } from "@/lib/auth/otp";
+import { OTP_PURPOSE } from "@/lib/auth/constants";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/audit";
 
@@ -59,7 +60,7 @@ export async function requestOtp(
 
   const code = generateOtpCode();
   const challenge = await db.otpChallenge.create({
-    data: { userId: user.id, codeHash: hashOtpCode(code), expiresAt: otpExpiryDate() },
+    data: { userId: user.id, codeHash: hashOtpCode(code), expiresAt: otpExpiryDate(), purpose: OTP_PURPOSE.LOGIN },
   });
 
   await sendEmail({
@@ -94,7 +95,13 @@ export async function authorizeOtpLogin(
     include: { user: { include: { roles: { include: { role: true } } } } },
   });
 
-  if (!challenge || challenge.consumedAt || challenge.expiresAt < new Date()) return null;
+  // Phase 13 — OtpChallenge is now also used for password resets; a
+  // reset-purposed code must never be usable to authenticate directly (that
+  // would skip the password factor entirely, weakening the two-step login
+  // this table exists to enforce).
+  if (!challenge || challenge.purpose !== OTP_PURPOSE.LOGIN || challenge.consumedAt || challenge.expiresAt < new Date()) {
+    return null;
+  }
   if (challenge.attempts >= challenge.maxAttempts) return null;
 
   const codeMatches = challenge.codeHash === hashOtpCode(code);

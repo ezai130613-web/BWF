@@ -1032,3 +1032,117 @@ is complete and committed.
   for anonymous (Public-mode) visitors — acceptable since a visitor can only ever see/manipulate
   their own conversation this way (no cross-session data exposure), but worth a second look if
   Public mode is ever combined with something more sensitive than Q&A + lead capture.
+
+---
+
+## Phase 13 — Email / Notification Automation
+
+**Status:** Complete
+
+**What shipped:**
+- `src/lib/email.ts`'s `sendEmail()` gained attachment support (`attachments?: {filename,
+  content: Buffer, contentType?}[]`, base64-encoded into Resend's request body) — the only change
+  needed for the weekly report's file attachment; stayed plain-text, no HTML templating layer,
+  since every trigger here is a short notification matching the existing OTP email's style.
+- `src/lib/notifications.ts` (new) — one function per business-workflow email trigger (visitor
+  registration, application submitted, application status changed, profile revision reviewed,
+  chatbot lead captured), centralizing "who gets emailed when" in one auditable file instead of
+  inlining copy at 5 different action-file call sites. Wired into `registerVisitor`,
+  `submitApplication`, `updateApplicationStatus`, `reviewMemberProfileRevision`, and
+  `captureChatbotLead`. New `NOTIFICATION_EMAIL` env var is the "business email" brief §49 says
+  must not be hardcoded — admin alerts (new applications, new chatbot leads) skip silently when
+  it's unset, same no-dead-feature rule as `NEXT_PUBLIC_WHATSAPP_NUMBER`.
+- **Self-service password reset**, admin and member, genuinely new (not previously built —
+  today's login OTP is a second factor, not a forgot-password flow): `src/lib/auth/
+  password-reset.ts` reuses `OtpChallenge`'s generate/hash/expiry primitives with
+  `purpose: "PASSWORD_RESET"` (the schema comment planning for this has been there since Phase 2),
+  new `/api/{admin,member}/auth/{request-password-reset,reset-password}` routes, new
+  `ResetPasswordForm` + `/admin/reset-password` + `/member/reset-password` pages, "Forgot
+  password?" links added to both login forms. Completing a reset bumps `sessionVersion` (revokes
+  every existing session immediately, same mechanism `toggleUserStatus`'s suspend path uses) and
+  sends a "your password was changed" confirmation email. Non-enumeration: requesting a reset
+  always produces the identical response whether or not the account exists.
+- **Real security fix bundled in**: introducing a second `OtpChallenge` purpose exposed that
+  `authorizeOtpLogin()` never checked `purpose` at all — a leaked password-reset code could have
+  been used to log in directly, skipping the password factor entirely. Fixed by filtering
+  `purpose !== "LOGIN"` in `authorizeOtpLogin()` and setting `purpose: OTP_PURPOSE.LOGIN`
+  explicitly when creating login challenges (previously relied on the schema default).
+- Weekly report scheduled send (Phase 9 left this deliberately unbuilt): `vercel.json` (new, one
+  daily cron entry) → `src/app/api/cron/weekly-report/route.ts` — checks
+  `WeeklyReportSettings.dayOfWeek` against today (no per-weekday cron granularity needed), builds
+  each active recipient's export via Phase 9's existing `buildMemberExportRows`/`toXlsxBuffer`,
+  emails it as an attachment. Authenticated via `CRON_SECRET` (Vercel's own cron-request header),
+  which doubles as the manual-trigger credential for local verification.
+- Bundled cleanup: `src/lib/auth/password.ts` gained a shared `PASSWORD_MIN_LENGTH`/
+  `newPasswordSchema`, replacing the same inline `z.string().min(12, ...)` that had been
+  duplicated across admin-user creation and member-portal-grant, now a third time for reset.
+- `.env.example` documents `NOTIFICATION_EMAIL` and `CRON_SECRET` under a new Phase 13 block. No
+  new dependencies.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- **Caught a real bug while writing the verification script, before it ever ran**: `Member.email`
+  (public contact field, often null) is not the same as `User.email` (login address, guaranteed to
+  exist for anyone who could submit a profile revision at all, since that workflow is gated behind
+  `requireMemberProfile()`) — `reviewMemberProfileRevision` originally guarded its notification on
+  `member.email`, which would have silently skipped notifying exactly the kind of member (portal
+  access granted, no public contact email filled in) this verification used as its test fixture.
+  Fixed to prefer `member.user.email`, falling back to `member.email`.
+- **Caught a second real bug during the actual Playwright run**: `/member/reset-password` and
+  `/admin/reset-password` were both being redirected straight back to their login pages by
+  `proxy.ts`, which only ever exempted the literal `/login` path from its "not authenticated →
+  redirect" check. Fixed by extending that exemption to the new reset-password pages on both
+  surfaces — caught by the reset flow actually failing to load in a real browser, not by reasoning
+  about the middleware in the abstract.
+- Full real Playwright pass, single continuous session: submitted a real visitor registration for
+  a seeded meeting and confirmed the confirmation email (correct recipient, correct meeting name)
+  in the dev-console log; submitted a real membership application and confirmed both the applicant
+  confirmation and the `NOTIFICATION_EMAIL` admin alert; changed that application's status as admin
+  and confirmed the applicant-facing status email; enabled the chatbot, submitted a real Ask BWF
+  lead through the public widget, confirmed the admin alert, then reset the chatbot back to
+  disabled (same live-effect-toggle discipline as Phase 12).
+- **Profile-revision-approval cycle exercised the new password-reset flow as its own setup, not as
+  a separate throwaway test**: reactivated a suspended Phase-11 test member
+  (`priya-member@bwf.local`) via the real admin UI, used the new self-service member
+  password-reset flow (request code → read from dev console → set new password) to establish a
+  known credential for an account whose original password was lost, logged in as that member for
+  real, submitted a real profile edit, approved it as admin, and confirmed the approval email
+  landed at the member's *login* email — the exact case the `Member.email`-vs-`User.email` bug
+  above would have silently broken.
+- **Password reset + session revocation, admin surface**: requested a reset for the real seeded
+  Super Admin account, read the code from the dev console, set a new password, confirmed the old
+  password was rejected and the new one worked, and — captured *before* the reset — confirmed a
+  pre-reset session cookie replayed against `/admin` afterward is bounced to `/admin/login`
+  (`sessionVersion` bump verified against a real second browser context, not just read in the
+  code). Restored the Super Admin's password back to the documented seed value afterward, since
+  unlike inert leftover test rows this credential change has a real effect on future sessions.
+- **Weekly report cron, exercised as close to "real" as local dev allows**: configured a real
+  schedule/recipient through `/admin/reports`, confirmed a request with the wrong `CRON_SECRET` is
+  rejected (401), confirmed the correct secret produces a real send (`{"sent":2,"failed":0}`) with
+  a logged `.xlsx` attachment, and confirmed disabling `WeeklyReportSettings.isEnabled` makes the
+  route no-op cleanly instead of sending anyway.
+
+**Known issues / follow-ups:**
+- **The actual Vercel Cron trigger was never exercised** — no real Vercel deployment exists in
+  this environment, so `vercel.json`'s schedule has never actually fired; only a manual `curl` with
+  the correct `Authorization` header was tested. Re-verify once deployed (Phase 14/15's job).
+- No real email delivery was tested anywhere in this phase — no `EMAIL_API_KEY`/`EMAIL_PROVIDER`
+  is configured in this environment, so every email in this phase's verification was read from the
+  dev-console fallback, not actually delivered. Same category of gap as every email-touching phase
+  since Phase 2.
+- Password-reset request has a cheap 60-second per-user cooldown against accidental resend spam,
+  but no real IP-based rate limiting — same accepted-gap category as the OTP-request endpoint since
+  Phase 2 (no shared-memory rate-limiter infrastructure exists in this serverless target).
+- The weekly report cron always sends the default four-column export (no chapter/company columns)
+  — there's no per-recipient "include extra columns" preference in `WeeklyReportRecipient` today,
+  matching the on-demand export's own default. Revisit if a recipient specifically wants the richer
+  columns automated too.
+- Left real test data from this phase's verification in the local database: a "Verify Applicant" /
+  "Verify Landscaping Co" application (status `CONTACTED`), a "Verify Visitor" visitor
+  registration, a "Verify Lead" chatbot lead, a `weekly-report-test@bwf.local` report recipient,
+  and Priya Sharma's (`priya-member@bwf.local`) portal access left reactivated with a new known
+  password (`NewMemberPass123!`) and one approved profile revision (USP field updated) — all
+  harmless, same category as every prior phase's leftover verification data.
+- "Article approval" (the one brief §49 trigger not built) still has no underlying feature —
+  member article submission itself remains unbuilt and phase-less, per the note already in
+  `docs/ARCHITECTURE.md`'s Open Decisions table. Not a Phase 13 gap; nothing to wire an email onto.

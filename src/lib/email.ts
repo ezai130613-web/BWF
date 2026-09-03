@@ -9,10 +9,18 @@
  * EMAIL_API_KEY before staging/production sees real users.
  */
 
+type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+};
+
 type SendEmailInput = {
   to: string;
   subject: string;
   text: string;
+  /** Phase 13 — the weekly report send attaches its export file this way. */
+  attachments?: EmailAttachment[];
 };
 
 async function sendViaResend(input: SendEmailInput) {
@@ -25,7 +33,16 @@ async function sendViaResend(input: SendEmailInput) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to: input.to, subject: input.subject, text: input.text }),
+    body: JSON.stringify({
+      from,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      attachments: input.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content.toString("base64"),
+      })),
+    }),
   });
 
   if (!res.ok) {
@@ -35,8 +52,11 @@ async function sendViaResend(input: SendEmailInput) {
 }
 
 function sendViaConsole(input: SendEmailInput) {
+  const attachmentLine = input.attachments?.length
+    ? `\nAttachments: ${input.attachments.map((a) => a.filename).join(", ")}`
+    : "";
   console.log(
-    `\n[dev email — no EMAIL_PROVIDER configured]\nTo: ${input.to}\nSubject: ${input.subject}\n\n${input.text}\n`,
+    `\n[dev email — no EMAIL_PROVIDER configured]\nTo: ${input.to}\nSubject: ${input.subject}${attachmentLine}\n\n${input.text}\n`,
   );
 }
 

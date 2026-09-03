@@ -7,6 +7,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { slugify } from "@/lib/slugify";
+import { notifyApplicationStatusChanged } from "@/lib/notifications";
 import type { $Enums } from "@/generated/prisma/client";
 
 function revalidateApplicationPaths(id: string) {
@@ -17,7 +18,7 @@ function revalidateApplicationPaths(id: string) {
 export async function updateApplicationStatus(applicationId: string, status: $Enums.ApplicationStatus) {
   const session = await requirePermission("applications:manage");
 
-  await db.membershipApplication.update({ where: { id: applicationId }, data: { status } });
+  const application = await db.membershipApplication.update({ where: { id: applicationId }, data: { status } });
 
   await logActivity({
     userId: session.user.id,
@@ -25,6 +26,12 @@ export async function updateApplicationStatus(applicationId: string, status: $En
     entity: "MembershipApplication",
     entityId: applicationId,
     metadata: { status },
+  });
+
+  await notifyApplicationStatusChanged({
+    applicantName: application.name,
+    applicantEmail: application.email,
+    status: application.status,
   });
 
   revalidateApplicationPaths(applicationId);

@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, newPasswordSchema } from "@/lib/auth/password";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { memberProfileFieldsSchema, normalizeMemberProfileFields } from "@/lib/members/profile-fields";
 import { slugify } from "@/lib/slugify";
+import { notifyProfileRevisionReviewed } from "@/lib/notifications";
 import type { $Enums } from "@/generated/prisma/client";
 
 async function generateUniqueMemberSlug(name: string) {
@@ -152,7 +153,7 @@ export async function updateMemberProfile(_prevState: { error?: string } | undef
 const grantPortalAccessSchema = z.object({
   memberId: z.string(),
   email: z.email(),
-  password: z.string().min(12, "Password must be at least 12 characters"),
+  password: newPasswordSchema,
 });
 
 export async function grantMemberPortalAccess(_prevState: { error?: string } | undefined, formData: FormData) {
@@ -244,7 +245,7 @@ export async function reviewMemberProfileRevision(_prevState: { error?: string }
   const revision = await db.memberProfileRevision.findUniqueOrThrow({ where: { id: revisionId } });
   if (revision.status !== "PENDING") return { error: "This request has already been reviewed." };
 
-  const member = await db.member.findUniqueOrThrow({ where: { id: revision.memberId } });
+  const member = await db.member.findUniqueOrThrow({ where: { id: revision.memberId }, include: { user: true } });
   await requireChapterAccess(member.chapterId, "members:manage");
   const session = await requireAdminSession();
 
@@ -269,6 +270,21 @@ export async function reviewMemberProfileRevision(_prevState: { error?: string }
     entityId: revisionId,
     metadata: { memberId: member.id },
   });
+
+  // Only a member with portal access can ever submit a revision (the whole
+  // workflow is gated behind requireMemberProfile()), so their login email
+  // (member.user.email) always exists — prefer it over the public contact
+  // field (member.email), which is a separate, often-empty column and would
+  // otherwise silently skip notifying members who never filled it in.
+  const notifyEmail = member.user?.email ?? member.email;
+  if (notifyEmail) {
+    await notifyProfileRevisionReviewed({
+      memberName: member.name,
+      memberEmail: notifyEmail,
+      approved: intent === "approve",
+      reviewNotes: reviewNotes || undefined,
+    });
+  }
 
   revalidatePath(`/admin/members/${member.id}`);
   revalidatePath("/admin/members");

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { notifyChatbotLeadCaptured } from "@/lib/notifications";
 
 const captureLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -38,6 +39,8 @@ export async function captureChatbotLead(
       conversationId: conversation?.id,
     },
   });
+
+  await notifyChatbotLeadCaptured({ name: rest.name, phone: rest.phone, email: email || undefined, requirement: rest.requirement });
 
   revalidatePath("/admin/chatbot");
   return { error: undefined, success: true };

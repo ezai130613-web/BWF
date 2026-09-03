@@ -24,27 +24,30 @@ export default auth((request) => {
   const hasMemberRole = roles.some((role) => MEMBER_ROLE_KEYS.includes(role));
 
   const isAdminRoute = pathname.startsWith("/admin");
-  const isAdminLoginPage = pathname === "/admin/login";
+  // Phase 13 — /admin/reset-password must be reachable the same way
+  // /admin/login is: by definition, someone hitting it doesn't have a valid
+  // session yet (that's the whole point of a password reset).
+  const isAdminPublicAuthPage = pathname === "/admin/login" || pathname === "/admin/reset-password";
   if (isAdminRoute) {
-    if (!hasAdminRole && !isAdminLoginPage) {
+    if (!hasAdminRole && !isAdminPublicAuthPage) {
       const loginUrl = new URL("/admin/login", request.nextUrl.origin);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (hasAdminRole && isAdminLoginPage) {
+    if (hasAdminRole && isAdminPublicAuthPage) {
       return NextResponse.redirect(new URL("/admin", request.nextUrl.origin));
     }
   }
 
   const isMemberRoute = pathname.startsWith("/member");
-  const isMemberLoginPage = pathname === "/member/login";
+  const isMemberPublicAuthPage = pathname === "/member/login" || pathname === "/member/reset-password";
   if (isMemberRoute) {
-    if (!hasMemberRole && !isMemberLoginPage) {
+    if (!hasMemberRole && !isMemberPublicAuthPage) {
       const loginUrl = new URL("/member/login", request.nextUrl.origin);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (hasMemberRole && isMemberLoginPage) {
+    if (hasMemberRole && isMemberPublicAuthPage) {
       return NextResponse.redirect(new URL("/member", request.nextUrl.origin));
     }
   }

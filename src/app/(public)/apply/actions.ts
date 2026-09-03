@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getChapterAvailability } from "@/lib/applications/availability";
+import { notifyApplicationSubmitted } from "@/lib/notifications";
 
 const submitSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -56,6 +57,15 @@ export async function submitApplication(
       chapterId: finalChapterId,
       status,
     },
+  });
+
+  const category = await db.category.findUnique({ where: { id: rest.categoryId }, select: { name: true } });
+  await notifyApplicationSubmitted({
+    applicantName: rest.name,
+    applicantEmail: rest.email,
+    companyName: rest.companyName,
+    categoryName: category?.name ?? "your category",
+    waitlisted: status === "WAITLISTED",
   });
 
   revalidatePath("/admin/applications");

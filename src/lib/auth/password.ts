@@ -1,4 +1,13 @@
+import { z } from "zod";
 import { hash, verify } from "@node-rs/argon2";
+
+/** Shared across admin-user creation, member-portal grant, and password
+ * reset (Phase 13) — was duplicated as an inline `z.string().min(12, ...)`
+ * in three places once the third call site landed. */
+export const PASSWORD_MIN_LENGTH = 12;
+export const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
 
 /**
  * Argon2id — OWASP's current recommended password hash, chosen over bcrypt

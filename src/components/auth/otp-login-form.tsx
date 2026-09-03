@@ -14,10 +14,12 @@ export function OtpLoginForm({
   requestOtpUrl,
   providerId,
   defaultRedirectTo,
+  forgotPasswordUrl,
 }: {
   requestOtpUrl: string;
   providerId: string;
   defaultRedirectTo: string;
+  forgotPasswordUrl: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -161,6 +163,9 @@ export function OtpLoginForm({
       >
         {pending ? "Checking…" : "Continue"}
       </button>
+      <a href={forgotPasswordUrl} className="text-sm text-neutral-500 hover:text-neutral-900">
+        Forgot password?
+      </a>
     </form>
   );
 }

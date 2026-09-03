@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, newPasswordSchema } from "@/lib/auth/password";
 import { requirePermission, requireRecentAuth } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 
@@ -13,7 +13,7 @@ const createUserSchema = z
   .object({
     name: z.string().min(1, "Name is required"),
     email: z.email(),
-    password: z.string().min(12, "Password must be at least 12 characters"),
+    password: newPasswordSchema,
     roleKey: z.enum(ADMIN_ASSIGNABLE_ROLES),
     chapterId: z.string().optional(),
   })

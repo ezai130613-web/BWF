@@ -659,8 +659,65 @@ data.
 
 ### Email
 Provider-agnostic by design (brief §5, §49) — abstract the transactional-email call behind a
-single interface so Resend/Postmark/SES can be swapped without touching call sites. Not wired
-up until Phase 13; a concrete provider choice is still open (see below).
+single interface so Resend/Postmark/SES can be swapped without touching call sites. All 8 real
+Phase 13 triggers are wired on top of it now; a concrete production provider (Resend API key) is
+still an open decision (see below) — every send in this project's own verification has gone
+through the console fallback, never a real inbox.
+
+### Email / notification automation (Phase 13)
+**Templates centralized in one file (`src/lib/notifications.ts`), password-reset emails
+deliberately kept out of it.** Five business-workflow triggers share one file so "who gets
+emailed when" is auditable in one place rather than spread across 5 action files. Password reset
+is the one exception — it lives in `src/lib/auth/password-reset.ts` instead, mirroring how the
+existing login-OTP email has always lived inline in `src/lib/auth/otp-login.ts`: auth emails are
+tightly coupled to OTP code generation and the non-enumeration response shape, a different
+concern from a business-workflow notification.
+
+**"Business email" (brief's own phrase, §49: "do not hardcode business email") is a plain env var
+(`NOTIFICATION_EMAIL`), not a database-configured recipient list.** `WeeklyReportRecipient`
+already exists as a configured list, but it's specifically for the report attachment — reusing it
+for "notify someone about a new application" would conflate two different subscriptions. Skipped
+silently when unset, same no-dead-feature rule as `NEXT_PUBLIC_WHATSAPP_NUMBER`.
+
+**Password reset reuses `OtpChallenge` with a `purpose` discriminator, not a parallel token
+table.** The schema comment on `OtpChallenge.purpose` has said "room for PASSWORD_RESET etc.
+later" since Phase 2 — this phase is that later. Kept as sibling functions
+(`requestPasswordReset`/`resetPassword` in `password-reset.ts`) alongside `requestOtp`/
+`authorizeOtpLogin` rather than extending the login functions themselves, because a reset
+challenge and a login challenge now need to behave differently at the point they're consumed.
+
+**Building this surfaced a real pre-existing gap, not introduced by this phase but exposed by
+it**: `authorizeOtpLogin()` had never checked `OtpChallenge.purpose` at all — harmless while every
+challenge was implicitly a login challenge (the only kind that existed), but the moment a second
+purpose existed, a leaked/observed password-reset code could have been replayed as a login
+credential, skipping the password factor entirely. Fixed in the same change that introduced the
+second purpose (`authorizeOtpLogin` now requires `purpose === "LOGIN"`), not left as a follow-up —
+the same "fix it in the change that exposed it" instinct as Phase 11's `requireAdminSession()`
+role-check gap.
+
+**Completing a password reset bumps `User.sessionVersion` and clears the login lockout together.**
+The `sessionVersion` bump reuses the exact mechanism `toggleUserStatus()`'s suspend path already
+established (checked on every request by `config.ts`'s `jwt()` callback) — a reset is exactly the
+kind of event that should invalidate every session already issued, same as a suspension. Clearing
+`failedLoginCount`/`lockedUntil` reflects that successfully completing a reset is a *stronger*
+proof of identity than the password a lockout exists to protect.
+
+**A real production bug was caught by actually running the reset flow in a browser, not by
+reading the code**: `src/proxy.ts` only ever exempted the literal `/admin/login` and
+`/member/login` paths from its "no valid session → redirect to login" check, so the new
+`/admin/reset-password`/`/member/reset-password` pages were being redirected straight back to
+login before this was caught — by definition, anyone reaching a password-reset page does not have
+a valid session yet. Fixed by extending both exemptions. Worth remembering for any future
+public-but-under-`/admin`-or-`/member` route: `proxy.ts`'s matcher covers the whole path prefix,
+not just the pages that existed when it was written.
+
+**Weekly report send is a daily cron that mostly no-ops, not a per-weekday schedule.** Vercel
+Cron's schedule granularity (`vercel.json`) is coarser than `WeeklyReportSettings.dayOfWeek`
+needs, so the route itself compares today's weekday against the stored setting and returns early
+otherwise — the same "compute at read/invocation time instead of building a bespoke scheduler"
+choice already made for `SCHEDULED` blog posts (Phase 5) and `SCHEDULED` events. Never actually
+fired by real Vercel Cron in this environment (no deployment exists yet) — only manually curled
+with the `CRON_SECRET` header, which is the same credential Vercel's own cron requests carry.
 
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
@@ -673,7 +730,9 @@ they aren't lost, with the phase they'd first block:
 | ~~Headless component primitives~~ | ~~Phase 1~~ | **Resolved Phase 1**: hand-built, no library — see Design System above. |
 | Real chapter names/locations for the 3 active chapters | Before launch | Seeded as "Chapter 01/02/03" (Chennai) — now live-editable at `/admin/chapters` (not a code change), so this no longer blocks any phase. Rename whenever real names exist. |
 | Real business-category taxonomy (Plumbing, Architect, etc.) | Before launch | Seeded with a 10-category starter list grounded in the brief's own examples — live-editable at `/admin/categories`. Refine/expand whenever BWF confirms the real list. |
-| Real email provider for OTP (Resend API key) | Phase 2 (before real use) | `sendEmail()` supports Resend already (`EMAIL_PROVIDER=resend` + `EMAIL_API_KEY`) — until set, OTP codes log to the server console instead of sending. Fine for local dev, not for staging/production. SMS OTP was considered and deliberately deferred — email-only for now, architecture doesn't block adding SMS later. |
+| Real email provider (Resend API key) | Phase 2 (before real use) | `sendEmail()` supports Resend already (`EMAIL_PROVIDER=resend` + `EMAIL_API_KEY`) — until set, every email (OTP, password reset, and all 8 Phase 13 triggers) logs to the server console instead of sending. Fine for local dev, not for staging/production. SMS OTP was considered and deliberately deferred — email-only for now, architecture doesn't block adding SMS later. |
+| Real `NOTIFICATION_EMAIL` (business alert address) | Phase 13 (before real use) | Currently unset — admin alerts for new applications/chatbot leads skip silently until it's set (`src/lib/notifications.ts`). |
+| Real Vercel deployment (needed to actually fire the weekly-report cron) | Phase 13/14 | `vercel.json`'s daily schedule has never fired for real — only manually curled locally with `CRON_SECRET`. Not blocking now (Phase 14/15's deployment work), but the cron send itself is unverified against real infrastructure until then. |
 | Domain name + whether the old site stays live during build | Phase 14–15 | Affects redirect planning and DNS cutover timing. |
 | Real photography (or interim placeholder/stock strategy) | Phase 1 (ongoing) | Every image slot is a `MediaPlaceholder` with a shot-list caption in the meantime — see Design System above. Still needs a real answer before launch; placeholders shouldn't ship to production. |
 | Real founder/Super Admin credentials | Phase 2 (before real use) | Seed mechanism exists (`npm run db:seed` reads `SEED_SUPER_ADMIN_EMAIL`/`_NAME`/`_PASSWORD` from env) — currently seeded with local-dev-only placeholder credentials, not real ones. |
