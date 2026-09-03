@@ -3,9 +3,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireChapterAccess } from "@/lib/auth/rbac";
+import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
+import { hashPassword } from "@/lib/auth/password";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
+import { memberProfileFieldsSchema, normalizeMemberProfileFields } from "@/lib/members/profile-fields";
 import { slugify } from "@/lib/slugify";
 import type { $Enums } from "@/generated/prisma/client";
 
@@ -113,34 +115,7 @@ export async function updateMemberStatus(memberId: string, status: $Enums.Member
   revalidatePath("/apply");
 }
 
-const optionalText = () => z.string().optional().transform((v) => v || undefined);
-
-const updateProfileSchema = z.object({
-  memberId: z.string(),
-  name: z.string().min(1, "Name is required"),
-  designation: optionalText(),
-  bio: optionalText(),
-  email: z.email().optional().or(z.literal("")),
-  phone: optionalText(),
-  services: optionalText(),
-  specialisations: optionalText(),
-  usp: optionalText(),
-  yearsInBusiness: z.coerce.number().int().min(0).optional().or(z.literal("")),
-  areasServed: optionalText(),
-  certifications: optionalText(),
-  majorProjects: optionalText(),
-  clientele: optionalText(),
-  whatsapp: optionalText(),
-  website: optionalText(),
-  address: optionalText(),
-  googleMapsUrl: optionalText(),
-  instagramUrl: optionalText(),
-  linkedinUrl: optionalText(),
-  facebookUrl: optionalText(),
-  photoUrl: optionalText(),
-  brochureUrl: optionalText(),
-  videoUrl: optionalText(),
-});
+const updateProfileSchema = memberProfileFieldsSchema.extend({ memberId: z.string() });
 
 export async function updateMemberProfile(_prevState: { error?: string } | undefined, formData: FormData) {
   const parsed = updateProfileSchema.safeParse(Object.fromEntries(formData));
@@ -152,11 +127,7 @@ export async function updateMemberProfile(_prevState: { error?: string } | undef
 
   await db.member.update({
     where: { id: memberId },
-    data: {
-      ...data,
-      email: data.email || undefined,
-      yearsInBusiness: data.yearsInBusiness === "" ? undefined : data.yearsInBusiness,
-    },
+    data: normalizeMemberProfileFields(data),
   });
 
   await logActivity({ action: "member.profile_updated", entity: "Member", entityId: memberId });
@@ -166,6 +137,146 @@ export async function updateMemberProfile(_prevState: { error?: string } | undef
   revalidatePath("/members");
   revalidatePath("/members/[slug]", "page");
   revalidatePath("/chapters/[slug]", "page");
+  return { error: undefined };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 11 — member portal login access (brief §12) + profile edit review
+// (brief §20). Gated the same way as everything else on this page
+// (requireChapterAccess(..., "members:manage")) rather than users:manage —
+// granting a member's own portal login is part of managing that member, not
+// part of managing admin accounts, so a Chapter Admin can do this for their
+// own chapter's members without needing Super-Admin-only access.
+// ---------------------------------------------------------------------------
+
+const grantPortalAccessSchema = z.object({
+  memberId: z.string(),
+  email: z.email(),
+  password: z.string().min(12, "Password must be at least 12 characters"),
+});
+
+export async function grantMemberPortalAccess(_prevState: { error?: string } | undefined, formData: FormData) {
+  const parsed = grantPortalAccessSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { memberId, email, password } = parsed.data;
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+
+  if (member.userId) return { error: "This member already has portal access." };
+
+  const normalizedEmail = email.toLowerCase();
+  const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
+  if (existing) return { error: "A login already exists with that email address." };
+
+  const memberRole = await db.role.findUniqueOrThrow({ where: { key: "MEMBER" } });
+  const passwordHash = await hashPassword(password);
+
+  const user = await db.user.create({
+    data: {
+      name: member.name,
+      email: normalizedEmail,
+      password: passwordHash,
+      roles: { create: { roleId: memberRole.id } },
+    },
+  });
+
+  await db.member.update({ where: { id: memberId }, data: { userId: user.id } });
+
+  await logActivity({
+    action: "member.portal_access_granted",
+    entity: "Member",
+    entityId: memberId,
+    metadata: { email: normalizedEmail },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  return { error: undefined };
+}
+
+export async function toggleMemberPortalAccess(memberId: string) {
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+  if (!member.userId) throw new Error("This member has no portal login yet.");
+
+  const user = await db.user.findUniqueOrThrow({ where: { id: member.userId } });
+  const nextStatus = user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      status: nextStatus,
+      // Same as suspending an admin user — kill any session already open
+      // in their browser rather than waiting for the JWT to expire.
+      sessionVersion: { increment: 1 },
+    },
+  });
+
+  await logActivity({
+    action: nextStatus === "SUSPENDED" ? "member.portal_access_revoked" : "member.portal_access_restored",
+    entity: "Member",
+    entityId: memberId,
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+}
+
+const reviewRevisionSchema = memberProfileFieldsSchema.extend({
+  revisionId: z.string(),
+  intent: z.enum(["approve", "reject"]),
+  reviewNotes: z.string().optional(),
+});
+
+/**
+ * One action covers all three brief §20 options: Reject leaves Member
+ * untouched; Approve and "Edit and Approve" are the same code path here —
+ * whatever is in the form when "Approve" is clicked gets applied, whether
+ * that's the member's original proposal unmodified or admin's own edits to
+ * it. There's no meaningful difference in what the system needs to do
+ * between those two once framed as "apply the form's current values."
+ */
+export async function reviewMemberProfileRevision(_prevState: { error?: string } | undefined, formData: FormData) {
+  const parsed = reviewRevisionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { revisionId, intent, reviewNotes, ...fields } = parsed.data;
+
+  const revision = await db.memberProfileRevision.findUniqueOrThrow({ where: { id: revisionId } });
+  if (revision.status !== "PENDING") return { error: "This request has already been reviewed." };
+
+  const member = await db.member.findUniqueOrThrow({ where: { id: revision.memberId } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+  const session = await requireAdminSession();
+
+  if (intent === "approve") {
+    await db.member.update({ where: { id: member.id }, data: normalizeMemberProfileFields(fields) });
+  }
+
+  await db.memberProfileRevision.update({
+    where: { id: revisionId },
+    data: {
+      status: intent === "approve" ? "APPROVED" : "REJECTED",
+      reviewedById: session.user.id,
+      reviewNotes: reviewNotes || undefined,
+      reviewedAt: new Date(),
+    },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: intent === "approve" ? "member_profile_revision.approved" : "member_profile_revision.rejected",
+    entity: "MemberProfileRevision",
+    entityId: revisionId,
+    metadata: { memberId: member.id },
+  });
+
+  revalidatePath(`/admin/members/${member.id}`);
+  revalidatePath("/admin/members");
+  if (intent === "approve") {
+    revalidatePath("/members");
+    revalidatePath("/members/[slug]", "page");
+    revalidatePath("/chapters/[slug]", "page");
+  }
   return { error: undefined };
 }
 

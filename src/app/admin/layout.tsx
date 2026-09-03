@@ -1,4 +1,4 @@
-import { AdminSessionProvider } from "@/components/admin/session-provider";
+import { AppSessionProvider } from "@/components/session-provider";
 
 /**
  * Deliberately does NOT inherit the public site's dark navy/gold theme —
@@ -10,7 +10,7 @@ import { AdminSessionProvider } from "@/components/admin/session-provider";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
-      <AdminSessionProvider>{children}</AdminSessionProvider>
+      <AppSessionProvider>{children}</AppSessionProvider>
     </div>
   );
 }

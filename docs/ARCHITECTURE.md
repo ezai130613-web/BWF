@@ -521,6 +521,77 @@ for `metadataBase`, the sitemap, and every absolute URL inside JSON-LD. Defaults
 `http://localhost:3000` so nothing breaks in dev; the real public domain is still the same open
 decision tracked in the table below (needed by Phase 14–15), not a new one.
 
+### Member login & profile edit approval (Phase 11)
+**Members reuse the admin auth stack — same User/Role/OtpChallenge tables, same two-step
+password-then-OTP flow — rather than a separate mechanism.** `Role.MEMBER` was seeded back in
+Phase 2 specifically anticipating this. The only real difference between the two login surfaces
+is which role key is accepted (`ADMIN_ROLE_KEYS` vs `MEMBER_ROLE_KEYS`, both in
+`src/lib/auth/constants.ts`) and where a successful login lands — everything else (lockout,
+generic error messages, OTP verification, the login form's state machine) is one shared
+implementation (`src/lib/auth/otp-login.ts`, `OtpLoginForm`), not two copies. This was a
+deliberate DRY call, not the project's usual "three similar lines is fine" default — duplicating
+~60 lines of lockout/verification logic across two login surfaces would have meant a future
+security fix applied to one copy and silently not the other.
+
+**This surfaced a real, previously-latent gap: `requireAdminSession()` never actually checked for
+an admin role, only that some session existed.** Harmless through Phase 10 because the only
+sessions that could ever exist were admin ones; became a real bug the moment Member logins shared
+the same mechanism (a signed-in Member could load `/admin`'s bare dashboard, though nothing
+`requirePermission()`-gated). Fixed alongside the equivalent `requireMemberSession()`, both now
+checking their own role list explicitly. Worth remembering for any future third login surface:
+"a session exists" and "the right kind of session exists" are different checks, and the
+proxy-level fast path (`proxy.ts`) needs the same role-awareness as the page-level guard — an
+initial fix to only `requireAdminSession()` produced an infinite redirect loop (see
+`docs/PHASES.md`'s Phase 11 entry) until `proxy.ts` was made role-aware too, for exactly the
+reason Next's own docs already warn about (a proxy matcher/rule change can silently stop
+protecting a route the way you'd expect).
+
+**Portal login access is admin-granted, never self-service signup.** A Member row already exists
+(admin created it, possibly via Phase 7's conversion flow) before anyone can log in as them —
+`grantMemberPortalAccess` creates the `User`+`UserRole` and links `Member.userId` in one step, an
+admin action, not a public registration form. There is deliberately no field to change a member's
+own login email from inside the portal — `User.email` (login) and `Member.email` (public contact,
+editable via a profile revision like everything else) are separate columns that happen to often
+start out matching, not the same field wearing two hats.
+
+**Revoking portal access reuses the exact suspend/reactivate mechanism admin users already had**
+(`User.status` + `sessionVersion` bump) rather than a Member-specific concept — "access revoked"
+and "account suspended" are the same state for a login, whether that login belongs to an admin or
+a member. `Member.userId` is left pointing at the (now-suspended) `User` row rather than nulled
+out, so "restore access" is just reactivating the same login, not provisioning a new one.
+
+**`exports:manage`-style chapter scoping, not a new `members:manage`-adjacent permission** — brief
+§12/§20 never distinguish "managing a member's profile" from "managing whether that member can log
+in," so `grantMemberPortalAccess`/`toggleMemberPortalAccess`/`reviewMemberProfileRevision` all
+gate through the same `requireChapterAccess(member.chapterId, "members:manage")` a Chapter Admin
+already holds for editing that member directly — not `users:manage` (Super-Admin-only, and about
+managing *admin* accounts specifically, a different concern).
+
+**MemberProfile still isn't a separate table — Phase 3/4's "revisit if Phase 11 needs the split"
+resolved to no.** A member-submitted edit isn't a second copy of the profile that needs its own
+schema; it's a proposed delta that either gets applied to the one real `Member` row or discarded.
+`MemberProfileRevision.changes` stores the full proposed field set as JSON (same tradeoff
+`Blog.faq`/`AuditLog.metadata` already made) rather than mirroring every editable column into a
+parallel table — simpler for content that's rejected as often as approved, and there's exactly one
+reader of that JSON shape (`reviewMemberProfileRevision`), not the kind of query surface that
+would justify real columns.
+
+**One review action covers all three brief §20 outcomes, not three separate code paths.** Reject
+leaves `Member` untouched. Approve and "Edit and Approve" are the same action from the system's
+point of view — whatever values are in the review form when Approve is clicked get applied,
+whether that's the member's proposal verbatim or admin's own edits on top of it first. Modeling
+"Edit and Approve" as a separate mutation from "Approve" would have meant two ways to reach the
+identical `Member.update()` call.
+
+**Member article submissions (brief §31) still have no phase.** Brief §12 lists "submit blogs/
+articles" as something a logged-in member can do, and Phase 11's login work would have made it
+technically reachable, but §31's own workflow ("Admin notified" on submission) leans on Phase 13's
+email infrastructure, and — like brief §35's Leads system (flagged in Phase 9) — the brief's own
+Phase Structure table (§70) never assigns §31 anywhere. Phase 11's title is specifically "Member
+Login + Profile Edit Approval Workflow," not article submission; building it now would be exactly
+the early-future-phase scope brief §72 warns against. Whichever future phase picks this up should
+also close this gap — noted here and in the Open Decisions table below so it isn't lost twice.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production
@@ -550,6 +621,7 @@ they aren't lost, with the phase they'd first block:
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII — placeholder pages exist (`/privacy`, `/terms`) but must not launch with AI-drafted legal text unreviewed. |
 | Leads system (brief §35) has no phase of its own | Noticed in Phase 9 | The brief's Phase Structure table (§70) never assigns brief §35's general Leads model to a phase — Phase 12's chatbot lead capture covers one source, not the whole thing. Phase 9's admin dashboard (brief §39) omits the "New leads" tile rather than fabricate a number until this gets a real home; see `docs/PHASES.md` Phase 9. |
+| Member article submissions (brief §31) has no phase of its own | Noticed in Phase 11 | Same gap as Leads above — brief §12 says a logged-in member can "submit blogs/articles," but §31's own workflow and the brief's Phase Structure table (§70) never give it a home. Phase 11 built member login/profile-edit-approval only, per its own title; see `docs/PHASES.md` Phase 11. |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)
 

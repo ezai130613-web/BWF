@@ -809,3 +809,117 @@ is complete and committed.
   assuming application code is at fault.
 - Admin Analytics (brief §51, explicitly "Later") and Legacy SEO/redirects (brief §54, explicitly
   Phase 15) were not built — both are the brief's own future work, not gaps in this phase.
+
+---
+
+## Phase 11 — Member Login + Profile Edit Approval Workflow
+
+**Status:** Complete
+
+**What shipped:**
+- Members now share the exact admin two-step (password, then OTP) login mechanism from Phase 2 —
+  `Role.MEMBER` was seeded back then but unused until now. A second NextAuth Credentials provider
+  (`member-otp`) and `/api/member/auth/request-otp` mirror the admin versions exactly; the shared
+  logic (lockout, generic error messages, OTP verification) was extracted into
+  `src/lib/auth/otp-login.ts` rather than duplicated, since a lockout or timing fix applied to one
+  copy and not the other would have been a real security drift risk, not just repeated code. The
+  login form UI itself (`OtpLoginForm`) and the session/sign-out plumbing
+  (`AppSessionProvider`/`SignOutButton`) were generalized the same way — both were 100% identical
+  between the admin and member surfaces except which endpoint/provider/redirect they used.
+- `Member.userId` (nullable, unique) links a Member to the User account that can log in as them —
+  admin-granted, not self-service signup (brief §12's model: admin creates the member, login access
+  is something admin turns on for them, same trust direction as everything else in this app). A
+  Chapter Admin can grant/revoke portal access for members in their own chapter
+  (`grantMemberPortalAccess`/`toggleMemberPortalAccess` in members/actions.ts) — gated by the same
+  `requireChapterAccess(..., "members:manage")` pattern as every other Member action, not a new
+  `users:manage`-gated flow, since this is part of managing a member, not managing admin accounts.
+- `MemberProfileRevision` (brief §20): a member's edit request is a JSON snapshot of proposed
+  values for the same editable-field set an admin already edits directly
+  (`src/lib/members/profile-fields.ts`, extracted from the existing admin edit action so both
+  paths can never disagree on what's editable) — never applied to `Member` until an admin approves
+  it. `/member/profile` shows the edit-request form, or the pending request's status if one is
+  already awaiting review (one at a time, by design). `/admin/members/[id]` gained a review panel
+  covering all three brief §20 outcomes as one form: Reject leaves Member untouched; Approve and
+  "Edit and Approve" are the same action — whatever's in the form when Approve is clicked gets
+  applied, whether that's the member's original proposal or admin's own edits to it first. The
+  Members list flags any member with a pending request ("Edit pending" badge).
+- `MemberLayout`'s new `(portal)` route group mirrors admin's `(dashboard)` group exactly —
+  `requireMemberProfile()` guards everything inside it, `/member/login` sits outside so it can
+  render without a session, same split as `/admin/login` vs `/admin/(dashboard)`.
+- **Deliberately not built**: brief §31 (member article submissions) — despite brief §12 listing
+  "submit blogs/articles" as something a logged-in Member can do, brief §31's own workflow
+  ("Admin notified" on submission) implies Phase 13's email infrastructure, and — like brief §35's
+  Leads system flagged in Phase 9 — §31 has no phase of its own in the brief's Phase Structure
+  table (§70); Phase 11's own title is specifically "Member Login + Profile Edit Approval
+  Workflow," not article submission. Building it now would be exactly the early-future-phase
+  scope brief §72 warns against. Flagged in `docs/ARCHITECTURE.md` alongside the Leads gap so it
+  isn't lost either.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities. Hit the same local
+  shadow-database migration issue documented since Phase 3 on this phase's migration too —
+  resolved with the same non-destructive `migrate diff` → `db execute` → `migrate resolve
+  --applied` recipe, no data loss.
+- **Found and fixed a real security gap during testing, not just written and trusted**:
+  `requireAdminSession()` had only ever checked "is someone logged in", never which role — safe
+  before this phase because the only sessions that could exist were admin ones, but now that
+  Members share the same session mechanism, a signed-in Member could load `/admin`'s dashboard
+  (blocked from anything permission-gated by `requirePermission()`, but the bare dashboard has no
+  such check). Caught by actually logging in as a member and visiting `/admin` rather than
+  reasoning about it abstractly. Fixed by making `requireAdminSession()` check for an
+  `ADMIN_ROLE_KEYS` role, mirroring the new `requireMemberSession()`.
+- **That fix immediately surfaced a second real bug**: an infinite redirect loop, because
+  `proxy.ts`'s "already logged in, bounce off the login page" rule also only checked generic
+  `isLoggedIn` — a Member hitting `/admin` would fall through the proxy (still "logged in"),
+  get redirected to `/admin/login` by the now-role-aware `requireAdminSession()`, then get
+  redirected straight back to `/admin` by the proxy's generic check, forever. Fixed by making
+  `proxy.ts` itself role-aware on both the admin and member branches — caught immediately by the
+  same live test (`net::ERR_TOO_MANY_REDIRECTS`), not left for a user to find.
+- Ran the entire real workflow end-to-end through actual browsers, twice (once per outcome):
+  granted a real member (Priya Sharma) portal access through the real `/admin/members/[id]` UI,
+  logged in as her through the real two-step flow (OTP read from the dev console), confirmed she's
+  correctly bounced from `/admin` to `/admin/login`. Submitted a real edit request from
+  `/member/profile`, confirmed the public profile was **unchanged** while it was pending (the
+  brief §20 requirement that actually matters), confirmed attempting a second submission while one
+  is pending is blocked with the pending status shown instead of the form. As Super Admin,
+  approved the request after deliberately editing one field first (proving "Edit and Approve" as
+  well as plain "Approve" in one pass) and confirmed the public profile picked up **both** the
+  member's original change and admin's edit-on-top; confirmed the approval was recorded in the
+  audit log. Repeated with a second submitted request and rejected it instead, confirming the
+  rejected content never reached the public profile.
+- **Actually tried to break the new chapter-scoping**, not just trusted the shared pattern: created
+  a fresh Chapter Admin scoped to Chapter 01 and confirmed — logged in as them — that opening a
+  Chapter 02 member's admin page (to grant/revoke portal access or review a revision) correctly
+  throws `ForbiddenError` ("You do not have access to this chapter"), while their own chapter's
+  member page works normally.
+- Confirmed revoking portal access (which suspends the linked `User`, the same mechanism admin
+  user suspension already used) actually blocks the next login attempt with the same generic
+  "Invalid email or password" error a wrong password would produce — not a different, account-
+  enumerating message.
+- Not yet verified: a member requesting a change to their own login email (there's no such field —
+  login email and public-profile-contact `email` are deliberately separate, see
+  `docs/ARCHITECTURE.md`); behavior with more than one Member sharing edit-review load
+  concurrently; password reset for a member who forgets their password (same known gap already
+  recorded for admin users since Phase 2 — still no self-service reset for anyone).
+
+**Known issues / follow-ups:**
+- No self-service password reset for members, same pre-existing gap as admin users (Phase 2). A
+  member who forgets their password needs an admin to re-grant access with a new temporary one
+  (which requires first revoking — there's no "reset password" action distinct from grant/revoke
+  yet); reasonable to add once real portal usage makes it a real friction point.
+- Member article submissions (brief §31) and profile-view/lead statistics (brief §12, both
+  explicitly "future") remain unbuilt — see "Deliberately not built" above and the corresponding
+  `docs/ARCHITECTURE.md` note.
+- The `ReviewProfileRevisionForm`'s changed-field indicator (strikethrough of the old value) is a
+  simple string comparison — cosmetic only, doesn't affect what gets saved, but a `null` vs `""`
+  vs a numeric `0` could theoretically render as "changed" when nothing meaningful did. Not worth
+  chasing further given it's a review aid, not the source of truth for what gets applied.
+- One test-script slip during verification, not an app issue: a Chapter Admin test account
+  creation was attempted, the test script moved on without checking for a returned form error,
+  and a later direct database check showed the account was never actually created (a second
+  attempt with a different email succeeded on the identical code path). Confirmed by querying the
+  database directly rather than left as a mystery — no user row exists for the first email at
+  all, so nothing was left half-created; the likely cause is the test script's own
+  `selectOption({label: ...})` call not landing before the form submitted, not a bug in
+  `createAdminUser`. Noted only as a reminder to assert on server-action results in verification
+  scripts, not to trust a fixed `waitForTimeout`.

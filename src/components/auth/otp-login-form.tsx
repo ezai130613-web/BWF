@@ -4,10 +4,24 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-export function LoginForm() {
+/**
+ * Two-step (password, then OTP) login UI shared by both /admin/login and
+ * /member/login (Phase 11) — the state machine and markup are identical
+ * between the two surfaces, only the request-OTP endpoint, the NextAuth
+ * provider id, and where a successful login lands differ.
+ */
+export function OtpLoginForm({
+  requestOtpUrl,
+  providerId,
+  defaultRedirectTo,
+}: {
+  requestOtpUrl: string;
+  providerId: string;
+  defaultRedirectTo: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") ?? "/admin";
+  const from = searchParams.get("from") ?? defaultRedirectTo;
 
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [email, setEmail] = useState("");
@@ -23,7 +37,7 @@ export function LoginForm() {
     setPending(true);
 
     try {
-      const res = await fetch("/api/admin/auth/request-otp", {
+      const res = await fetch(requestOtpUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -50,7 +64,7 @@ export function LoginForm() {
     setPending(true);
 
     try {
-      const result = await signIn("admin-otp", {
+      const result = await signIn(providerId, {
         challengeId,
         code,
         redirect: false,

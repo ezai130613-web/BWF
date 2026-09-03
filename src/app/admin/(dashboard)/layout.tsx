@@ -1,6 +1,6 @@
 import { requireAdminSession, getUserPermissionKeys } from "@/lib/auth/rbac";
 import { Sidebar } from "@/components/admin/sidebar";
-import { SignOutButton } from "@/components/admin/sign-out-button";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdminSession();
@@ -15,7 +15,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
       />
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-end border-b border-neutral-200 bg-white px-8">
-          <SignOutButton />
+          <SignOutButton callbackUrl="/admin/login" />
         </header>
         <main className="flex-1 p-8">{children}</main>
       </div>

@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 import type { Session } from "next-auth";
 
 export class ForbiddenError extends Error {
@@ -20,11 +21,43 @@ export const getUserPermissionKeys = cache(async (userId: string) => {
   return new Set(rows.map((r) => r.permission.key));
 });
 
-/** Use in a Server Component/layout to gate an entire admin page on being signed in. */
+/**
+ * Use in a Server Component/layout to gate an entire admin page on being
+ * signed in AND holding an admin role. The role check matters as of Phase
+ * 11: the same NextAuth session/JWT mechanism is now also used for member
+ * logins, so "some session exists" alone is no longer sufficient — without
+ * this, a signed-in Member could load any /admin page (blocked later by
+ * requirePermission()/requireChapterAccess() for anything permission-gated,
+ * but the plain dashboard has no such check and would otherwise render).
+ */
 export async function requireAdminSession() {
   const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  if (!session?.user || !session.user.roles.some((role) => ADMIN_ROLE_KEYS.includes(role))) {
+    redirect("/admin/login");
+  }
   return session as Session & { user: NonNullable<Session["user"]> };
+}
+
+/**
+ * Member-portal equivalent of requireAdminSession() (Phase 11, brief §12).
+ * Requires the MEMBER role specifically — an admin who happens to be signed
+ * in elsewhere doesn't get member-portal access just by being authenticated,
+ * same as a Member holds no admin permissions.
+ */
+export async function requireMemberSession() {
+  const session = await auth();
+  if (!session?.user || !session.user.roles.includes("MEMBER")) redirect("/member/login");
+  return session as Session & { user: NonNullable<Session["user"]> };
+}
+
+/** requireMemberSession() plus the Member row their login is linked to — the shape every /member/(portal) page actually needs. */
+export async function requireMemberProfile() {
+  const session = await requireMemberSession();
+  const member = await db.member.findUnique({ where: { userId: session.user.id } });
+  // Login exists but its Member link was removed (e.g. admin revoked
+  // access) — treat as signed out rather than crashing on a null profile.
+  if (!member) redirect("/member/login");
+  return { session, member };
 }
 
 export async function requirePermission(permissionKey: string) {

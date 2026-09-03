@@ -1,15 +1,17 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
-import { hashOtpCode } from "@/lib/auth/otp";
-import { logActivity } from "@/lib/audit";
-import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
+import { authorizeOtpLogin } from "@/lib/auth/otp-login";
+import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS } from "@/lib/auth/constants";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
-    // Baseline per brief §55/§56 — shorter than a typical consumer app since
-    // this session only ever belongs to an administrator.
+    // Baseline per brief §55/§56 — shared by both the admin and member
+    // (Phase 11) login surfaces. Admins don't get a shorter session than
+    // members here; Super Admin's extra protection is the separate
+    // requireRecentAuth() step-up check for specific high-risk actions, not
+    // a shorter blanket session.
     maxAge: 8 * 60 * 60,
   },
   pages: {
@@ -24,57 +26,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         code: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
-        const challengeId = credentials?.challengeId;
-        const code = credentials?.code;
-        if (typeof challengeId !== "string" || typeof code !== "string") return null;
-
-        const challenge = await db.otpChallenge.findUnique({
-          where: { id: challengeId },
-          include: { user: { include: { roles: { include: { role: true } } } } },
-        });
-
-        if (!challenge || challenge.consumedAt || challenge.expiresAt < new Date()) return null;
-        if (challenge.attempts >= challenge.maxAttempts) return null;
-
-        const codeMatches = challenge.codeHash === hashOtpCode(code);
-
-        if (!codeMatches) {
-          await db.otpChallenge.update({
-            where: { id: challenge.id },
-            data: { attempts: { increment: 1 } },
-          });
-          return null;
-        }
-
-        const roleKeys = challenge.user.roles.map((r) => r.role.key);
-        if (!roleKeys.some((key) => ADMIN_ROLE_KEYS.includes(key))) return null;
-
-        const chapterAdminAssignment = challenge.user.roles.find((r) => r.role.key === "CHAPTER_ADMIN");
-
-        await db.$transaction([
-          db.otpChallenge.update({
-            where: { id: challenge.id },
-            data: { consumedAt: new Date() },
-          }),
-          db.user.update({
-            where: { id: challenge.userId },
-            data: { lastLoginAt: new Date(), failedLoginCount: 0 },
-          }),
-        ]);
-
-        await logActivity({
-          userId: challenge.userId,
-          action: "user.login_success",
-        });
-
-        return {
-          id: challenge.user.id,
-          email: challenge.user.email,
-          name: challenge.user.name,
-          roles: roleKeys,
-          chapterId: chapterAdminAssignment?.chapterId ?? null,
-          sessionVersion: challenge.user.sessionVersion,
-        };
+        return authorizeOtpLogin(credentials?.challengeId, credentials?.code, ADMIN_ROLE_KEYS);
+      },
+    }),
+    Credentials({
+      id: "member-otp",
+      name: "Member OTP",
+      credentials: {
+        challengeId: { label: "Challenge", type: "text" },
+        code: { label: "Code", type: "text" },
+      },
+      async authorize(credentials) {
+        return authorizeOtpLogin(credentials?.challengeId, credentials?.code, MEMBER_ROLE_KEYS);
       },
     }),
   ],

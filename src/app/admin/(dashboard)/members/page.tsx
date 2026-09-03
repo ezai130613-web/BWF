@@ -28,6 +28,12 @@ export default async function MembersPage() {
     db.company.findMany({ orderBy: { name: "asc" } }),
   ]);
 
+  const pendingRevisions = await db.memberProfileRevision.findMany({
+    where: { status: "PENDING", memberId: { in: members.map((m) => m.id) } },
+    select: { memberId: true },
+  });
+  const pendingMemberIds = new Set(pendingRevisions.map((r) => r.memberId));
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -54,7 +60,14 @@ export default async function MembersPage() {
           <tbody className="divide-y divide-neutral-100">
             {members.map((member) => (
               <tr key={member.id}>
-                <td className="px-4 py-3 text-neutral-900">{member.name}</td>
+                <td className="px-4 py-3 text-neutral-900">
+                  {member.name}
+                  {pendingMemberIds.has(member.id) ? (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Edit pending
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3 text-neutral-600">{member.company.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{member.chapter.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{member.category.name}</td>

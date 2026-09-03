@@ -49,6 +49,12 @@ model User {
   otpChallenges OtpChallenge[]
   auditLogs     AuditLog[]
 
+  /// Set only for a User whose role is MEMBER (brief §12) — the Member
+  /// profile this login account belongs to. Nullable because most Users
+  /// are admins with no Member row at all.
+  memberAccount     Member?
+  reviewedRevisions MemberProfileRevision[]
+
   @@map("users")
 }
 
@@ -185,15 +191,15 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members       Member[]
-  leadership    ChapterLeadership[]
-  chapterAdmins UserRole[]
-  testimonials  Testimonial[]
-  feedback      Feedback[]
-  applications  MembershipApplication[]
-  meetings      Meeting[]
-  events        Event[]
-  visitors      Visitor[]
+  members          Member[]
+  leadership       ChapterLeadership[]
+  chapterAdmins    UserRole[]
+  testimonials     Testimonial[]
+  feedback         Feedback[]
+  applications     MembershipApplication[]
+  meetings         Meeting[]
+  events           Event[]
+  visitors         Visitor[]
   reportRecipients WeeklyReportRecipient[]
 
   @@map("chapters")
@@ -285,6 +291,14 @@ model Member {
   brochureUrl String?
   videoUrl    String?
 
+  /// Phase 11 — set once an admin grants this member portal login access
+  /// (brief §12: "Members eventually receive login access"). Null until
+  /// then; a Member can exist for years with no login, same as it did in
+  /// Phases 3-10. Nothing about editing/exclusivity/approval logic depends
+  /// on this being set.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   companyId  String
   chapterId  String
   categoryId String
@@ -311,9 +325,54 @@ model Member {
   leadershipRoles  ChapterLeadership[]
   authorProfile    Author?
   fromApplication  MembershipApplication?
-  referredVisitors Visitor[]              @relation("VisitorReferrals")
+  referredVisitors Visitor[]               @relation("VisitorReferrals")
+  profileRevisions MemberProfileRevision[]
 
   @@map("members")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 11 — member login + profile edit approval workflow (brief §12/§20).
+//
+// MemberProfile is still deliberately not split out (the Phase 3/4 note said
+// "revisit if Phase 11 needs the split" — it doesn't). A member-submitted
+// edit isn't a second copy of the profile; it's a proposed delta that either
+// gets applied to the one real Member row or discarded. Storing it as a JSON
+// snapshot of proposed field values (same tradeoff as Blog.faq/
+// AuditLog.metadata already made) is simpler than mirroring every editable
+// column into a parallel table for content that's rejected as often as
+// approved.
+// ---------------------------------------------------------------------------
+
+enum MemberProfileRevisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model MemberProfileRevision {
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Proposed values for the editable-profile-field set (see
+  /// src/lib/members/profile-fields.ts) — the same fields an admin can edit
+  /// directly, submitted by the member instead and held for review. Never
+  /// applied to Member until an admin approves it (brief §20: "Members must
+  /// NOT directly publish profile changes").
+  changes Json
+
+  status MemberProfileRevisionStatus @default(PENDING)
+
+  reviewedById String?
+  reviewedBy   User?     @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes  String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId, status])
+  @@map("member_profile_revisions")
 }
 
 model ChapterLeadershipRole {
