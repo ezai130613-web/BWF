@@ -334,6 +334,43 @@ Phase 13's job (Email/Notification Automation) as its own phase; sending anythin
 would be a partial, inconsistent implementation. The application record captures everything
 needed for Phase 13 to wire real emails on top of without a schema change.
 
+### Visitor registration, meetings & events (Phase 8)
+**One `Visitor` row per registration**, not a separate `Visitor` + `VisitorRegistration` pair
+even though the brief's §13 model list names them separately. Every field brief §23 actually
+asks a visitor to submit — name/phone/email/company/category/chapter/meeting-or-event/
+referring-member — belongs to *that specific registration*, not to a reusable "person" entity.
+Splitting them only earns its cost once the same person visits more than once and that history
+needs reconciling across visits, which isn't a requirement yet — same simplicity call as
+Member/MemberProfile in Phase 3. Revisit if repeat-visitor deduplication becomes real.
+
+**`Event.chapterId` is nullable on purpose** (brief §26: "Chapter or Global"), and that ripples
+into access control: `requireChapterAccess()` (used everywhere else — Members, Meetings,
+Visitors) needs a real chapter to scope against, so it can't gate a global event. Events
+introduced `requireEventAccess()` (`src/app/admin/(dashboard)/events/actions.ts`) as a thin
+wrapper: chapter-scoped events go through the usual `requireChapterAccess()`, global events
+fall back to a plain `requirePermission("events:manage")` check. A Chapter Admin holds no
+blanket permission at all (by design, see Phase 3's RBAC note below), so this fallback
+naturally excludes them from ever touching a global event — no extra logic needed to enforce
+that, it falls out of how the permission table is already seeded.
+
+**Meetings are always chapter-scoped** (`Meeting.chapterId` is `NOT NULL`) — unlike Events,
+there's no "global meeting" concept in the brief, so `meetings:manage` access is plain
+`requireChapterAccess()` throughout, identical to `members:manage`.
+
+**Visitor registration re-validates on submit, never trusts the page's last render.** The
+shared `registerVisitor` action (`src/app/(public)/visit/actions.ts`) re-checks the
+meeting/event's live status, registration-enabled flag, deadline, and capacity server-side
+before creating the row — the same discipline `submitApplication` uses for chapter availability
+in Phase 7, for the same reason: the page could be stale by the time someone submits.
+
+**Visitors are explicitly not required to hold an open category** (brief §23) — so unlike
+`Member`, there's no `activeSlotKey` / exclusivity check on `Visitor`. A visitor can register
+interest in a category+chapter that's already fully occupied; that's fine, it's just interest,
+not a slot claim. Turning visitor interest into an actual application is still a manual step
+(the visitor, or an admin on their behalf, submits through `/apply` normally) — visitor
+registration was deliberately kept from auto-creating a `MembershipApplication`, since the
+brief treats them as genuinely separate stages of the funnel (§17 vs §23-25).
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production

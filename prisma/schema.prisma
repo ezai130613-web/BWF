@@ -191,6 +191,9 @@ model Chapter {
   testimonials  Testimonial[]
   feedback      Feedback[]
   applications  MembershipApplication[]
+  meetings      Meeting[]
+  events        Event[]
+  visitors      Visitor[]
 
   @@map("chapters")
 }
@@ -207,6 +210,7 @@ model Category {
 
   members      Member[]
   applications MembershipApplication[]
+  visitors     Visitor[]
 
   @@map("categories")
 }
@@ -303,9 +307,10 @@ model Member {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leadershipRoles ChapterLeadership[]
-  authorProfile   Author?
-  fromApplication MembershipApplication?
+  leadershipRoles  ChapterLeadership[]
+  authorProfile    Author?
+  fromApplication  MembershipApplication?
+  referredVisitors Visitor[]              @relation("VisitorReferrals")
 
   @@map("members")
 }
@@ -598,4 +603,137 @@ model MembershipApplication {
   updatedAt DateTime @updatedAt
 
   @@map("membership_applications")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — visitor registration + meetings + events (brief §21/§23-26).
+//
+// Visitor and VisitorRegistration are listed as separate entities in the
+// brief's §13 model list, but every field brief §23 actually asks a visitor
+// to submit — name/phone/email/company/category/chapter/meeting/referring
+// member — IS the registration. Splitting "person" from "one specific
+// registration" only earns its cost once the same person visits more than
+// once and that history needs to be reconciled, which isn't asked for yet.
+// One Visitor row per registration, same simplicity call as Member vs
+// MemberProfile in Phase 3 — revisit if repeat-visitor deduplication
+// becomes a real requirement.
+// ---------------------------------------------------------------------------
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model Meeting {
+  id    String @id @default(cuid())
+  title String
+
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  startsAt      DateTime
+  venue         String?
+  address       String?
+  googleMapsUrl String?
+  agenda        String?
+  speaker       String?
+  description   String?
+
+  visitorRegistrationEnabled Boolean       @default(true)
+  status                     MeetingStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visitors Visitor[]
+
+  @@index([chapterId, startsAt])
+  @@map("meetings")
+}
+
+enum EventType {
+  CHAPTER_MEETING
+  NETWORKING_EVENT
+  SEMINAR
+  EXHIBITION
+  CHAPTER_LAUNCH
+  SPECIAL_EVENT
+}
+
+enum EventStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?
+  eventType   EventType @default(SPECIAL_EVENT)
+
+  /// Null = a site-wide/global event, not tied to one chapter (brief §26:
+  /// "Chapter or Global").
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  startsAt             DateTime
+  venue                String?
+  imageUrl             String?
+  registrationEnabled  Boolean     @default(true)
+  capacity             Int?
+  registrationDeadline DateTime?
+  status               EventStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visitors Visitor[]
+
+  @@map("events")
+}
+
+enum VisitorStatus {
+  REGISTERED
+  ATTENDED
+  FOLLOW_UP_REQUIRED
+  INTERESTED_IN_MEMBERSHIP
+  APPLICATION_SUBMITTED
+  CONVERTED
+  NOT_INTERESTED
+}
+
+model Visitor {
+  id      String        @id @default(cuid())
+  name    String
+  phone   String
+  email   String
+  company String?
+  status  VisitorStatus @default(REGISTERED)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Restrict)
+
+  /// Visitors are NOT required to belong to an open category (brief §23),
+  /// so unlike Member there is no activeSlotKey / exclusivity check here.
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  referringMemberId String?
+  referringMember   Member? @relation("VisitorReferrals", fields: [referringMemberId], references: [id], onDelete: SetNull)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("visitors")
 }

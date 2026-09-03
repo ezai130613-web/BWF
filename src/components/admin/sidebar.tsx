@@ -11,6 +11,9 @@ const NAV_ITEMS = [
   { href: "/admin/categories", label: "Categories", permission: "categories:manage" },
   { href: "/admin/members", label: "Members", permission: "members:manage" },
   { href: "/admin/applications", label: "Applications", permission: "applications:manage" },
+  { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage" },
+  { href: "/admin/events", label: "Events", permission: "events:manage" },
+  { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage" },
   { href: "/admin/blog-categories", label: "Blog Categories", permission: "blogs:manage" },
   { href: "/admin/authors", label: "Authors", permission: "blogs:manage" },
@@ -38,8 +41,10 @@ export function Sidebar({
     if (item.permission === null) return true;
     if (permissions.has(item.permission)) return true;
     // Chapter Admin holds no global permissions but does get scoped access
-    // to Members (see requireChapterAccess) — show that one link for them.
-    if (isChapterAdmin && item.permission === "members:manage") return true;
+    // to Members/Meetings/Events/Visitors within their own chapter (see
+    // requireChapterAccess) — show those links for them.
+    const chapterScopedPermissions = ["members:manage", "meetings:manage", "events:manage", "visitors:manage"];
+    if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
   });
 

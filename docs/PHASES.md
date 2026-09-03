@@ -497,4 +497,76 @@ is complete and committed.
 
 ## Phase 8 — Visitor Registration + Meetings + Events
 
-**Status:** Not started
+**Status:** Complete
+
+**What shipped:**
+- Schema: `Meeting` (chapter-scoped, `MeetingStatus`), `Event` (nullable `chapterId` — "Chapter
+  or Global" per brief §26, unique `slug`, `EventType`, `EventStatus`, optional `capacity` and
+  `registrationDeadline`), `Visitor` (`VisitorStatus` covering the full brief §23-25 pipeline:
+  Registered → Attended → Follow-up Required → Interested in Membership → Application
+  Submitted → Converted / Not Interested). Deliberately one `Visitor` row per registration
+  rather than a split Visitor+VisitorRegistration pair — same simplicity call as
+  Member/MemberProfile in Phase 3; rationale recorded as a schema comment, revisit only if
+  repeat-visitor deduplication becomes a real requirement.
+- Admin `/admin/meetings` (list + create, chapter-scoped) and `/admin/meetings/[id]` (edit +
+  the meeting's registered-visitor roster). New `meetings:manage` permission, scoped via
+  `requireChapterAccess()` exactly like `members:manage` — Chapter Admin gets no blanket grant,
+  only access to their own chapter's meetings (see `prisma/seed.ts`).
+- Admin `/admin/events` (list + create, chapter-or-global) and `/admin/events/[id]` (edit +
+  registered-visitor roster). New `events:manage` permission. Because `Event.chapterId` can be
+  null, access control needed a variant: `requireEventAccess()`
+  (`src/app/admin/(dashboard)/events/actions.ts`) uses `requireChapterAccess()` when the event
+  has a chapter and falls back to a plain `requirePermission("events:manage")` check for global
+  events — which a Chapter Admin can never pass, since they hold no blanket permission.
+- Admin `/admin/visitors` (list, chapter-scoped) and `/admin/visitors/[id]` (status control,
+  internal notes, and a link to the referring member if one was recorded). New
+  `visitors:manage` permission, same chapter-scoping pattern.
+- Public visitor registration: a shared `registerVisitor` server action
+  (`src/app/(public)/visit/actions.ts`) and `<VisitorRegisterForm>` component used from two
+  entry points — `/visit/[meetingId]` (linked from each chapter's "Upcoming meetings" panel,
+  chapter fixed to the meeting's own) and inline on `/events/[slug]` (chapter fixed if the
+  event belongs to one, otherwise a chapter picker for global events). Re-validates
+  server-side that registration is still open (meeting/event status, deadline, capacity) rather
+  than trusting whatever the page last rendered — same discipline as `submitApplication` in
+  Phase 7.
+- Public `/events` (real listing, replacing the Phase 1 "coming soon" placeholder) and
+  `/events/[slug]` (detail + registration, with a live "X / capacity registered" count).
+  Chapter detail pages (`/chapters/[slug]`) gained an "Upcoming meetings" panel linking to the
+  registration page for each.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities. One real ESLint
+  catch worth noting: `react-hooks/purity` flagged a direct `Date.now()` call inside the
+  `/events/[slug]` page component body (feeding into the "is registration closed" logic) as an
+  impure read during render; fixed by moving that computation into a plain module-level
+  function (`getEventAvailability`) called from the component rather than inlined in it.
+- Ran the full lifecycle for real through the actual UI, logged in as Super Admin: created a
+  chapter meeting, confirmed it appeared on the chapter's public page with a working "Register
+  to visit" link, completed that registration as an anonymous visitor, confirmed it landed in
+  `/admin/visitors` with the right category/chapter, then changed its status and saved notes
+  and confirmed both persisted after a reload. Separately created a chapter-scoped event with a
+  capacity of 50, confirmed it appeared on the public `/events` listing and detail page,
+  registered a visitor against it, and confirmed the admin events list updated its count to
+  "1 / 50" live.
+- Chapter Admin RBAC scoping tested as a second, separate login (an existing Phase-3 test
+  Chapter Admin account, `chapter02@bwf.local`): sidebar correctly shows Meetings/Events/
+  Visitors (scoped exception, same pattern as Members) but not Chapters; `/admin/meetings` and
+  `/admin/events` correctly showed zero of the other chapter's records and the create-form's
+  chapter dropdown was pre-filtered to only that admin's own chapter; direct navigation to
+  another chapter's meeting-edit URL correctly threw `ForbiddenError` rather than rendering the
+  form.
+
+**Known issues / follow-ups:**
+- Event capacity enforcement (`registerVisitor`'s count-then-create check) has the same
+  theoretical race condition as any check-then-act without a transaction — two simultaneous
+  submissions right at the last slot could both succeed. Not worth a DB-level constraint at
+  this traffic scale; revisit if it ever actually happens.
+- `ForbiddenError` on a direct out-of-scope URL still surfaces as Next.js's generic 500 error
+  page rather than a friendly "you don't have access" screen — same known gap already recorded
+  for Phase 7's conversion error path; a proper error boundary for admin routes is a good
+  candidate for a later polish pass, not specific to this phase.
+- No visitor confirmation email or admin notification yet — Phase 13's job, consistent with
+  every other "we'll wire up email later" note in this log.
+- The admin dashboard home page (`/admin`) still doesn't surface any of the new counts (upcoming
+  meetings, open event registrations, visitor follow-ups due) — it's been a placeholder since
+  Phase 3 and stays that way until Phase 9's reporting work gives it real content.

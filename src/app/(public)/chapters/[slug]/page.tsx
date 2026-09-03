@@ -14,6 +14,11 @@ async function getChapter(slug: string) {
       members: { where: { status: "ACTIVE" }, include: { category: true, company: true }, orderBy: { name: "asc" } },
       leadership: { include: { member: true, role: true } },
       testimonials: { where: { status: "APPROVED" }, orderBy: [{ featured: "desc" }, { createdAt: "desc" }] },
+      meetings: {
+        where: { status: "SCHEDULED", startsAt: { gte: new Date() } },
+        orderBy: { startsAt: "asc" },
+        take: 5,
+      },
     },
   });
 }
@@ -115,6 +120,28 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="flex flex-col gap-8">
+          {chapter.meetings.length > 0 ? (
+            <div className="rounded-sm border border-navy-700 p-6">
+              <SectionLabel>Upcoming meetings</SectionLabel>
+              <div className="mt-4 flex flex-col gap-3">
+                {chapter.meetings.map((meeting) => (
+                  <div key={meeting.id} className="rounded-sm border border-navy-800 p-4">
+                    <p className="text-ivory-100">{meeting.title}</p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {meeting.startsAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                    {meeting.venue ? <p className="text-sm text-slate-500">{meeting.venue}</p> : null}
+                    {meeting.visitorRegistrationEnabled ? (
+                      <Link href={`/visit/${meeting.id}`} className="mt-2 inline-block text-sm text-gold-400 hover:text-gold-300">
+                        Register to visit →
+                      </Link>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {(chapter.meetingSchedule || chapter.meetingVenue) ? (
             <div className="rounded-sm border border-navy-700 p-6">
               <SectionLabel>Meetings</SectionLabel>

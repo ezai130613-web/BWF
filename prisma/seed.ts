@@ -27,6 +27,9 @@ const PERMISSIONS = [
   { key: "content:manage", label: "Manage website content & FAQs" },
   { key: "feedback:view", label: "View feedback" },
   { key: "applications:manage", label: "Manage membership applications" },
+  { key: "meetings:manage", label: "Manage chapter meetings" },
+  { key: "events:manage", label: "Manage events" },
+  { key: "visitors:manage", label: "Manage visitor registrations" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -46,9 +49,14 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "testimonials:manage",
     "content:manage",
     "applications:manage",
+    "meetings:manage",
+    "events:manage",
+    "visitors:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
-  // blanket permission — enforced by requireChapterAccess(), not this table.
+  // blanket permission — enforced by requireChapterAccess(), same as
+  // meetings:manage/events:manage/visitors:manage below (mirrors
+  // members:manage — see requireChapterAccess in src/lib/auth/rbac.ts).
   CHAPTER_ADMIN: [],
   MEMBER: [],
 };
