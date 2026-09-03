@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { notifyVisitorRegistered } from "@/lib/notifications";
+import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
 const optionalText = () => z.string().optional().transform((v) => v || undefined);
 
@@ -31,6 +32,12 @@ export async function registerVisitor(
 ) {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const ip = await getClientIp();
+  // Higher ceiling than the other public forms — a shared kiosk/office
+  // connection registering several real people for one meeting is plausible.
+  const allowed = await rateLimit(`visitor:${ip}`, { limit: 20, windowSeconds: 3600 });
+  if (!allowed) return { error: TOO_MANY_REQUESTS_ERROR, success: false };
 
   const { meetingId, eventId, ...rest } = parsed.data;
 

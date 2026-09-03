@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 export const metadata: Metadata = {
   title: "FAQs",
   description: "Frequently asked questions about Builders World Forum.",

@@ -1146,3 +1146,117 @@ is complete and committed.
 - "Article approval" (the one brief §49 trigger not built) still has no underlying feature —
   member article submission itself remains unbuilt and phase-less, per the note already in
   `docs/ARCHITECTURE.md`'s Open Decisions table. Not a Phase 13 gap; nothing to wire an email onto.
+
+---
+
+## Phase 14 — Production Security Review + Performance + Backups + Deployment
+
+**Status:** Complete
+
+**What shipped:**
+- **Fixed a genuine deploy-blocking bug**: `src/generated/prisma` is gitignored and nothing
+  regenerated it after a fresh `npm install` — a real Vercel deploy would have failed on `next
+  build` today. Added `"postinstall": "prisma generate"` to `package.json`.
+- **Rate limiting + form-abuse protection** (brief §55, previously an accepted gap since Phase 2):
+  `src/lib/rate-limit.ts`, a small Postgres-backed limiter (new `RateLimitHit` model, no external
+  service) keyed by IP (+ email where relevant, via `next/headers`). Wired into both OTP-request
+  routes, both password-reset-request routes, `/api/chatbot`, and all 5 public Server Actions
+  (`submitTestimonial`, `submitFeedback`, `submitApplication`, `registerVisitor`,
+  `captureChatbotLead`).
+- **Blog HTML sanitization** (brief §55 — XSS protection): added `sanitize-html`, wired into
+  `src/lib/blog/render.ts`'s `renderMarkdown()`. Defense-in-depth on top of the existing
+  trusted-admin-content reasoning (still valid for *why this wasn't urgent*) — a compromised admin
+  session could otherwise inject a stored XSS served to every public visitor.
+- **Database indexes** (brief §60): one migration adding `@@index` on the FK columns real list/
+  count queries actually filter by — `Member.chapterId/categoryId/companyId`,
+  `Visitor.chapterId/categoryId`, `MembershipApplication.chapterId/categoryId`,
+  `Blog.authorId/categoryId`, `Event.chapterId`, `Testimonial.chapterId`. Deliberately skipped
+  tiny reference tables (a handful of rows ever) where an index has no practical benefit.
+- **Caching** (brief §60): `export const revalidate = 3600` on 11 read-heavy public pages that
+  don't take `searchParams` (homepage, `/about`, `/chapters` + `[slug]`, `/insights/[slug]`,
+  `/members/[slug]`, `/faqs`, `/events`, `/testimonials`, `/authors/[slug]`, the programmatic
+  `/[slug]` landing pages) — additive to the existing `revalidatePath()` calls throughout admin
+  actions, which still fire instantly on a real change. Deliberately excluded `/insights` and
+  `/members` (both take `searchParams`, correctly fully dynamic) and `/events/[slug]` (shows a
+  live "X / capacity registered" count that gates registration — caching it would let the page
+  show stale availability).
+- **Two real bugs found by an actual Lighthouse audit, not by reading the code**: (1) `robots.ts`
+  disallowed bare `/member` (no trailing slash), which is a *prefix* match in robots.txt — it was
+  also blocking the entirely public `/members` directory from search indexing. Fixed with
+  `/member$` (Google's documented exact-path pattern-matching extension) so only the member
+  portal's own root is blocked. (2) The public member-directory search form's three inputs had no
+  accessible name (placeholder-only text input, two unlabeled `<select>`s) — fixed with
+  `aria-label` on each, brief §59's "Form labels" requirement.
+- `docs/ARCHITECTURE.md` gained a "Production readiness" section: the security-review checklist
+  (brief §55/§56, item by item), the backup/recovery runbook (Neon's automatic backups/PITR as the
+  primary mechanism — nothing to build, a managed-provider feature), and the reasoning above.
+  `README.md` gained a "## Deployment" section (Vercel setup, env var checklist, `prisma migrate
+  deploy` as an explicit manual/CI step, deliberately not auto-run on every build).
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- **Proved the postinstall fix for real, not just "the script looks right"**: deleted
+  `src/generated/prisma` entirely, confirmed `next build` genuinely fails without it (the bug is
+  real), ran `npm install`, confirmed the client regenerated automatically, confirmed `next build`
+  then succeeded from that clean state.
+- **Rate limiting exercised for real against a running server**: 6 rapid OTP requests against the
+  real seeded admin account — the first 5 processed normally (each correctly rejected as wrong
+  password, proving the limiter doesn't block legitimate traffic under the threshold), the 6th
+  returned a real `429`. Same result submitting the public feedback form 11 times in a row through
+  the actual browser (10 succeeded, the 11th was rejected with the rate-limit message). This
+  incidentally tripped the *real* admin account's own login lockout (5 wrong-password attempts is
+  also `otp-login.ts`'s own threshold) and consumed that OTP-rate-limit bucket — both reset via a
+  direct script afterward, same as resetting `ChatbotSettings` after Phase 12's testing.
+- **Sanitization verified by actually trying to break it**: published a real blog post through the
+  admin UI with `<script>window.__xss_fired = true</script>` and `<img src=x onerror="...">`
+  embedded in the Markdown body, then loaded the real public page and confirmed via
+  `page.evaluate()` that the injected JS never executed and the raw tags are absent from the
+  rendered HTML — while normal Markdown (headings, bold, links) still rendered correctly.
+  Screenshotted.
+- **On-demand revalidation confirmed to still work under the new 1-hour ISR ceiling**: added a real
+  FAQ through `/admin/faqs` and confirmed it appeared on the public `/faqs` immediately, not after
+  an hour.
+- **Caching confirmed against a real production server** (`next build && next start` — dev mode
+  doesn't do real ISR): `/faqs` returned `x-nextjs-cache: HIT` and `Cache-Control: s-maxage=3600`
+  on a second request.
+- **Indexes verified as actually usable, not just present**: confirmed all 11 exist via
+  `pg_indexes`. At current seed-data scale Postgres's planner correctly prefers a sequential scan
+  over any of them (expected, not a bug — a handful of rows per table). Proved each index is
+  structurally valid and connected to the right column by forcing `SET enable_seqscan = off` and
+  confirming the planner switches to `Index Scan` using the new index for every one of the four
+  spot-checked tables, rather than fabricating thousands of rows just to fool the cost estimator.
+- **Real Lighthouse run against the production build** (homepage, `/chapters/chapter-01`,
+  `/members`): Performance 85–90, Best Practices 100 on all three. Accessibility and SEO both
+  started short of 100 on `/members` (94 and 63) — investigated rather than dismissed as noise,
+  which is exactly how the two robots.txt/aria-label bugs above were found; both hit 100 after the
+  fixes, confirmed with a second Lighthouse run. Homepage's LCP (4.4s) looked concerning at first
+  but its own breakdown-insight audit showed ~507ms of real elapsed time — the topline number is a
+  Lighthouse simulated-throttling artifact on a local server with no real network, not a real
+  regression; documented as a baseline rather than "fixed" since there's nothing to fix.
+- Cleared the `RateLimitHit` table and the admin account's login lockout after testing (a
+  live-effect reset, same discipline as resetting `ChatbotSettings.isEnabled` post-Phase-12).
+
+**Known issues / follow-ups:**
+- **Nothing in this phase was verified against real production infrastructure** — no live Vercel
+  deployment, no real Neon database, no real object storage, no real Resend API key exist in this
+  environment. Everything above was verified as thoroughly as a local environment allows (a real
+  production build + production server, not dev mode) but the actual backup/recovery runbook and
+  the deployment runbook are both necessarily unverified prose until a real deployment happens —
+  flagged honestly rather than presented as tested.
+- Lighthouse was run against exactly 3 representative pages, not the whole site — a full sweep
+  might surface more of the same class of issue the `/members` run caught. Worth repeating once
+  real photography replaces every `MediaPlaceholder` (the current placeholders are cheap to
+  render; real images will change the performance profile).
+- Rate limiting is IP-based with no cleanup of expired `RateLimitHit` rows — an accepted
+  simplification given this is a private, chapter-based community site, not expected to see
+  traffic that makes either limitation a real problem. Revisit if that stops being true.
+- Left real test data from this phase's verification in the local database: a "Phase 14
+  Sanitization Test" blog post (published, harmless — its malicious payload is sanitized on every
+  render, not stored-then-rendered-unsafely), a "Phase14 FAQ marker" FAQ entry, and 11 test
+  feedback submissions — all harmless, same category as every prior phase's leftover verification
+  data.
+- Super Admin-specific session-length hardening (brief §56's "shorter privileged-session
+  expiration") remains a deliberate non-implementation, not an oversight — Phase 11's architecture
+  notes already reasoned that `requireRecentAuth()`'s step-up check for specific high-risk actions
+  is the intended mechanism instead of a shorter blanket session, and this phase's review found no
+  reason to revisit that call.

@@ -4,6 +4,8 @@ import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SubmitTestimonialForm } from "@/components/marketing/submit-testimonial-form";
 
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 export const metadata: Metadata = {
   title: "Testimonials",
   description: "What BWF members and visitors say about the community.",

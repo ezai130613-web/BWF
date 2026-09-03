@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
 const TYPES = ["MEMBER", "VISITOR", "CLIENT", "VIDEO", "SUCCESS_STORY"] as const;
 
@@ -24,6 +25,10 @@ const submitSchema = z.object({
 export async function submitTestimonial(_prevState: { error?: string; success?: boolean } | undefined, formData: FormData) {
   const parsed = submitSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const ip = await getClientIp();
+  const allowed = await rateLimit(`testimonial:${ip}`, { limit: 10, windowSeconds: 3600 });
+  if (!allowed) return { error: TOO_MANY_REQUESTS_ERROR, success: false };
 
   const { consent, chapterId, ...rest } = parsed.data;
 

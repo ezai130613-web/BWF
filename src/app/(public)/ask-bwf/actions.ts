@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { notifyChatbotLeadCaptured } from "@/lib/notifications";
+import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
 const captureLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -25,6 +26,10 @@ export async function captureChatbotLead(
 ) {
   const parsed = captureLeadSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const ip = await getClientIp();
+  const allowed = await rateLimit(`chatbot-lead:${ip}`, { limit: 10, windowSeconds: 3600 });
+  if (!allowed) return { error: TOO_MANY_REQUESTS_ERROR, success: false };
 
   const { sessionId, email, ...rest } = parsed.data;
 

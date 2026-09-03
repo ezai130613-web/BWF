@@ -26,6 +26,8 @@ import { SectionLabel } from "@/components/ui/section-label";
  * `prisma dev` connection pool during `next build`'s concurrent static
  * generation (documented flakiness pattern, see docs/ARCHITECTURE.md).
  */
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const page = await resolveProgrammaticLandingPage(slug);

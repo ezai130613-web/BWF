@@ -719,6 +719,100 @@ choice already made for `SCHEDULED` blog posts (Phase 5) and `SCHEDULED` events.
 fired by real Vercel Cron in this environment (no deployment exists yet) — only manually curled
 with the `CRON_SECRET` header, which is the same credential Vercel's own cron requests carry.
 
+### Production readiness (Phase 14)
+
+**This phase was an audit-then-harden pass, not a new-feature phase** — a direct grep-and-read
+review of the existing codebase against brief §55/§56/§60, rather than exploring for patterns to
+follow (there was nothing analogous already built). Four real gaps were found and fixed; the audit
+itself, and what it found *already* satisfied, is worth recording as much as the fixes.
+
+**Security checklist (brief §55/§56), item by item:**
+
+| Requirement | Status | Where |
+|---|---|---|
+| Strong password hashing | ✅ | Argon2id, `src/lib/auth/password.ts` (Phase 0) |
+| Secure authentication + OTP/second factor | ✅ | NextAuth JWT + `otp-login.ts` (Phase 2) |
+| Extra Super Admin protection | ✅ | `requireRecentAuth()` step-up for high-risk actions (Phase 2/11) |
+| RBAC enforced server-side | ✅ | `requirePermission`/`requireChapterAccess`, tested every phase since 3 |
+| Input validation | ✅ | Zod on every Server Action/route body |
+| CSRF protection | ✅ | Server Actions' built-in Origin-header check; NextAuth's own CSRF token |
+| XSS protection | ✅ (hardened Phase 14) | React's default escaping everywhere, plus `sanitize-html` on the one `dangerouslySetInnerHTML` call that renders user-authored content (blog Markdown) |
+| SQL injection prevention | ✅ | Prisma parameterizes every query; no raw SQL in application code |
+| Secure cookies | ✅ | NextAuth's secure-by-default cookie config (httpOnly, sameSite, `secure` in production) — never overridden |
+| Rate limiting / form abuse protection | ✅ (Phase 14) | `src/lib/rate-limit.ts`, see below |
+| Secure file upload validation | N/A | No upload UI exists yet (object storage still unwired, per every phase's own "known issues" since Phase 3) — nothing to validate |
+| Permission checks for every protected action | ✅ | Audited live every phase since Phase 3 |
+| Audit logs | ✅ | `AuditLog` + `logActivity()`, every mutating action since Phase 2 |
+| Backups | ✅ (documented, Phase 14) | See below — a managed-provider feature, not application code |
+| No secrets in frontend code | ✅ | Only `NEXT_PUBLIC_*` vars reach the client bundle; none of them are secrets (grepped to confirm) |
+| No sensitive error info exposed publicly | ✅ | Every API/action error response is a hand-written string (grepped every `NextResponse.json({error...` call); Next's production build already suppresses stack traces |
+| Mandatory MFA (Super Admin) | ✅ (all admins) | OTP-as-second-factor applies to every admin role, not just Super Admin — brief's example, not a distinct unmet requirement |
+| Shorter privileged-session expiration | Deliberately not built | Phase 11 already reasoned `requireRecentAuth()`'s step-up check is the intended mechanism instead of a shorter blanket session — revisited this phase, same conclusion holds |
+| Permanent deletion / role-change confirmation | N/A | No hard-delete of sensitive records exists anywhere (suspend, not delete); `requireRecentAuth()` already gates role changes |
+| Sensitive activity alerts | Brief says "later" | Not built, matching the brief's own framing |
+
+**Rate limiting is Postgres-backed, not a new external service.** Upstash/Redis is the more
+common serverless-rate-limit pattern, but it needs real credentials this project doesn't have —
+a `RateLimitHit` table (find-or-reset-then-increment, non-atomic by design) is a legitimate
+alternative at this traffic scale (a private, chapter-based community site, not a
+high-concurrency public API). `getClientIp()` reads `x-forwarded-for` via `next/headers` — real
+on Vercel, one shared "unknown" bucket for local/direct connections, which only ever affects local
+testing.
+
+**Blog sanitization is additive, not a reversal of the Phase 5 trust-boundary reasoning.** Content
+is still always admin-authored/reviewed before publish — that reasoning was and is correct about
+*why this wasn't urgent*. Sanitizing anyway reflects that a production security review's job is
+defense-in-depth regardless of the primary trust boundary: a compromised admin session (phishing,
+credential stuffing) is a realistic threat model this review is specifically supposed to consider,
+and `marked` passes raw HTML straight through with zero escaping by design (its own maintainers
+recommend a downstream sanitizer, not a built-in `sanitize: true` option, which was removed years
+ago for being unreliable).
+
+**Caching is `revalidate` as a ceiling on top of existing on-demand `revalidatePath()`, not a
+replacement for it.** Every admin mutation's existing `revalidatePath()` call still fires
+instantly — confirmed live, not assumed, by adding a real FAQ and watching it appear on the public
+page immediately despite the new 1-hour ceiling. The ceiling's only job is stopping a page from
+hitting the database on every single request when nothing has changed. Two real pages were
+deliberately excluded despite fitting the "read-heavy public page" pattern: `/insights` and
+`/members` (both take `searchParams` — Next.js correctly treats a page reading them as dynamic
+regardless of `revalidate`, and they're genuinely live search/filter views, not static content),
+and `/events/[slug]` (shows a live "X / capacity registered" count that gates whether registration
+is even open — caching it would let the page show stale availability, a real functional
+regression worse than the DB-load savings are worth).
+
+**Two real bugs were caught by an actual Lighthouse run against a production build, not by
+reading the code** — `robots.ts`'s bare `/member` disallow entry was a *prefix* match blocking the
+entirely public `/members` directory from search indexing (fixed with the `/member$` exact-path
+pattern), and the public member-search form's three inputs had no accessible name (fixed with
+`aria-label`). Neither would have been found by code review alone — both only surfaced because the
+audit step included actually running the tool the brief's own "strong Core Web Vitals" language
+implies using, against a real production server (`next build && next start`; Lighthouse's ISR/
+caching behavior and even some scores differ meaningfully from dev mode).
+
+**Backup/recovery runbook** (brief §57 — "Automatic database backups required"): the brief's own
+preferred stack (page 5 — "Vercel + managed PostgreSQL + managed object storage") already provides
+this as a platform feature, not something this application needs to implement. Neon (the
+documented preferred provider) takes automatic backups and supports point-in-time recovery via
+its branching model — restoring means creating a new branch from a timestamp before the incident
+and repointing `DATABASE_URL` at it, not running a custom restore script. A manual `pg_dump`
+export is the documented fallback for an out-of-band snapshot (e.g. before a risky migration).
+Object storage (R2/S3-compatible, still unwired per Phase 3's own notes) should have versioning
+enabled on the bucket once it exists, for the same reason. None of this was — or could be —
+actually exercised in this environment: there is no real Neon project, so "automatic backups
+happen" is a documented expectation of the chosen provider, not a tested behavior of this
+codebase.
+
+**Deployment runbook** lives in `README.md`'s new "## Deployment" section rather than here, since
+it's the operational document someone actually deploying would open first. `prisma migrate
+deploy` is documented as an explicit manual/CI step, deliberately **not** folded into the `build`
+script — auto-running schema migrations on every single Vercel build (including preview deploys
+of unrelated changes) is a real, avoidable risk for a project that has otherwise been consistently
+careful about database operations (the shadow-DB incident's non-destructive-recipe discipline,
+the "never run destructive commands" rule). The one build-script change this phase *did* make
+(`postinstall: prisma generate`) is different in kind — it only regenerates a client from the
+schema already in the repo, it can't touch data, and skipping it doesn't defer risk, it just
+breaks the build.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

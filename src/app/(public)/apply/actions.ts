@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getChapterAvailability } from "@/lib/applications/availability";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
+import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
 const submitSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,6 +33,10 @@ export async function submitApplication(
 ) {
   const parsed = submitSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const ip = await getClientIp();
+  const allowed = await rateLimit(`application:${ip}`, { limit: 10, windowSeconds: 3600 });
+  if (!allowed) return { error: TOO_MANY_REQUESTS_ERROR, success: false };
 
   const { consent, chapterId, yearsInBusiness, ...rest } = parsed.data;
   void consent; // required by the schema (must be "on"); nothing further to persist

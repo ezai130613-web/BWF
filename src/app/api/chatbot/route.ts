@@ -6,10 +6,11 @@ import { auth } from "@/lib/auth/config";
 import { isChatbotConfigured, getAnthropicClient } from "@/lib/chatbot/client";
 import { getBaselineChatbotContext, getKeywordMatchedChatbotContext } from "@/lib/chatbot/retrieval";
 import { buildChatbotSystemPrompt } from "@/lib/chatbot/prompt";
+import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
-/** Cheap cost guardrail — no shared-memory rate limiter exists in this
- * serverless target (accepted gap, same as Phase 2's un-rate-limited OTP
- * endpoint), so this just bounds how long any single conversation can run. */
+/** Bounds how long any single conversation can run — separate from the
+ * per-IP velocity limit below (Phase 14), which catches a single client
+ * firing many short conversations rather than one long one. */
 const MAX_MESSAGES_PER_CONVERSATION = 40;
 
 const bodySchema = z.object({
@@ -41,6 +42,12 @@ export async function POST(request: Request) {
   if (!settings.isEnabled || !isChatbotConfigured()) {
     // Not an error — the widget renders an honest "not available" state for this.
     return NextResponse.json({ unavailable: true });
+  }
+
+  const ip = await getClientIp();
+  const withinRate = await rateLimit(`chatbot:${ip}`, { limit: 20, windowSeconds: 600 });
+  if (!withinRate) {
+    return NextResponse.json({ error: TOO_MANY_REQUESTS_ERROR }, { status: 429 });
   }
 
   const session = await auth();

@@ -9,6 +9,8 @@ import { TrackedButton } from "@/components/analytics/tracked-button";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 async function getChapter(slug: string) {
   return db.chapter.findFirst({
     where: { slug, status: "ACTIVE" },

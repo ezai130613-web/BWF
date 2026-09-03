@@ -10,6 +10,12 @@ import { TestimonialsSection } from "@/components/marketing/testimonials-section
 import { ComingSoonSection } from "@/components/marketing/coming-soon-section";
 import { MembershipCta } from "@/components/marketing/membership-cta";
 
+// Phase 14 (brief §60 — caching) — ceiling on top of the existing
+// revalidatePath() calls throughout admin actions, which still fire
+// instantly on a real change; this just stops every request from hitting
+// the database when nothing has.
+export const revalidate = 3600;
+
 export default function Home() {
   return (
     <>

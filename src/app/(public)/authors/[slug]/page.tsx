@@ -9,6 +9,8 @@ import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_URL } from "@/lib/site";
 
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 async function getAuthor(slug: string) {
   return db.author.findUnique({ where: { slug }, include: { member: true } });
 }

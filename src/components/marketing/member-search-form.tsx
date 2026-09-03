@@ -46,12 +46,14 @@ export function MemberSearchForm({
       <input
         type="text"
         name="q"
+        aria-label="Search by name, company, or service"
         defaultValue={defaultQuery}
         placeholder="Search by name, company, or service…"
         className="min-w-[240px] flex-1 rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 placeholder:text-slate-500 focus:border-gold-500 focus:outline-none"
       />
       <select
         name="chapter"
+        aria-label="Filter by chapter"
         defaultValue={defaultChapterSlug ?? ""}
         className="rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
       >
@@ -64,6 +66,7 @@ export function MemberSearchForm({
       </select>
       <select
         name="category"
+        aria-label="Filter by category"
         defaultValue={defaultCategorySlug ?? ""}
         className="rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
       >

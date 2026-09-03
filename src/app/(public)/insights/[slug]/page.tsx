@@ -10,6 +10,8 @@ import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 
+export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
+
 async function getPost(slug: string) {
   return db.blog.findFirst({
     where: { slug, ...publiclyVisibleBlogWhere },
