@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
+import { MemberSearchForm } from "@/components/marketing/member-search-form";
 
 export const metadata: Metadata = {
   title: "Find a BWF Professional",
@@ -56,45 +57,13 @@ export default async function MembersPage({
           Member Directory
         </h1>
 
-        <form className="mt-10 flex flex-wrap gap-4" action="/members">
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder="Search by name, company, or service…"
-            className="min-w-[240px] flex-1 rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 placeholder:text-slate-500 focus:border-gold-500 focus:outline-none"
-          />
-          <select
-            name="chapter"
-            defaultValue={chapterSlug ?? ""}
-            className="rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
-          >
-            <option value="">All chapters</option>
-            {chapters.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="category"
-            defaultValue={categorySlug ?? ""}
-            className="rounded-md border border-navy-600 bg-navy-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
-          >
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-navy-950 hover:bg-gold-400"
-          >
-            Search
-          </button>
-        </form>
+        <MemberSearchForm
+          chapters={chapters}
+          categories={categories}
+          defaultQuery={q}
+          defaultChapterSlug={chapterSlug}
+          defaultCategorySlug={categorySlug}
+        />
 
         <div className="mt-12 flex flex-col gap-16">
           {[...membersByChapter.entries()].map(([chapterName, chapterMembers]) => (

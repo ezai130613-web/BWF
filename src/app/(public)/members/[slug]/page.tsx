@@ -5,6 +5,10 @@ import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { Button } from "@/components/ui/button";
+import { TrackedAnchor } from "@/components/analytics/tracked-anchor";
+import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_URL } from "@/lib/site";
 
 async function getMember(slug: string) {
   return db.member.findFirst({
@@ -56,8 +60,32 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     { label: "Facebook", href: member.facebookUrl },
   ].filter((item) => item.href);
 
+  // Brief §53 — LocalBusiness. A member profile is a business directory
+  // listing (address, phone, service area, certifications) more than a
+  // personal bio, so LocalBusiness fits better here than Person; Person is
+  // used on /authors/[slug] instead, where the page is genuinely a bio.
+  const localBusinessJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: member.name,
+    description: member.bio || undefined,
+    telephone: member.phone || undefined,
+    email: member.email || undefined,
+    address: member.address ? { "@type": "PostalAddress", streetAddress: member.address } : undefined,
+    url: `${SITE_URL}/members/${member.slug}`,
+    areaServed: member.areasServed || undefined,
+  };
+
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Members", path: "/members" },
+    { name: member.name, path: `/members/${member.slug}` },
+  ]);
+
   return (
     <div>
+      <JsonLd data={localBusinessJsonLd} />
+      <JsonLd data={crumbs} />
       <div className="relative">
         <MediaPlaceholder brief={`${member.name} — portrait or company work`} className="h-[40vh]" />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/60 to-navy-950/10" />
@@ -122,22 +150,31 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
               <SectionLabel>Contact</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
                 {contactItems.map((item) => (
-                  <a
+                  <TrackedAnchor
                     key={item.label}
+                    eventName="member_contact_click"
+                    eventParams={{ method: item.label.toLowerCase(), memberSlug: member.slug }}
                     href={item.href}
                     target={item.label === "Website" ? "_blank" : undefined}
                     rel="noopener noreferrer"
                     className="text-sm text-ivory-100 hover:text-gold-400"
                   >
                     {item.label}: {item.value}
-                  </a>
+                  </TrackedAnchor>
                 ))}
               </div>
               {member.address ? <p className="mt-4 text-sm text-slate-400">{member.address}</p> : null}
               {member.googleMapsUrl ? (
-                <a href={member.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-gold-400">
+                <TrackedAnchor
+                  eventName="member_contact_click"
+                  eventParams={{ method: "maps", memberSlug: member.slug }}
+                  href={member.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-sm text-gold-400"
+                >
                   View on Google Maps →
-                </a>
+                </TrackedAnchor>
               ) : null}
             </div>
           ) : null}

@@ -63,6 +63,16 @@ ended up properly tracked in `prisma/migrations/` with no data loss. If `migrate
 throws a shadow-database P3006/P3018 error again in this environment, reach for this sequence
 before anything destructive.
 
+**Update (Phase 10 incident)**: a second, different failure mode from the same root cause
+(`prisma dev`'s local daemon being generally fragile in this environment) — after a long,
+heavy session (this one spans Phases 0–10), the daemon silently degraded and every query started
+intermittently throwing `DriverAdapterError: ConnectionClosed`, initially indistinguishable from
+a real concurrency bug in application code. `npx prisma dev ls` is the fast way to check for this
+— it showed the instance in an `error` state. Fix: `npx prisma dev start <name>` (the same named
+instance — data persists, confirmed by re-seeding afterward and finding all prior test data
+intact). Worth checking this before spending time debugging a "phantom" connection error as if
+it were a code problem.
+
 ### Design system (Phase 1)
 - **Fonts**: Fraunces (display/headline, variable serif) + Inter (functional/UI — nav, buttons,
   forms, admin, member portal), both self-hosted via `next/font/google`. Chosen to match the
@@ -439,6 +449,77 @@ future-phase feature brief §72 warns against. Following the Phase 1 precedent (
 soon" over a fabricated number), the tile is simply absent rather than showing a fake zero.
 Whichever future phase does add Leads should also give this dashboard tile a home — noted in both
 here and the Phase 9 follow-ups so it isn't lost.
+
+### Analytics, SEO & structured data (Phase 10)
+**GA4/GSC/Organization schema live in `(public)/layout.tsx`, not the root layout.** Brief §50's
+entire analytics/schema section is written about the public marketing site — there's no reason
+for internal admin or member-portal usage to carry public tracking scripts or business schema, so
+these are scoped to the public route group specifically rather than site-wide, the same way the
+public/admin/member surfaces already don't share a design system (brief §14).
+
+**`trackEvent()` is a thin, always-safe wrapper, not a real analytics SDK** — it no-ops if GA4
+hasn't loaded (or isn't configured at all), so every call site can fire an event unconditionally
+without a "is GA4 ready" check first. Two small client components, `TrackedAnchor` and
+`TrackedButton`, exist purely because of the Server/Client Component boundary: a Server Component
+(most marketing sections — `Hero`, `MembershipCta`, the chapter detail page) can't pass a function
+prop to a Client Component, so wherever a tracked click needed to live inside otherwise-server-
+rendered markup, the `onClick` had to be defined inside a small Client Component of its own rather
+than passed down. `Header` already being a Client Component (for its mobile-menu state) is the one
+place a plain inline `onClick` was possible instead.
+
+**One `member_directory_search` event, not brief §50's two ("Category searches"/"Member
+searches").** The member directory is a single form that can carry a keyword, a chapter, and a
+category in one submit — firing two separate events off one submission for a brief that names two
+search *kinds*, not two simultaneous actions, would just double-count every search that used more
+than one field. One event with both as params gives an analyst the same information (was this a
+keyword search? a category filter? both?) without the double-count.
+
+**"Profile enquiries" and "Member contact clicks" are treated as the same event
+(`member_contact_click`)** — the brief lists them as two bullets but never defines "enquiry" as
+anything more concrete than "someone tried to reach this member," and the only such touchpoint
+that exists on a member profile today is the phone/WhatsApp/email/website/maps contact block.
+Revisit if a real enquiry *form* (distinct from a contact link) is ever added — brief §35's Leads
+system, once it has a phase, might be exactly that.
+
+**"Blog performance" and "Member page views" need no custom event** — GA4's own automatic
+pageview tracking already covers per-URL views once the base `gtag.js` script is loaded
+site-wide; brief §50 lists them alongside genuine custom events, but nothing about either implies
+they need bespoke instrumentation beyond that.
+
+**Programmatic SEO pages are computed live from the database, chapter-agnostic by location** —
+`listProgrammaticLandingPages()` (`src/lib/seo/programmatic.ts`) crosses every active `Category`
+with every distinct `location` string among active `Chapter`s (currently just "Chennai" across
+all three seeded chapters), not a per-chapter list — brief §52's own examples name a city, and a
+city can have several chapters, so a landing page for "architects-in-chennai" correctly pulls
+architects from every Chennai chapter, not just one. This recomputes from live data on every
+request (no cache, no static list) specifically so a newly-added category or a chapter in a new
+city becomes a real, crawlable page with zero code change — matching brief §52's own "location/
+category combinations may be added later." Pluralization for the URL slug
+(`src/lib/seo/pluralize.ts`) is a small hand-rolled three-rule heuristic rather than a library
+dependency — categories are admin-editable free text (brief §68), so a static lookup table
+wasn't an option, and the three rules (consonant+y→ies; s/x/z/ch/sh→es; else +s) correctly handle
+every category in the current seed list.
+
+**The landing page route deliberately has no `generateStaticParams`** — every other slug-based
+detail route in this app (`/members/[slug]`, `/chapters/[slug]`, `/insights/[slug]`,
+`/events/[slug]`, `/authors/[slug]`) renders on demand with no pre-built static params, and this
+one now matches that convention rather than being the sole exception. It also happened to be the
+direct fix for a real `next build` failure this phase — see the Phase 10 entry in
+`docs/PHASES.md` for the full incident: pre-building every category×location combination added
+just enough concurrent build-time database load to tip the already-documented-flaky local
+`prisma dev` proxy (see the Local dev database operational note above) into consistently failing.
+
+**`Prisma Client`'s connection pool is now explicitly capped (`max: 5` in `src/lib/db.ts`).**
+Found while root-causing the same build failure above, but kept as a real fix rather than a
+local-only workaround: several concurrent serverless function instances (the actual Vercel+Neon
+deploy target) each opening a large, uncapped connection pool is a well-known way to exhaust a
+managed Postgres database's real connection limit in production, not just a local `prisma dev`
+quirk.
+
+**`NEXT_PUBLIC_SITE_URL` is the one new required-before-launch env var this phase adds** — used
+for `metadataBase`, the sitemap, and every absolute URL inside JSON-LD. Defaults to
+`http://localhost:3000` so nothing breaks in dev; the real public domain is still the same open
+decision tracked in the table below (needed by Phase 14–15), not a new one.
 
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its

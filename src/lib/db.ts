@@ -12,7 +12,17 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  // `max` caps how many Postgres connections this one process opens. Without
+  // it, `next build`'s several concurrent static-generation workers (each
+  // its own process, each with its own pool) could collectively open enough
+  // connections to overwhelm the local `prisma dev` proxy — the documented
+  // local-dev instability in docs/ARCHITECTURE.md, hit again during Phase
+  // 10's build once one more DB-touching route (the sitemap) was added. A
+  // small cap is also just good practice against a real serverless deploy
+  // target (Vercel + Neon), where many concurrent function instances each
+  // opening a large pool is a known way to exhaust a database's connection
+  // limit — not only a workaround for this local quirk.
+  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL, max: 5 });
   return new PrismaClient({ adapter });
 }
 

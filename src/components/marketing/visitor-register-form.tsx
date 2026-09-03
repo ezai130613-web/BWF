@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { registerVisitor } from "@/app/(public)/visit/actions";
+import { trackEvent } from "@/lib/analytics";
 
 const initialState: { error?: string; success?: boolean } = {};
 
@@ -23,6 +24,18 @@ export function VisitorRegisterForm({
   fixedChapter?: Option;
 }) {
   const [state, formAction, pending] = useActionState(registerVisitor, initialState);
+
+  // Brief §50 — "Visitor registration" / "Event registrations" as distinct
+  // tracked events, both produced by this one shared form: which fires
+  // depends on whether this instance is registering for an event or a plain
+  // chapter meeting. Fired from an effect (not inline in the render) so it
+  // runs exactly once when `state.success` actually flips true, not on
+  // every re-render while it stays true.
+  useEffect(() => {
+    if (state?.success) {
+      trackEvent(eventId ? "event_registration" : "visitor_registration", { meetingId, eventId });
+    }
+  }, [state?.success, meetingId, eventId]);
 
   if (state?.success) {
     return (

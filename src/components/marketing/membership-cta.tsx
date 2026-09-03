@@ -1,5 +1,5 @@
 import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
+import { TrackedButton } from "@/components/analytics/tracked-button";
 
 export function MembershipCta() {
   return (
@@ -12,9 +12,9 @@ export function MembershipCta() {
           <br />
           <span className="text-gold-500">Your network.</span>
         </p>
-        <Button href="/apply" variant="primary">
+        <TrackedButton href="/apply" variant="primary" eventName="become_member_click" eventParams={{ location: "membership_cta" }}>
           Check Availability →
-        </Button>
+        </TrackedButton>
       </Container>
     </section>
   );

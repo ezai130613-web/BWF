@@ -5,6 +5,9 @@ import { db } from "@/lib/db";
 import { publiclyVisibleBlogWhere } from "@/lib/blog/query";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
+import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_URL } from "@/lib/site";
 
 async function getAuthor(slug: string) {
   return db.author.findUnique({ where: { slug }, include: { member: true } });
@@ -32,8 +35,27 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     orderBy: { publishedAt: "desc" },
   });
 
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: author.name,
+    description: author.bio || undefined,
+    url: `${SITE_URL}/authors/${author.slug}`,
+    image: author.photoUrl || undefined,
+  };
+
+  // No /authors index page exists to link an intermediate crumb to — a
+  // three-level breadcrumb pointing at a page that 404s would be worse than
+  // an honest two-level one.
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: author.name, path: `/authors/${author.slug}` },
+  ]);
+
   return (
     <div className="py-24">
+      <JsonLd data={personJsonLd} />
+      <JsonLd data={crumbs} />
       <Container className="max-w-3xl">
         <SectionLabel>Author</SectionLabel>
         <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{author.name}</h1>

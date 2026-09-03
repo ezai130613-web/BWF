@@ -681,3 +681,131 @@ is complete and committed.
 - Leads (brief §35) still has no phase of its own in the brief's own Phase Structure table — the
   dashboard's "New leads" tile stays absent until one exists; flagged again here since Phase 9
   was the most natural place to have noticed this gap.
+
+---
+
+## Phase 10 — Analytics + Search Console + Technical SEO + Schema
+
+**Status:** Complete
+
+**What shipped:**
+- GA4 (`src/components/analytics/google-analytics.tsx`) and Google Search Console verification
+  (Next's built-in `metadata.verification.google`), both gated on
+  `NEXT_PUBLIC_GA4_MEASUREMENT_ID`/`NEXT_PUBLIC_GSC_VERIFICATION` — render nothing until set,
+  same "no dead script/tag ships" rule as Phase 1's `WhatsAppCta`. Scoped to the public surface
+  only (`(public)/layout.tsx`), not admin/member — brief §50's whole analytics section is about
+  the public marketing site, and there's no reason to ship public tracking scripts alongside
+  internal admin usage.
+- `src/lib/analytics.ts` (`trackEvent()`) — a thin, no-op-safe wrapper around `gtag`. Wired up at
+  the touchpoints brief §50 names as custom events: `become_member_click` (hero, header
+  desktop/mobile, the homepage's oversized-typography CTA, and each chapter page's Apply button),
+  `whatsapp_click` (the floating CTA), `member_contact_click` (a member profile's
+  phone/WhatsApp/email/website/maps links — this also covers brief §50's separately-named
+  "Profile enquiries", which has no other concrete definition than "someone tried to contact this
+  member"), `visitor_registration` / `event_registration` (the shared visitor-registration form
+  fires one or the other depending on whether it's registering for an event or a plain chapter
+  meeting), `membership_application_submitted`, and `member_directory_search` (see below for why
+  this is one event, not brief §50's two). "Blog performance" and "Member page views" need no
+  custom code — GA4's own automatic pageview tracking already covers per-URL views once the base
+  script is present. Two small client wrapper components (`TrackedAnchor`, `TrackedButton`)
+  exist only because a Server Component can't pass a function prop to a Client Component — each
+  defines its `onClick` internally rather than receiving one from its server-rendered parent.
+- `src/app/sitemap.ts` and `src/app/robots.ts` (Next's native file conventions) — sitemap covers
+  every static route plus live chapter/member/blog/event/author slugs and every programmatic
+  landing page slug (see below); robots disallows `/admin`, `/member`, `/api`.
+- Structured data (brief §53) added on top of Phase 5's existing Article/FAQPage: `Organization`
+  site-wide, `LocalBusiness` on member profiles (a directory listing — address, phone, service
+  area — reads as a business more than a personal bio), `Person` on author pages (genuinely a
+  bio), `Event` on event detail pages, and `BreadcrumbList` on every nested detail page (chapters,
+  members, insights, events, authors — two-level for authors, since there's no `/authors` index
+  page to link an honest third crumb to). A shared `<JsonLd>` component
+  (`src/components/seo/json-ld.tsx`) replaces the inline `<script>` boilerplate Phase 5
+  established once there were enough new call sites (6) that repeating it stopped being simpler.
+- Programmatic SEO (brief §52) — `/architects-in-chennai`-style landing pages for every (active
+  category) × (distinct active-chapter location) combination, computed live from the database
+  (`src/lib/seo/programmatic.ts`), not a hardcoded list — a single dynamic `[slug]` route at the
+  public root, rendered on demand (no `generateStaticParams`, matching every other slug-based
+  detail route in this app). A category name is pluralized via a small hand-rolled heuristic
+  (`src/lib/seo/pluralize.ts`) rather than a library — three rules cover every category in the
+  current seed list, and categories are admin-editable free text so a lookup table wasn't an
+  option anyway. `docs/ARCHITECTURE.md`'s Phase 4 note already earmarked this for "Phase 5 or
+  Phase 10, whichever fits better" — Phase 5 passed on it, so this is that commitment being kept,
+  not new scope invented mid-phase.
+- `NEXT_PUBLIC_SITE_URL` (`src/lib/site.ts`) — the real public domain is still an open decision
+  (see below), so this defaults to `http://localhost:3000` until it's set; used for
+  `metadataBase`, the sitemap, and every absolute URL in JSON-LD.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- **Hit real, reproducible build failures and root-caused them rather than just retrying until
+  green.** `next build` initially failed consistently (5 build attempts, always at the same
+  "10/43" progress point, always inside the Footer's `getContent()` call, on a different page
+  each time) with `DriverAdapterError: ConnectionClosed`. Two real, separate contributing issues
+  were found and fixed: (1) `next.config.ts`'s static-generation workers were opening enough
+  concurrent Postgres connections between them and the new `sitemap.xml` route's own queries to
+  exceed what the local `prisma dev` proxy could sustain — fixed by making `sitemap.ts`'s and
+  `listProgrammaticLandingPages()`'s queries sequential instead of `Promise.all`, and by capping
+  the Prisma client's own connection pool (`max: 5` in `src/lib/db.ts`) — the latter is also a
+  real improvement for the actual Vercel+Neon deploy target, not just a local workaround, since
+  many concurrent serverless instances each opening a large pool is a known way to exhaust a
+  database's real connection limit. (2) Independently, `npx prisma dev ls` showed the long-running
+  local daemon (up for this entire multi-phase session) had actually degraded into an `error`
+  state — confirmed by restarting it (`prisma dev start bwf2`, same named instance, no data loss)
+  and immediately reproducing a clean build twice in a row afterward. Recorded here in the same
+  spirit as Phase 3's shadow-DB incident: a real operational issue, run down to an actual cause,
+  not shrugged off as "the build is just flaky."
+- Removed `generateStaticParams` from the programmatic landing page after diagnosing the above —
+  it was also the one dynamic detail route in this entire app trying to pre-render every param at
+  build time, inconsistent with how `/members/[slug]`, `/chapters/[slug]`, `/insights/[slug]`,
+  `/events/[slug]`, and `/authors/[slug]` all already work (rendered on demand, no static params).
+  Fixing the inconsistency and reducing build-time DB load were the same fix.
+- Caught and fixed a real, if minor, correctness bug during verification, not just written and
+  trusted: the `LocalBusiness` JSON-LD's `telephone` field rendered as `telephone: ''` for a
+  member with a blank (empty-string, not `null`) phone number, because `member.phone ?? undefined`
+  only falls back on `null`/`undefined`, not `""`. Fixed by switching to `||` for every optional
+  string field across the three new JSON-LD blocks this phase added (`LocalBusiness` and
+  `Person`) — found by actually reading a real member's rendered JSON-LD in a browser rather than
+  only reading the code.
+- Verified live, not just built: `/sitemap.xml` and `/robots.txt` fetched directly and checked —
+  all 10 seeded categories pluralized correctly (including the two irregular-looking ones,
+  "Landscape Architect" → "landscape-architects" and "Building Material Supplier" →
+  "building-material-suppliers"), sitemap included every live chapter/member/blog/event/author
+  slug plus all 10 programmatic landing pages. Loaded `/architects-in-chennai` in a real browser
+  and confirmed it lists the actual three seeded architects across their real chapters (chapter-
+  agnostic, as designed) with correct `Organization`+`BreadcrumbList` JSON-LD; confirmed a
+  non-matching slug (`/not-a-real-category-in-nowhere`) returns a real 404, not fabricated
+  content. Confirmed GA4's script tags are entirely absent when `NEXT_PUBLIC_GA4_MEASUREMENT_ID`
+  is unset (this environment), matching the "no dead tag" design.
+- **Every custom analytics event was fired for real and captured, not just code-reviewed**: using
+  a Playwright-injected fake `window.gtag`, confirmed `become_member_click`,
+  `member_contact_click` (whatsapp method, correct `memberSlug`), `member_directory_search`
+  (correct `q`, empty filters reported as `undefined` not `""`), `visitor_registration` (fired
+  only after a real successful registration against a real meeting, with the right `meetingId`),
+  and `membership_application_submitted` (fired after a real end-to-end application submission,
+  correct `categoryId`/`chapterId`) all produced the exact expected event name and params.
+  `whatsapp_click` and `event_registration` share code paths with events that were verified
+  (`member_contact_click`'s `TrackedAnchor`, `visitor_registration`'s success-effect) but weren't
+  independently fired in this pass — `whatsapp_click` because `NEXT_PUBLIC_WHATSAPP_NUMBER` isn't
+  set in this environment (the CTA doesn't render at all), `event_registration` because no
+  currently-open event registration was available to click through in this session's test data.
+
+**Known issues / follow-ups:**
+- `whatsapp_click` and `event_registration` are wired but not independently fired-and-observed
+  this phase (see above) — low risk given the shared-code-path reasoning, but worth a real check
+  once `NEXT_PUBLIC_WHATSAPP_NUMBER` is set and an open event exists.
+- Real GA4 property, Search Console property, and public domain (`NEXT_PUBLIC_SITE_URL`) don't
+  exist yet — all three are open decisions already tracked in `docs/ARCHITECTURE.md` (domain was
+  already there from Phase 0; GA4/GSC values are new). Nothing here is fabricated as if it were
+  live.
+- `member_directory_search` fires from a plain `onSubmit` handler reading form field values by
+  name at submit time — functionally correct and doesn't block the form's native GET submission
+  (verified: still works with the same URL/query-param behavior as before), but is slightly more
+  fragile to a future field-name change than reading from typed component state would be. Not
+  worth the extra state plumbing for a form this small.
+- The local `prisma dev` daemon's tendency to degrade under a long, heavy session (this one spans
+  Phases 0–10) is now a repeat finding (also seen as the Phase 3 shadow-DB issue, in a different
+  form). `prisma dev ls` / `prisma dev start <name>` is the fix each time — worth remembering as
+  the first thing to check before debugging a "phantom" connection error against local dev, before
+  assuming application code is at fault.
+- Admin Analytics (brief §51, explicitly "Later") and Legacy SEO/redirects (brief §54, explicitly
+  Phase 15) were not built — both are the brief's own future work, not gaps in this phase.

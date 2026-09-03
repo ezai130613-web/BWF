@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
-import { Button } from "@/components/ui/button";
+import { TrackedButton } from "@/components/analytics/tracked-button";
+import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
 
 async function getChapter(slug: string) {
   return db.chapter.findFirst({
@@ -45,8 +47,15 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
     orderBy: { name: "asc" },
   });
 
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Chapters", path: "/chapters" },
+    { name: chapter.name, path: `/chapters/${chapter.slug}` },
+  ]);
+
   return (
     <div>
+      <JsonLd data={crumbs} />
       <div className="relative">
         <MediaPlaceholder brief={`${chapter.name} — cinematic hero, meeting venue or member work`} className="h-[50vh]" />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/50 to-navy-950/10" />
@@ -171,9 +180,9 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           </div>
 
           <div className="flex flex-col gap-3">
-            <Button href="/apply" variant="primary">
+            <TrackedButton href="/apply" variant="primary" eventName="become_member_click" eventParams={{ location: "chapter_page", chapterSlug: chapter.slug }}>
               Apply for Membership
-            </Button>
+            </TrackedButton>
           </div>
         </aside>
       </Container>

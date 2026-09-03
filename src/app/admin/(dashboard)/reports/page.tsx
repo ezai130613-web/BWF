@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AddReportRecipientForm } from "@/components/admin/add-report-recipient-form";
@@ -31,7 +32,7 @@ export default async function ReportsPage() {
           and schedule are stored here and ready to use — actually sending it out automatically is
           Phase 13&rsquo;s job (Email/Notification Automation), the same phase every other
           automated email in this project lands in. Until then, generate the same report on demand
-          from the <a href="/admin/exports" className="underline hover:text-neutral-900">Exports</a> page.
+          from the <Link href="/admin/exports" className="underline hover:text-neutral-900">Exports</Link> page.
         </p>
       </div>
 

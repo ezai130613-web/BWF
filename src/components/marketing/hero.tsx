@@ -1,6 +1,7 @@
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { TrackedButton } from "@/components/analytics/tracked-button";
 
 export function Hero() {
   return (
@@ -26,9 +27,9 @@ export function Hero() {
           <Button href="/chapters" variant="secondary">
             Visit a Chapter
           </Button>
-          <Button href="/apply" variant="primary">
+          <TrackedButton href="/apply" variant="primary" eventName="become_member_click" eventParams={{ location: "hero" }}>
             Apply for Membership
-          </Button>
+          </TrackedButton>
         </div>
       </Container>
     </section>

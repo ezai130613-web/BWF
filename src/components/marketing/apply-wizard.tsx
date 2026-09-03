@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { submitApplication } from "@/app/(public)/apply/actions";
 import type { ChapterAvailability } from "@/lib/applications/availability";
+import { trackEvent } from "@/lib/analytics";
 
 const initialState: { error?: string; success?: boolean } = {};
 
@@ -19,6 +20,13 @@ export function ApplyWizard({
   const [categoryId, setCategoryId] = useState<string>("");
   const [chapterId, setChapterId] = useState<string | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+
+  // Brief §50 — "Membership submissions".
+  useEffect(() => {
+    if (state?.success) {
+      trackEvent("membership_application_submitted", { categoryId, chapterId, joiningWaitlist });
+    }
+  }, [state?.success, categoryId, chapterId, joiningWaitlist]);
 
   if (state?.success) {
     return (

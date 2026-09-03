@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { getDashboardMetrics } from "@/lib/dashboard/metrics";
 
@@ -79,9 +80,9 @@ export default async function AdminDashboardPage() {
                   ))
                 )}
               </div>
-              <a href="/admin/activity" className="mt-3 inline-block text-sm text-neutral-500 hover:text-neutral-900">
+              <Link href="/admin/activity" className="mt-3 inline-block text-sm text-neutral-500 hover:text-neutral-900">
                 View full activity log →
-              </a>
+              </Link>
             </div>
           ) : null}
         </>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 
 const NAV_LINKS = [
   { href: "/about", label: "About" },
@@ -42,7 +43,12 @@ export function Header() {
           <Button href="/chapters" variant="secondary" className="px-5 py-2.5 text-xs">
             Visit BWF
           </Button>
-          <Button href="/apply" variant="primary" className="px-5 py-2.5 text-xs">
+          <Button
+            href="/apply"
+            variant="primary"
+            className="px-5 py-2.5 text-xs"
+            onClick={() => trackEvent("become_member_click", { location: "header" })}
+          >
             Apply for Membership
           </Button>
         </div>
@@ -93,7 +99,14 @@ export function Header() {
               <Button href="/chapters" variant="secondary" onClick={() => setOpen(false)}>
                 Visit BWF
               </Button>
-              <Button href="/apply" variant="primary" onClick={() => setOpen(false)}>
+              <Button
+                href="/apply"
+                variant="primary"
+                onClick={() => {
+                  setOpen(false);
+                  trackEvent("become_member_click", { location: "header_mobile" });
+                }}
+              >
                 Apply for Membership
               </Button>
             </div>

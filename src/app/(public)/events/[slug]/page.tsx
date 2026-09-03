@@ -5,6 +5,9 @@ import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { VisitorRegisterForm } from "@/components/marketing/visitor-register-form";
+import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_URL } from "@/lib/site";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   CHAPTER_MEETING: "Chapter Meeting",
@@ -62,8 +65,39 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
   const { deadlinePassed, atCapacity, closed } = getEventAvailability(event, registeredCount);
 
+  // Brief §53 — Event schema. eventStatus only covers the two schema.org
+  // values that actually apply here (EventScheduled/EventCancelled) —
+  // COMPLETED has no honest schema.org equivalent, so it's left unset rather
+  // than mapped to something incorrect.
+  const eventJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    startDate: event.startsAt.toISOString(),
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus:
+      event.status === "SCHEDULED"
+        ? "https://schema.org/EventScheduled"
+        : event.status === "CANCELLED"
+          ? "https://schema.org/EventCancelled"
+          : undefined,
+    location: {
+      "@type": "Place",
+      name: event.venue || event.chapter?.name || "Builders World Forum",
+    },
+    organizer: { "@type": "Organization", name: "Builders World Forum", url: SITE_URL },
+  };
+
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Events", path: "/events" },
+    { name: event.title, path: `/events/${event.slug}` },
+  ]);
+
   return (
     <div>
+      <JsonLd data={eventJsonLd} />
+      <JsonLd data={crumbs} />
       <div className="relative">
         <MediaPlaceholder brief={`${event.title} — event photo`} className="h-[45vh]" />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/50 to-navy-950/10" />

@@ -7,6 +7,8 @@ import { renderMarkdown } from "@/lib/blog/render";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
 
 async function getPost(slug: string) {
   return db.blog.findFirst({
@@ -75,12 +77,17 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         }
       : null;
 
+  const crumbs = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Insights", path: "/insights" },
+    { name: post.title, path: `/insights/${post.slug}` },
+  ]);
+
   return (
     <article className="py-24">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
-      {faqJsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      ) : null}
+      <JsonLd data={articleJsonLd} />
+      {faqJsonLd ? <JsonLd data={faqJsonLd} /> : null}
+      <JsonLd data={crumbs} />
 
       <Container className="max-w-3xl">
         <SectionLabel>{post.category.name}</SectionLabel>
