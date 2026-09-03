@@ -32,6 +32,7 @@ const PERMISSIONS = [
   { key: "visitors:manage", label: "Manage visitor registrations" },
   { key: "exports:manage", label: "Export member data (Excel/CSV/PDF)" },
   { key: "reports:manage", label: "Manage weekly report recipients & schedule" },
+  { key: "chatbot:manage", label: "Manage Ask BWF chatbot settings & leads" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -56,6 +57,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "visitors:manage",
     "exports:manage",
     "reports:manage",
+    "chatbot:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
@@ -205,6 +207,15 @@ async function main() {
     where: { id: "singleton" },
     update: {},
     create: { id: "singleton", isEnabled: false, dayOfWeek: 1 },
+  });
+
+  // Ask BWF chatbot settings (brief §37) — singleton row, disabled by
+  // default until an admin turns it on at /admin/chatbot (and a real
+  // ANTHROPIC_API_KEY exists — see src/lib/chatbot/client.ts).
+  await db.chatbotSettings.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton", isEnabled: false, accessMode: "PUBLIC", freeQuestionsLimit: 5 },
   });
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;

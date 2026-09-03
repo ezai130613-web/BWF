@@ -923,3 +923,112 @@ is complete and committed.
   `selectOption({label: ...})` call not landing before the form submitted, not a bug in
   `createAdminUser`. Noted only as a reminder to assert on server-action results in verification
   scripts, not to trust a fixed `waitForTimeout`.
+
+---
+
+## Phase 12 — Ask BWF RAG Chatbot
+
+**Status:** Complete
+
+**What shipped:**
+- Schema: `ChatbotSettings` (singleton — `isEnabled`, `accessMode`, `freeQuestionsLimit`),
+  `ChatbotConversation` (one row per browser session, `messages` as a JSON array), `ChatbotLead`
+  (name/phone/email/requirement/status — deliberately narrow, no chapter/category/member FK
+  columns; see `docs/ARCHITECTURE.md`). New `chatbot:manage` permission, Super + Central Admin per
+  the established pattern.
+- Retrieval (`src/lib/chatbot/retrieval.ts`) — structured Prisma `contains`/`insensitive` queries
+  against Chapter/Category/Member/Blog/SiteFaq/WebsiteContent, mirroring the Phase 4 member-
+  directory search rather than vector embeddings (confirmed approach, see
+  `docs/ARCHITECTURE.md`). Split into a baseline half (chapters/categories/FAQs/content) and a
+  per-message keyword-matched half (members/blogs) so the system prompt
+  (`src/lib/chatbot/prompt.ts`) can cache the stable half behind a prompt-cache breakpoint.
+- `src/app/api/chatbot/route.ts` — streams from Claude (`claude-opus-5`, adaptive thinking,
+  `effort: "medium"`) as `text/event-stream`, enforces `ChatbotSettings.accessMode` (Public /
+  Login Required / Limited Free Questions), caps a conversation at 40 messages as a cheap cost
+  guardrail, persists the transcript to `ChatbotConversation` after each turn.
+- Public UI: `AskBwfLauncher` (floating FAB, stacked above the WhatsApp CTA), `AskBwfWidget`
+  (streamed chat thread + input), and a lead-capture mini-form
+  (`src/app/(public)/ask-bwf/actions.ts`, same public-Server-Action shape as `submitTestimonial`)
+  — reachable independently of whether live chat is available, not nested inside it.
+- Admin UI: `/admin/chatbot` — one page, two sections (settings + leads), same layout pattern as
+  `/admin/reports`. Settings form warns explicitly when no `ANTHROPIC_API_KEY` is set. Leads table
+  has row-level status transitions (New → Contacted → Converted/Discarded, reopenable). New
+  sidebar entry.
+- Dashboard: `/admin` gains a real "New chatbot leads" tile (Super/Central Admin only, omitted for
+  Chapter Admin — no `chatbot:manage` permission anywhere else in this admin, same precedent as
+  companies/applications/blog). Fills part of the "New leads" gap flagged since Phase 9 — one real
+  source, not brief §35's general Leads system.
+- `.env.example` documents `ANTHROPIC_API_KEY` (Phase 12 block); `@anthropic-ai/sdk` added as the
+  only new dependency (official SDK, no raw HTTP, no Vercel AI SDK).
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities.
+- Hit the documented local shadow-database issue (`docs/ARCHITECTURE.md`) on this phase's
+  migration too — resolved with the same non-destructive `migrate diff` → `db execute` →
+  `migrate resolve --applied` recipe, no data loss.
+- Real UI pass through Playwright, logged in as Super Admin: enabled the chatbot and set
+  `LIMITED_FREE_QUESTIONS` (limit 2) via the real `/admin/chatbot` form, reloaded, and confirmed
+  the saved values persisted from the database (not a stale rendered `<select>`) — same discipline
+  Phase 9 established after its own false-alarm screenshot. Confirmed the Ask BWF launcher then
+  appeared on the real public homepage.
+- **Caught two real UX bugs by actually clicking through the widget, not by reasoning about the
+  JSX**: (1) the launcher was originally gated on `isEnabled && isChatbotConfigured()`, which made
+  the "not available" fallback state unreachable to test and silently contradicted the settings
+  page's own warning text — fixed to gate on `isEnabled` alone. (2) the "Connect me with BWF" lead
+  capture trigger was nested inside the same branch as the live chat thread, hiding it exactly
+  when a visitor would most want it (chat unavailable, still want to be contacted) — fixed to
+  render unconditionally. Both caught during this phase's own verification pass, not left for a
+  user to find.
+- With no `ANTHROPIC_API_KEY` configured in this environment, confirmed the widget shows the
+  honest "Ask BWF isn't available right now" state end-to-end rather than a raw error or infinite
+  spinner (`unavailable: true` from `/api/chatbot`, rendered correctly by the client).
+- Submitted a real lead through the widget's capture form (name/phone/email/requirement),
+  confirmed it landed as `NEW` on `/admin/chatbot`, changed its status to `Contacted` through the
+  real UI, confirmed it persisted and the dashboard's "New chatbot leads" tile correctly dropped to
+  0 (no longer `NEW`). Confirmed the audit log recorded both `chatbot_settings.updated` and
+  `chatbot_lead.status_changed`.
+- **Hit a real, unrelated build failure and root-caused it, not just retried**: `next build`
+  initially failed with a bizarre `invalid input syntax for type boolean` Postgres error inside
+  `getContent()` on `/about` — traced to an `upsert` (a write) I'd put in `(public)/layout.tsx`,
+  which wraps every one of ~48 public pages, so the build's concurrent static-generation workers
+  were hammering the local `prisma dev` proxy with write contention on top of its already-known
+  fragility (same root cause class as the Phase 10 incident). Fixed by changing the layout's
+  settings check to a plain `findUnique` (no write needed just to read `isEnabled`) — build passed
+  clean immediately after, and the fix is a real improvement for the Vercel+Neon target too, not
+  just a local workaround.
+- Chapter Admin exclusion from the sidebar entry and dashboard tile was verified by code/type
+  inspection rather than a fresh live login (no credentials for the existing `chapter02@bwf.local`
+  test account from prior phases, and resetting its password felt like an unnecessary destructive
+  step for this check): `chatbot:manage` is absent from `CHAPTER_ADMIN`'s permission list in
+  `prisma/seed.ts` and is not in `sidebar.tsx`'s `chapterScopedPermissions` allow-list, and
+  `ChapterDashboardMetrics` has no `newChatbotLeads` field at all — `tsc --noEmit` passing confirms
+  the chapter-scoped dashboard branch cannot reference it. Lower rigor than the live-login RBAC
+  tests every other phase since Phase 3 has done; flagged honestly rather than presented as
+  equivalent.
+- Reset `ChatbotSettings` back to its seeded default (`isEnabled: false`) after verification,
+  since — unlike inert leftover test rows in prior phases — this toggle has a real, live effect on
+  what every visitor sees.
+
+**Known issues / follow-ups:**
+- **Not verified with a real model response**: no `ANTHROPIC_API_KEY` was available in this
+  environment, so the actual grounded-answer quality (accurate for in-scope questions, honest
+  "I don't know" for out-of-scope ones, member recommendations) was never observed live — only the
+  no-key fallback path was. Same category of gap as Phase 2's untested real email delivery; add a
+  real key and re-verify before this reaches real visitors.
+- **Access-mode enforcement (`LOGIN_REQUIRED`/`LIMITED_FREE_QUESTIONS`) is written but also
+  unverified live** — `/api/chatbot` checks `isChatbotConfigured()` before it ever reaches the
+  access-mode branch, so without a real key those branches are structurally unreachable through
+  the UI in this environment. Re-verify alongside the model-response check above.
+- No IP-based or shared-memory rate limiting on `/api/chatbot` — same accepted-gap category as
+  Phase 2's OTP-request endpoint (no cheap shared memory across serverless instances in the Vercel
+  target). The per-conversation 40-message cap is a guardrail, not real rate limiting; the
+  admin-configurable access mode is the first real lever before this needs revisiting.
+- Chapter Admin's exclusion from the new sidebar entry/dashboard tile was verified by code
+  inspection, not a live login — see Verification above.
+- One test lead ("Test Visitor", status `Contacted`) was left in the local database from
+  verification — harmless, same category as prior phases' leftover test rows (Phase 3's duplicate
+  company, Phase 7's "Karthik Architect" applications, Phase 9's chapter-admin test account).
+- `ChatbotConversation` history is trusted from the client's own `sessionId` with no auth binding
+  for anonymous (Public-mode) visitors — acceptable since a visitor can only ever see/manipulate
+  their own conversation this way (no cross-session data exposure), but worth a second look if
+  Public mode is ever combined with something more sensitive than Q&A + lead capture.

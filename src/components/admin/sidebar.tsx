@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage" },
   { href: "/admin/reports", label: "Reports", permission: "reports:manage" },
   { href: "/admin/exports", label: "Exports", permission: "exports:manage" },
+  { href: "/admin/chatbot", label: "Ask BWF", permission: "chatbot:manage" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage" },
   { href: "/admin/blog-categories", label: "Blog Categories", permission: "blogs:manage" },
   { href: "/admin/authors", label: "Authors", permission: "blogs:manage" },

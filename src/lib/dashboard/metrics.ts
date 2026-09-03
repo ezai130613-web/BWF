@@ -4,10 +4,11 @@ import { db } from "@/lib/db";
  * Brief §39 — the admin dashboard's operational metrics. Only the base list
  * is implemented; the "Later:" items (business generated, referral count,
  * attendance, renewals, website performance) are explicitly future work and
- * deliberately not built early (brief §72). "New leads" is also omitted even
- * though it's in the base list — the Leads system (brief §35) has no phase
- * of its own yet (see docs/ARCHITECTURE.md), and this project's convention
- * (established in Phase 1) is an honest gap over a fabricated number.
+ * deliberately not built early (brief §72). The general Leads system (brief
+ * §35) still has no phase of its own (see docs/ARCHITECTURE.md), but Phase 12
+ * gives one real lead source — the Ask BWF chatbot — so "New chatbot leads"
+ * is now a real, honest tile rather than the placeholder gap noted since
+ * Phase 9. It's still not the general "New leads" brief §39 asks for.
  *
  * Chapter Admin gets a materially smaller set, not the same set pre-filtered
  * — several of these (companies, applications, blog, audit log) sit outside
@@ -31,6 +32,7 @@ export type GlobalDashboardMetrics = {
   openCategorySlots: number;
   publishedBlogCount: number;
   latestPublishedBlog: { title: string; publishedAt: Date } | null;
+  newChatbotLeads: number;
   recentActivity: { action: string; entity: string | null; entityId: string | null; createdAt: Date; userName: string | null }[];
 };
 
@@ -94,6 +96,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
     activeCategories,
     publishedBlogCount,
     latestPublishedBlog,
+    newChatbotLeads,
     recentActivity,
   ] = await Promise.all([
     db.member.count({ where: { status: "ACTIVE" } }),
@@ -112,6 +115,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
       orderBy: { publishedAt: "desc" },
       select: { title: true, publishedAt: true },
     }),
+    db.chatbotLead.count({ where: { status: "NEW" } }),
     db.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -136,6 +140,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
       latestPublishedBlog?.publishedAt != null
         ? { title: latestPublishedBlog.title, publishedAt: latestPublishedBlog.publishedAt }
         : null,
+    newChatbotLeads,
     recentActivity: recentActivity.map((log) => ({
       action: log.action,
       entity: log.entity,

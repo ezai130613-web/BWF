@@ -60,6 +60,7 @@ export default async function AdminDashboardPage() {
               value={metrics.publishedBlogCount}
               hint={metrics.latestPublishedBlog ? `Latest: "${metrics.latestPublishedBlog.title}"` : "No posts published yet"}
             />
+            <Tile label="New chatbot leads" value={metrics.newChatbotLeads} hint="Ask BWF — not yet contacted" />
           </div>
 
           {permissions.has("audit_log:view") ? (

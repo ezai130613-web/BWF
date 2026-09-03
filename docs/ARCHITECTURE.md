@@ -592,6 +592,66 @@ Login + Profile Edit Approval Workflow," not article submission; building it now
 the early-future-phase scope brief §72 warns against. Whichever future phase picks this up should
 also close this gap — noted here and in the Open Decisions table below so it isn't lost twice.
 
+### Ask BWF RAG chatbot (Phase 12)
+**Retrieval is plain structured Prisma queries, not vector embeddings.** Confirmed with the user
+before building: BWF's public content (3 chapters, a handful of members, a starter blog list) is
+small enough that keyword `contains`/`insensitive` search — the same technique the Phase 4 member
+directory already uses — covers brief §36's grounding requirement without a pgvector extension or
+an embedding-regeneration pipeline that has to stay in sync with every content edit. Revisit only
+if member/content volume grows enough that keyword matching starts missing relevant results a
+real visitor would expect to find.
+
+**Retrieval is split into a baseline half and a per-message half** (`src/lib/chatbot/
+retrieval.ts`) specifically so the system prompt (`src/lib/chatbot/prompt.ts`) can put the stable
+half — chapters, categories, FAQs, website content, all foundational and rarely changing — behind
+a prompt-cache breakpoint, with the query-dependent half (keyword-matched members/blogs) appended
+after it as the volatile tail. A real, low-effort prompt-caching win, not just an API-call
+convenience.
+
+**`ChatbotLead` deliberately stays narrow — name/phone/email/requirement, no chapter/category/
+member FK columns** — the same "avoid unnecessarily large forms at first interaction" pattern
+this project has used since Phase 7's application wizard. An admin who wants to record a matched
+member/chapter/category during follow-up uses the existing free-text `notes` field, same as
+`MembershipApplication.notes` today. This is also, per `docs/PHASES.md`'s Phase 9 note and the
+Open Decisions table below, **one lead source, not brief §35's general Leads system** — no attempt
+was made to design `ChatbotLead` as a foundation the future Leads model would extend.
+
+**The chatbot's floating launcher is gated on `ChatbotSettings.isEnabled` alone, not also on
+`ANTHROPIC_API_KEY` being set.** These looked redundant at first (why show a launcher for a
+chatbot with no key?) but they cover different moments: an admin can legitimately flip the
+feature on before a real key exists (the settings page warns about exactly this), and
+`/api/chatbot` itself reports `{ unavailable: true }` for the widget to render an honest "not
+available" state when hit without a key — same "no dead entry point, but don't over-hide either"
+balance as `EMAIL_PROVIDER`'s console-fallback pattern. Caught during this phase's own
+verification: an earlier draft gated the launcher on both, which made the "unavailable" fallback
+UI unreachable to test and contradicted the settings page's own warning text.
+
+**Lead capture stays reachable even when the live chat is marked unavailable** — initially built
+with the "Connect me with BWF" trigger nested inside the same conditional branch as the chat
+thread, which hid it exactly when a visitor would most want it (chat down, still want to be
+contacted). Caught the same way most RBAC/workflow bugs in this project have been caught — by
+actually clicking through the unavailable state during verification, not by reasoning about the
+JSX abstractly — and fixed by pulling the lead-capture toggle out to render unconditionally.
+
+**`ANTHROPIC_API_KEY` is not in `src/lib/env.ts`'s strict schema**, matching the established
+convention that schema is reserved for vars the app can't boot without — `EMAIL_API_KEY`/
+`NEXT_PUBLIC_GA4_MEASUREMENT_ID` aren't there either. Read directly in `src/lib/chatbot/client.ts`
+with the same graceful "not configured yet" fallback.
+
+**No new rate-limiting infrastructure** — `/api/chatbot` caps a single conversation at 40 messages
+as a cheap guardrail, but there's no per-IP or shared-memory rate limiter, consistent with the
+accepted gap already recorded for Phase 2's OTP-request endpoint (no shared memory exists across
+serverless instances in the Vercel target to build one cheaply). Worth revisiting if real traffic
+makes API cost a concern — brief §37 anticipates this by making the access mode itself
+admin-configurable (Public / Login Required / Limited Free Questions), which is the first real
+lever before a bespoke rate limiter is needed.
+
+**Model/effort**: `claude-opus-5` (not downgraded for cost — that's the user's call, not an
+architectural default to make unilaterally), adaptive thinking, `effort: "medium"` — chat/Q&A
+workloads are one of the cases where lower effort holds up well against cost, per current Claude
+API cost-tuning guidance, unlike coding/long-horizon agentic work which benefits more from
+`high`/`xhigh`.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production
@@ -620,8 +680,9 @@ they aren't lost, with the phase they'd first block:
 | Real Neon (or other managed Postgres) connection string | Phase 2 (before staging/prod) | Currently running against a local `prisma dev` database — see Phase 2 entry in `docs/PHASES.md`. Migrations are already tracked in `prisma/migrations/` and will apply cleanly to a real database whenever one exists. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII — placeholder pages exist (`/privacy`, `/terms`) but must not launch with AI-drafted legal text unreviewed. |
-| Leads system (brief §35) has no phase of its own | Noticed in Phase 9 | The brief's Phase Structure table (§70) never assigns brief §35's general Leads model to a phase — Phase 12's chatbot lead capture covers one source, not the whole thing. Phase 9's admin dashboard (brief §39) omits the "New leads" tile rather than fabricate a number until this gets a real home; see `docs/PHASES.md` Phase 9. |
+| Leads system (brief §35) has no phase of its own | Noticed in Phase 9 | Still true after Phase 12 — the brief's Phase Structure table (§70) never assigns brief §35's general Leads model to a phase. Phase 12 built `ChatbotLead`, one lead *source*, not the general model (source/member/chapter/category/status fields brief §35 describes for every lead everywhere) — the dashboard's "New chatbot leads" tile (Phase 12) is real now, but brief §39's general "New leads" tile still has no home. See `docs/PHASES.md` Phase 9 and Phase 12. |
 | Member article submissions (brief §31) has no phase of its own | Noticed in Phase 11 | Same gap as Leads above — brief §12 says a logged-in member can "submit blogs/articles," but §31's own workflow and the brief's Phase Structure table (§70) never give it a home. Phase 11 built member login/profile-edit-approval only, per its own title; see `docs/PHASES.md` Phase 11. |
+| Real `ANTHROPIC_API_KEY` for the Ask BWF chatbot | Phase 12 (before real use) | `src/lib/chatbot/client.ts` supports it already — until set, `/api/chatbot` reports itself unavailable and the widget shows an honest "not available" state, same pattern as `EMAIL_API_KEY`. Access-mode enforcement (`LOGIN_REQUIRED`/`LIMITED_FREE_QUESTIONS`) is written but couldn't be exercised live in this environment either, since it sits behind the same "is the chatbot configured" gate — see `docs/PHASES.md` Phase 12. |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)
 
