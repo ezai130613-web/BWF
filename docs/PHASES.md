@@ -570,3 +570,114 @@ is complete and committed.
 - The admin dashboard home page (`/admin`) still doesn't surface any of the new counts (upcoming
   meetings, open event registrations, visitor follow-ups due) — it's been a placeholder since
   Phase 3 and stays that way until Phase 9's reporting work gives it real content.
+
+---
+
+## Phase 9 — Reporting + Excel/CSV/PDF Exports + Weekly Reports
+
+**Status:** Complete
+
+**What shipped:**
+- The admin dashboard (`/admin`) now shows real operational metrics (brief §39) instead of the
+  placeholder text that had been there since Phase 0: active members, total companies, active
+  chapters, visitors, new visitors this month, membership applications, pending approvals,
+  upcoming meetings, upcoming events, open category slots, blog activity, and recent admin
+  activity (`src/lib/dashboard/metrics.ts`). Chapter Admin gets a materially smaller, chapter-
+  scoped set (active members/visitors/meetings/events/open slots for their own chapter only) —
+  not the full set pre-filtered, since several tiles (companies, applications, blog, audit log)
+  sit outside anything a Chapter Admin can see anywhere else in this admin; showing a number for
+  a domain they can't drill into would be a new inconsistency, not a summary. "New leads" from
+  brief §39's own list is deliberately omitted — the Leads system (brief §35) has no phase of its
+  own yet (see the Open Decisions table in `docs/ARCHITECTURE.md`), and this project's Phase-1-
+  established convention is an honest gap over a fabricated number. The "Later:" metrics
+  (business generated, referral count, attendance, renewals, website performance) are brief §72
+  future work and weren't built early either.
+- `/admin/exports` — the Weekly Member Export (brief §44) on demand, in CSV, Excel, or PDF
+  (`src/lib/reports/member-export.ts`, using `exceljs` and `pdfkit`). Default columns are exactly
+  the four required fields (Member Name, Category, Phone Number, Membership Status); an explicit,
+  unchecked-by-default "include chapter & company columns" checkbox is the one way to get more —
+  matching brief §44's "must not alter requested export unless selected" literally. Scoped per
+  brief §45 via the existing `getChapterScope("exports:manage")` pattern: Chapter Admin is locked
+  to their own chapter (no dropdown), Central/Super Admin get a chapter picker plus an "All
+  chapters (master export)" option. The actual file-generation route
+  (`/api/admin/exports/members`) re-derives scope from the session server-side rather than
+  trusting the `chapterId` query param the page last rendered — same discipline as
+  `registerVisitor`/`submitApplication` elsewhere in this app.
+- `/admin/reports` — Weekly Report configuration (brief §46): admin-editable recipients (email +
+  either "Master" or one specific chapter) and a send-day schedule, stored in
+  `WeeklyReportRecipient`/`WeeklyReportSettings`. Central/Super Admin only — brief §45 only ever
+  gives Chapter Admin a role in *exporting* their own chapter, never in configuring who receives
+  the automated report, so this page uses a separate `reports:manage` permission (blanket-only,
+  not chapter-scoped) rather than reusing `exports:manage`.
+- Two new permissions: `exports:manage` (Super/Central blanket, Chapter Admin via chapter scoping
+  — same pattern as `members:manage`) and `reports:manage` (Super/Central blanket only).
+- **Deliberately not built**: brief §46 says the weekly report "should eventually automatically
+  generate and email" itself — the automatic sending part is left for Phase 13 (Email/
+  Notification Automation), matching this project's own established precedent: Phase 7's
+  application confirmation emails and Phase 8's visitor confirmation emails were both explicitly
+  deferred to Phase 13 too, even though (like this one) they were closely tied to the phase that
+  introduced the underlying data. What Phase 9 delivers is everything Phase 13 needs to wire a
+  sender onto without a schema change: real recipients, a real schedule, and the exact export
+  engine that would produce the attachment.
+
+**Verification performed:**
+- `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0 vulnerabilities. `exceljs` pulled in
+  a vulnerable transitive `uuid@8` (moderate, buffer-bounds-check advisory) — overridden to
+  `uuid@^11.1.1` in `package.json` (same pattern as Phase 0's `mysql2`/`deepmerge-ts` overrides),
+  confirmed clean afterward.
+- Hit the same local shadow-database issue documented in `docs/ARCHITECTURE.md` from Phase 3
+  (`migrate dev` failing with "type already exists" against the shadow DB) on this phase's first
+  migration attempt — resolved with the exact same non-destructive documented recipe (`migrate
+  diff` → `db execute` → `migrate resolve --applied`), no data loss, no destructive command used.
+- Logged in as Super Admin through the real UI and confirmed the dashboard's numbers against the
+  actual seeded/test data (4 active members, 6 companies, 3 active chapters, 8 applications with
+  6 pending, etc.) — not just that the tiles render. Downloaded all three export formats for
+  real: CSV content read back and diffed against the four expected columns, the Excel file
+  opened as a valid non-empty `.xlsx` (6.7KB, correct header row), the PDF started with a valid
+  `%PDF-` header. Added one master-scoped and one chapter-scoped recipient and changed the
+  schedule through the real `/admin/reports` UI, then confirmed the actual database rows (not
+  just the rendered page) reflected the change — a stale `<select>` in the post-submit screenshot
+  turned out to be a client-render artifact (React `defaultValue` doesn't resync on a server
+  component re-render without a remount), not a save failure; caught by checking the database
+  directly instead of trusting the screenshot, the same "isolate before concluding the app is
+  wrong" discipline Phase 7 established.
+- **Actually tried to break the export scoping**, not just trusted the code: created a fresh
+  Chapter Admin test account through the real `/admin/users` UI, scoped to Chapter 01, and
+  confirmed — logged in as them — that their sidebar shows Exports but not Reports; their
+  dashboard shows only Chapter 01's numbers; their Exports page has no chapter dropdown; their
+  CSV download contains only Chapter 01's one member; direct navigation to `/admin/reports`
+  correctly throws `ForbiddenError` ("Missing permission: reports:manage"); and — the actual
+  attack this matters for — hand-crafting a request to
+  `/api/admin/exports/members?format=csv&chapterId=all` while authenticated as that Chapter Admin
+  still returned only Chapter 01's data, proving the route ignores the spoofed query param and
+  re-derives scope from the session, not the URL.
+- One transient failure during testing: the very first request to the two brand-new tables
+  (`weekly_report_recipients`, `weekly_report_settings`) threw a Postgres wire-protocol error
+  ("bind message supplies 1 parameters, but prepared statement requires 0") from inside a
+  three-way `Promise.all`. Reproduced-and-isolated per the Phase 7/8 standard: five consecutive
+  reloads afterward all succeeded, so this was cold-connection flakiness in the local `prisma
+  dev` proxy, not a logic bug — but the write (a settings-row `upsert`) was pulled out of the
+  `Promise.all` and awaited separately anyway, since mixing a write with unrelated reads in one
+  batch was avoidable regardless of whether it caused this specific failure.
+- Not yet verified: real email delivery of a weekly report (deliberately not built this phase —
+  see above); behavior against a real (non-local) Postgres instance; PDF/Excel rendering with a
+  much larger member count than the ~4 in local test data (pagination in the PDF path is written
+  but only exercised by a small table so far).
+
+**Known issues / follow-ups:**
+- Weekly report sending is configured but inert — `WeeklyReportSettings.isEnabled` has no effect
+  until Phase 13 wires an actual sender on top of `WeeklyReportRecipient`/the export engine. Not
+  an oversight; see "Deliberately not built" above.
+- `exceljs`'s own `uuid@8` dependency is overridden rather than upgraded upstream — revisit if a
+  future `exceljs` release drops the vulnerable transitive dependency on its own, at which point
+  the override in `package.json` can be removed.
+- The PDF export's table layout is hand-drawn (no table-layout library) — correct and paginating
+  for the data volumes tested, but only lightly exercised; worth a visual re-check once real
+  member counts are much larger.
+- A `phase9-chapter-admin@bwf.local` Chapter Admin test account (Chapter 01) was created during
+  verification and left in the local database — harmless test data, same category as prior
+  phases' leftover test rows (Phase 3's duplicate company, Phase 7's "Karthik Architect"
+  applications).
+- Leads (brief §35) still has no phase of its own in the brief's own Phase Structure table — the
+  dashboard's "New leads" tile stays absent until one exists; flagged again here since Phase 9
+  was the most natural place to have noticed this gap.

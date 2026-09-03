@@ -194,6 +194,7 @@ model Chapter {
   meetings      Meeting[]
   events        Event[]
   visitors      Visitor[]
+  reportRecipients WeeklyReportRecipient[]
 
   @@map("chapters")
 }
@@ -693,6 +694,58 @@ model Event {
   visitors Visitor[]
 
   @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 9 — reporting, exports & weekly report configuration (brief §39,
+// §44-46). The export itself (Excel/CSV/PDF of the same Name/Category/Phone/
+// Membership-Status fields, on demand or "weekly") needs no schema of its
+// own — it's a read against Member. What DOES need storage is brief §46's
+// explicit "recipients should be configurable... do not hardcode recipients"
+// and "schedule should be configurable" — WeeklyReportRecipient/Settings
+// exist for exactly that. Actually emailing them out automatically is
+// deliberately NOT built this phase: every other transactional email this
+// project has needed (visitor confirmations in Phase 8, application
+// confirmations in Phase 7) was explicitly deferred to Phase 13 ("Email /
+// Notification Automation") even when, like this one, it was closely tied to
+// the phase that introduced the underlying data — see docs/PHASES.md. Weekly
+// Reports gets the same treatment: the config is real and admin-editable now,
+// Phase 13 wires the actual scheduled send on top of it.
+// ---------------------------------------------------------------------------
+
+enum WeeklyReportScope {
+  MASTER
+  CHAPTER
+}
+
+model WeeklyReportRecipient {
+  id    String            @id @default(cuid())
+  email String
+  scope WeeklyReportScope @default(MASTER)
+
+  /// Only meaningful when scope == CHAPTER.
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@map("weekly_report_recipients")
+}
+
+/// Singleton row (id is always "singleton") — the one configurable schedule
+/// brief §46 asks for. `isEnabled` stays false until Phase 13 actually wires
+/// a sender on top of this; flipping it true today would have no effect.
+model WeeklyReportSettings {
+  id        String  @id @default("singleton")
+  isEnabled Boolean @default(false)
+  /// 0 = Sunday .. 6 = Saturday.
+  dayOfWeek Int     @default(1)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("weekly_report_settings")
 }
 
 enum VisitorStatus {

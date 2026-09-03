@@ -30,6 +30,8 @@ const PERMISSIONS = [
   { key: "meetings:manage", label: "Manage chapter meetings" },
   { key: "events:manage", label: "Manage events" },
   { key: "visitors:manage", label: "Manage visitor registrations" },
+  { key: "exports:manage", label: "Export member data (Excel/CSV/PDF)" },
+  { key: "reports:manage", label: "Manage weekly report recipients & schedule" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -52,11 +54,18 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "meetings:manage",
     "events:manage",
     "visitors:manage",
+    "exports:manage",
+    "reports:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
   // meetings:manage/events:manage/visitors:manage below (mirrors
   // members:manage — see requireChapterAccess in src/lib/auth/rbac.ts).
+  // exports:manage follows the same scoped pattern (brief §45: "Chapter
+  // Admin can export ONLY their chapter") — granted via chapter scoping, not
+  // a blanket row here. reports:manage (the weekly-report recipient/schedule
+  // config) is NOT scoped the same way — the brief never gives Chapter Admin
+  // a role in that configuration, only in exporting their own chapter's data.
   CHAPTER_ADMIN: [],
   MEMBER: [],
 };
@@ -188,6 +197,15 @@ async function main() {
       create: content,
     });
   }
+
+  // Weekly report schedule (brief §46) — singleton row, disabled by default.
+  // No recipients seeded ("do not hardcode recipients") — added via
+  // /admin/reports whenever real inboxes exist to send to.
+  await db.weeklyReportSettings.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton", isEnabled: false, dayOfWeek: 1 },
+  });
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
   const seedPassword = process.env.SEED_SUPER_ADMIN_PASSWORD;

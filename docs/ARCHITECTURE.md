@@ -371,6 +371,75 @@ not a slot claim. Turning visitor interest into an actual application is still a
 registration was deliberately kept from auto-creating a `MembershipApplication`, since the
 brief treats them as genuinely separate stages of the funnel (§17 vs §23-25).
 
+### Reporting, exports & weekly reports (Phase 9)
+**One export engine, two callers.** `src/lib/reports/member-export.ts` is the single source of
+truth for the Weekly Member Export's row set and rendering (brief §44) — `buildMemberExportRows()`
+queries Member joined to Category (and optionally Chapter/Company), and `toCsv()`/`toXlsxBuffer()`/
+`toPdfBuffer()` render the same rows three ways. `/api/admin/exports/members` (the on-demand
+download) is the only caller today; once Phase 13 wires an actual sender, the weekly-report path
+calls the exact same functions rather than duplicating the query or the column list, so the two
+can never drift apart on what "the export" contains.
+
+**Excel via `exceljs`, PDF via `pdfkit`** — both pure-JS, no native bindings, chosen the same way
+prior phases picked a dependency (Playwright, `marked`): smallest thing that does the job, not the
+most feature-complete option. The PDF path hand-draws a simple paginating table rather than using a
+table-layout plugin — the export is a fixed 4-6 column report, not general document layout, so a
+plugin dependency wasn't worth it. `exceljs` pulled in a vulnerable transitive `uuid@8` (moderate
+severity, unrelated to anything this app does with it — internal use only, for conditional-
+formatting rule IDs); overridden to `uuid@^11.1.1` in `package.json`, same pattern as Phase 0's
+`mysql2`/`deepmerge-ts` overrides for a Prisma-tooling transitive dependency.
+
+**Export permission is scoped like Members/Meetings/Events/Visitors, not like Reports.**
+`exports:manage` follows the established `requireChapterAccess()`/`getChapterScope()` pattern —
+Chapter Admin gets it via chapter scoping (brief §45: "Chapter Admin can export ONLY their
+chapter"), no blanket `RolePermission` row. `reports:manage` (the weekly-report recipient/schedule
+config on `/admin/reports`) is a **separate**, blanket-only permission — brief §45 only ever
+describes Chapter Admin's role as *exporting*, never as configuring who else receives the
+automated report, so giving both nav items the same permission key would have made "Reports" show
+up for Chapter Admin too via the sidebar's chapter-scoped-permission list. Two keys, one for each
+brief-described capability, kept that distinction real instead of papering over it in the UI layer.
+
+**The export route re-derives scope from the session, not the query string.** `chapterId` in
+`/api/admin/exports/members`'s query params is honored only when the caller holds the blanket
+`exports:manage` permission (i.e., Central/Super Admin picking which chapter, or "all" for a
+master export); a Chapter Admin's `chapterId` filter is always their own from `getChapterScope()`,
+regardless of what the URL says — verified by actually hand-crafting a spoofed request during
+Phase 9 testing (see `docs/PHASES.md`), the same "never trust the last render" discipline
+`registerVisitor` (Phase 8) and `submitApplication` (Phase 7) already established for public
+mutations, now applied to an authenticated read.
+
+**Weekly report automation is deliberately not built yet.** Brief §46 itself says the system
+"should eventually automatically generate and email" the report — Phase 9 builds the configurable
+recipients and schedule (`WeeklyReportRecipient`/`WeeklyReportSettings`, both real, admin-editable,
+"do not hardcode recipients" satisfied literally) but does not send anything automatically.
+This mirrors Phase 7 and Phase 8, both of which built complete workflows around data that
+brief-obviously wants an email sent about (application confirmations, visitor confirmations) and
+still deferred the actual sending to Phase 13 ("Email/Notification Automation") rather than
+half-build email infra piecemeal across every phase that produces something worth emailing.
+`WeeklyReportSettings.isEnabled` exists and is admin-toggleable now, but has no effect until
+Phase 13 wires a real sender on top of it — flagging this explicitly, the same way Phase 5 flagged
+its Markdown-sanitization gap, so it isn't mistaken for working automation later.
+
+**Dashboard metrics scope down for Chapter Admin, not just filter down.** `getDashboardMetrics()`
+(`src/lib/dashboard/metrics.ts`) returns a materially different, smaller shape for a chapter scope
+rather than the same fields pre-filtered — Total companies, Membership applications, Blog activity,
+and Recent admin activity are all omitted for Chapter Admin, not shown-as-zero, because Chapter
+Admin holds no `companies:manage`/`applications:manage`/`audit_log:view` permission anywhere else
+in this admin. Showing a dashboard count for a domain a Chapter Admin can never open the detail
+view for would be a new inconsistency this phase introduced, not a helpful summary — brief §11's
+"Chapter Admin can only access their assigned chapter" is read here as applying to what they can
+*see*, not just what they can edit.
+
+**"New leads" is the one brief §39 base-list metric this phase omits.** The Leads system (brief
+§35) has no phase of its own in the brief's own Phase Structure table (§70) — it isn't Phase 9's
+"Reporting + Exports + Weekly Reports," and nothing else claims it either (chatbot lead capture in
+Phase 12 covers one lead *source*, not the general Leads model brief §35 describes). Building a
+Leads model now, just to populate one dashboard tile, would be exactly the kind of early
+future-phase feature brief §72 warns against. Following the Phase 1 precedent (an honest "coming
+soon" over a fabricated number), the tile is simply absent rather than showing a fake zero.
+Whichever future phase does add Leads should also give this dashboard tile a home — noted in both
+here and the Phase 9 follow-ups so it isn't lost.
+
 ### Deployment
 Vercel, per the brief. Environments: development (local), staging, production — each with its
 own Neon database branch/project and its own env vars (§7). Never develop against production
@@ -399,6 +468,7 @@ they aren't lost, with the phase they'd first block:
 | Real Neon (or other managed Postgres) connection string | Phase 2 (before staging/prod) | Currently running against a local `prisma dev` database — see Phase 2 entry in `docs/PHASES.md`. Migrations are already tracked in `prisma/migrations/` and will apply cleanly to a real database whenever one exists. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII — placeholder pages exist (`/privacy`, `/terms`) but must not launch with AI-drafted legal text unreviewed. |
+| Leads system (brief §35) has no phase of its own | Noticed in Phase 9 | The brief's Phase Structure table (§70) never assigns brief §35's general Leads model to a phase — Phase 12's chatbot lead capture covers one source, not the whole thing. Phase 9's admin dashboard (brief §39) omits the "New leads" tile rather than fabricate a number until this gets a real home; see `docs/PHASES.md` Phase 9. |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)
 
