@@ -9,13 +9,20 @@ import { TrackedAnchor } from "@/components/analytics/tracked-anchor";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_URL } from "@/lib/site";
+import type { GalleryEntry } from "@/lib/members/profile-fields";
 
 export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
 
 async function getMember(slug: string) {
   return db.member.findFirst({
     where: { slug, status: "ACTIVE" },
-    include: { company: true, chapter: true, category: true, leadershipRoles: { include: { role: true } } },
+    include: {
+      company: true,
+      chapter: true,
+      category: true,
+      leadershipRoles: { include: { role: true } },
+      testimonials: { where: { status: "APPROVED" }, orderBy: [{ featured: "desc" }, { createdAt: "desc" }] },
+    },
   });
 }
 
@@ -55,6 +62,11 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     { label: "Email", value: member.email, href: member.email ? `mailto:${member.email}` : undefined },
     { label: "Website", value: member.website, href: member.website ?? undefined },
   ].filter((item) => item.value);
+
+  const photos: GalleryEntry[] = Array.isArray(member.photos) ? (member.photos as GalleryEntry[]) : [];
+  const videos: GalleryEntry[] = Array.isArray(member.videos) ? (member.videos as GalleryEntry[]) : [];
+  const successStories = member.testimonials.filter((t) => t.type === "SUCCESS_STORY");
+  const otherTestimonials = member.testimonials.filter((t) => t.type !== "SUCCESS_STORY");
 
   const socialLinks = [
     { label: "Instagram", href: member.instagramUrl },
@@ -146,6 +158,68 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
                     Watch video →
                   </a>
                 ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {photos.length > 0 ? (
+            <div>
+              <SectionLabel>Photos</SectionLabel>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {photos.map((photo, i) => (
+                  <figure key={i} className="overflow-hidden rounded-sm border border-emerald-700">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary admin-uploaded/R2 URL, not a next/image-managed asset */}
+                    <img src={photo.url} alt={photo.caption || member.name} className="aspect-[4/3] w-full object-cover" />
+                    {photo.caption ? <figcaption className="p-2 text-xs text-slate-400">{photo.caption}</figcaption> : null}
+                  </figure>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {videos.length > 0 ? (
+            <div>
+              <SectionLabel>Videos</SectionLabel>
+              <div className="mt-3 flex flex-col gap-2">
+                {videos.map((video, i) => (
+                  <a key={i} href={video.url} target="_blank" rel="noopener noreferrer" className="text-gold-400 hover:underline">
+                    {video.caption || "Watch video"} →
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {otherTestimonials.length > 0 ? (
+            <div>
+              <SectionLabel>What people say</SectionLabel>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {otherTestimonials.map((t) => (
+                  <div key={t.id} className="rounded-sm border border-emerald-700 p-5">
+                    <p className="text-slate-300">&ldquo;{t.content}&rdquo;</p>
+                    <p className="mt-3 text-sm text-ivory-100">{t.name}</p>
+                    {t.role || t.company ? (
+                      <p className="text-xs text-slate-400">{[t.role, t.company].filter(Boolean).join(" · ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {successStories.length > 0 ? (
+            <div>
+              <SectionLabel>Success stories</SectionLabel>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {successStories.map((t) => (
+                  <div key={t.id} className="rounded-sm border border-emerald-700 p-5">
+                    <p className="text-slate-300">&ldquo;{t.content}&rdquo;</p>
+                    <p className="mt-3 text-sm text-ivory-100">{t.name}</p>
+                    {t.role || t.company ? (
+                      <p className="text-xs text-slate-400">{[t.role, t.company].filter(Boolean).join(" · ")}</p>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </div>
           ) : null}

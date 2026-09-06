@@ -7,7 +7,6 @@ import { InsideBwf } from "@/components/marketing/inside-bwf";
 import { StatementBanner } from "@/components/marketing/statement-banner";
 import { LatestInsights } from "@/components/marketing/latest-insights";
 import { TestimonialsSection } from "@/components/marketing/testimonials-section";
-import { ComingSoonSection } from "@/components/marketing/coming-soon-section";
 import { MembershipCta } from "@/components/marketing/membership-cta";
 
 // Phase 14 (brief §60 — caching) — ceiling on top of the existing
@@ -26,14 +25,8 @@ export default function Home() {
       <FindProfessional />
       <InsideBwf />
       <StatementBanner lines={["Business built", "through relationships."]} />
-      <LatestInsights />
-      <ComingSoonSection
-        number="07"
-        label="Meetings & Events"
-        title="Upcoming chapter meetings and BWF events."
-        note="Event listings and online registration ship in Phase 8."
-      />
       <TestimonialsSection />
+      <LatestInsights />
       <MembershipCta />
     </>
   );

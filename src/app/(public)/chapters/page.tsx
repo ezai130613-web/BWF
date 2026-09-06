@@ -34,7 +34,7 @@ export default async function ChaptersPage() {
           <div className="mt-16 border-y border-emerald-700/60 py-12">
             <SectionLabel>How BWF Meetings Work</SectionLabel>
             {content["meetings.intro"] ? (
-              <p className="mt-4 max-w-3xl text-slate-300">{content["meetings.intro"]}</p>
+              <p className="mt-4 max-w-none text-slate-300">{content["meetings.intro"]}</p>
             ) : null}
             {meetingDetails.length > 0 ? (
               <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">

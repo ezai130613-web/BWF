@@ -1692,3 +1692,96 @@ Migration" is Phase 17 as of this phase.
   to the member-facing side).
 - A member can only submit fresh articles, not request an edit to one that's already published —
   out of scope for brief §31's own workflow, which describes submission, not post-publish editing.
+
+---
+
+## Phase 17 — Member Profile Media & Testimonials
+
+**Status:** Complete
+
+**Numbering note:** built at the user's explicit request (not from a brief phase table entry —
+closest to brief §19's public-profile fields, extending them). Same category as Phase 15/16: not
+in the brief's own Phase Structure table, numbered here by build order. The brief's "Phase 15 —
+Legacy Migration" (called Phase 17 in Phase 16's note) slides to Phase 18 whenever it's next.
+
+**What shipped:**
+- Schema: `Member.photos`/`Member.videos` (`Json?`, each `[{url, caption}]` — same precedent as
+  `Blog.faq`, not a new child table) and `Testimonial.memberId`/`member` (mirrors the existing
+  `chapterId`/`chapter` pair exactly). A member's "success stories" are simply their `Testimonial`
+  rows with `type: SUCCESS_STORY` — no new model needed, since that enum value already existed.
+  Migration `add_member_gallery_and_testimonial_link`.
+- Admin `/admin/members/[id]`: a new "Gallery" section on `EditMemberForm` (repeatable photo/video
+  lists, reusing `MediaUploadField`/`/api/uploads` unchanged — extended with an optional
+  `onValueChange` callback so several instances can compose into one serialized JSON array, the
+  same technique `Blog.faq`'s editor already used) and a new `MemberTestimonials` panel below it
+  (this member's own testimonials/success stories, same Approve/Reject/Feature controls
+  `/admin/testimonials` already has, plus an inline add form pre-scoped to this member).
+- Public `/members/[slug]`: photo grid, video link list, "What people say," and "Success stories"
+  sections (the last two split from one `testimonials` query by `type`). Hero photo stays exactly
+  as before — `src={member.photoUrl}`, falling back to the standard generic `MediaPlaceholder`
+  when unset.
+- **False start, corrected on direct user feedback**: a first pass also built 15 hand-authored SVG
+  category illustrations plus a keyword-matched fallback (`src/lib/members/photos.ts`,
+  `getCategoryPhoto()`) so a member with no `photoUrl` would show a themed graphic instead of the
+  plain placeholder. The user rejected this outright ("remove all the images and just keep
+  placeholders") — reverted in full: the SVGs, the lib file, and the hero's fallback wiring are all
+  gone; the placeholder behaves exactly as it did before this phase.
+- **Content backfill, corrected on direct user feedback**: all 126 real members had a blank `bio`.
+  The first version filled it with copy about being a Builders World Forum member ("brings
+  dedicated industry expertise to BWF's chapter network...") — the user rejected this too: an
+  "about" section must describe the member's actual company/category, not their BWF membership.
+  Rewritten with no mention of BWF/chapters/referral network at all — each bio now names the real
+  company and person and describes what that trade actually does, using ~15 keyword-matched trade
+  descriptions (plumbing/sanitaryware, electrical, civil, materials, professional services, etc. —
+  the same category-matching approach the (now-removed) illustration feature used, repurposed here
+  for text instead of images) against each member's real category name, with a dedicated phrasing
+  for the 2 sole-proprietor members whose company name matches their own. This is still a written
+  template, not per-company web research — that tradeoff (fast + safe vs. slow + inconsistent
+  results for small local businesses with no online footprint) was discussed and accepted earlier
+  in this phase; what changed is the template's subject, not its sourcing method.
+
+**Verification performed:**
+- `npx prisma migrate dev` applied cleanly against the real Neon database; `npm run
+  build`/`lint`/`typecheck` clean — reconfirmed clean again after both corrections above.
+- Ran the trade-description keyword matcher against all ~204 live category names (not a sample)
+  before running the real backfill and confirmed zero fall through to the generic description.
+- After the corrected backfill, queried the database directly and confirmed 0 of 126 bios still
+  mention "Builders World Forum," and spot-checked several real members' new bios read as genuine
+  descriptions of their company/category.
+- **Full admin flow driven live through a real browser session**, not just reasoned about: created
+  a throwaway Super Admin account and a throwaway test member (both deleted afterward, along with
+  their test company and testimonials — confirmed zero leftover rows via a count query), logged in
+  through the actual two-step OTP flow, added two gallery photos and a video with captions through
+  the real Gallery UI, saved, and confirmed via a direct database read that the JSON arrays
+  persisted correctly. Published a success-story testimonial through the new inline panel and
+  confirmed it appeared with working Approve/Reject/Feature controls.
+- **Caught a real test-script mistake mid-verification, not an app bug**: the first save attempt
+  used an unscoped locator that filled the wrong field (the member's main `photoUrl` instead of the
+  Gallery's first photo slot) — traced by reading the database directly rather than trusting the
+  screenshot, then fixed by targeting each `MediaUploadField`'s actual `name` attribute instead of
+  a generic placeholder selector. Same "isolate before concluding the app is wrong" discipline this
+  log has already established in earlier phases.
+- Confirmed the public profile page for the same test member rendered the just-added photo grid,
+  video link, and success-story card correctly.
+
+**Known issues / follow-ups:**
+- The shared `optionalText()` transform used across every `Member` text field (pre-existing, not
+  introduced here) turns a form's empty-string submission into `undefined`, which Prisma's
+  `update()` treats as "don't touch this field" — so an admin cannot currently blank out an
+  already-filled text field (bio, designation, etc.) by clearing it and saving; they can only
+  overwrite it with different non-empty text. Noticed while testing the Gallery feature, not
+  something this phase changed or was asked to fix.
+- The generic `/admin/testimonials` page's `CreateTestimonialForm` still has no Member picker
+  (only Chapter) — member-linked testimonials are addable only from within that member's own
+  `/admin/members/[id]` page (where `memberId` is pre-scoped, avoiding a 126-row dropdown). Adding
+  one to the global form would need a real search/combobox rather than a plain `<select>` at this
+  member count — left for whenever that specific workflow is actually requested.
+- The bio backfill's trade-description keyword rules are best-effort coverage for the categories
+  that exist today; a brand-new category an admin adds later either matches an existing keyword or
+  falls back to a generic "serving Chennai's construction and infrastructure sector" phrasing —
+  same "no entry yet" spirit as `chapters/photos.ts`'s slug lookup elsewhere in this codebase.
+- Bios are still a written template per trade, not real per-company research — accurate about the
+  category in general, not about any fact specific to that one business (years active, specific
+  projects, etc.). Upgrading to real research would need a per-company web-search pass, explicitly
+  out of scope for this phase (many of the 126 are small local businesses with little to no online
+  presence, so results would be inconsistent).

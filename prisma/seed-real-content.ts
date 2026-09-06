@@ -148,7 +148,7 @@ const WEBSITE_CONTENT: { key: string; label: string; section: string; value: str
     label: "How BWF Meetings Work — introduction",
     section: "Chapters & Meetings",
     value:
-      "BWF chapter meetings are structured professional networking meetings created specifically for the construction and infrastructure ecosystem. Regular chapter meetings currently take place twice every month, on the second and fourth Thursday.",
+      "BWF chapter meetings are structured professional networking meetings created specifically for the construction and infrastructure ecosystem. Regular chapter meetings currently take place twice every month, with exact dates varying by chapter.",
   },
   {
     key: "meetings.details",
@@ -215,7 +215,7 @@ const SITE_FAQS: { question: string; answer: string }[] = [
   },
   {
     question: "How often are BWF meetings held?",
-    answer: "Regular BWF chapter meetings currently take place twice every month, on the second and fourth Thursday.",
+    answer: "Regular BWF chapter meetings currently take place twice every month. The exact meeting dates vary by chapter.",
   },
   {
     question: "Is attendance compulsory?",

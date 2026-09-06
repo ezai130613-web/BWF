@@ -17,7 +17,7 @@ export async function LatestInsights() {
     <section className="bg-emerald-800 py-28">
       <Container>
         <div className="flex items-end justify-between gap-4">
-          <SectionLabel number="06">Insights</SectionLabel>
+          <SectionLabel number="07">Insights</SectionLabel>
           <Link href="/insights" className="text-sm font-medium text-gold-400 hover:underline">
             View all →
           </Link>

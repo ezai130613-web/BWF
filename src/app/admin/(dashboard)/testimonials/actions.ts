@@ -11,6 +11,7 @@ function revalidateTestimonialPaths() {
   revalidatePath("/testimonials");
   revalidatePath("/");
   revalidatePath("/chapters/[slug]", "page");
+  revalidatePath("/members/[slug]", "page");
 }
 
 const TYPES = ["MEMBER", "VISITOR", "CLIENT", "VIDEO", "SUCCESS_STORY"] as const;
@@ -22,6 +23,7 @@ const createSchema = z.object({
   content: z.string().min(1, "Testimonial text is required"),
   type: z.enum(TYPES),
   chapterId: z.string().optional(),
+  memberId: z.string().optional(),
   imageUrl: z.string().optional(),
   videoUrl: z.string().optional(),
   consent: z.literal("on").optional(),
@@ -35,11 +37,11 @@ export async function createTestimonialDirect(_prevState: { error?: string } | u
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   if (!parsed.data.consent) return { error: "Consent is required before this can be published." };
 
-  const { consent, chapterId, ...rest } = parsed.data;
+  const { consent, chapterId, memberId, ...rest } = parsed.data;
   void consent;
 
   const testimonial = await db.testimonial.create({
-    data: { ...rest, chapterId: chapterId || undefined, status: "APPROVED", consent: true },
+    data: { ...rest, chapterId: chapterId || undefined, memberId: memberId || undefined, status: "APPROVED", consent: true },
   });
 
   await logActivity({

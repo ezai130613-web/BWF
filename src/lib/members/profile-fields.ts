@@ -1,4 +1,8 @@
 import { z } from "zod";
+import type { Prisma } from "@/generated/prisma/client";
+
+const galleryEntrySchema = z.object({ url: z.string(), caption: z.string().optional() });
+export type GalleryEntry = z.infer<typeof galleryEntrySchema>;
 
 /**
  * The exact set of Member fields an admin can edit directly (see
@@ -34,6 +38,8 @@ export const memberProfileFieldsSchema = z.object({
   photoUrl: optionalText(),
   brochureUrl: optionalText(),
   videoUrl: optionalText(),
+  photos: optionalText(),
+  videos: optionalText(),
 });
 
 export type MemberProfileFields = z.infer<typeof memberProfileFieldsSchema>;
@@ -62,7 +68,17 @@ export const MEMBER_PROFILE_FIELD_LABELS: Record<keyof MemberProfileFields, stri
   photoUrl: "Photo URL",
   brochureUrl: "Brochure URL (PDF)",
   videoUrl: "Video URL",
+  photos: "Photo gallery",
+  videos: "Video gallery",
 };
+
+/** Parses a JSON-encoded GalleryEntry[] string (from a hidden form input, same technique as Blog.faq) into the array Prisma's Json column expects, dropping any entry with a blank url. Returns undefined for an empty/blank input so an untouched gallery field doesn't wipe existing data. */
+function parseGalleryEntries(raw: string | undefined): Prisma.InputJsonValue | undefined {
+  if (!raw) return undefined;
+  const entries = z.array(galleryEntrySchema).parse(JSON.parse(raw));
+  const filtered = entries.filter((e) => e.url.trim());
+  return filtered as Prisma.InputJsonValue;
+}
 
 /** Normalizes a parsed form submission into the plain values Member.update()/JSON storage expect ("" -> undefined for the optional number, "" already -> undefined for optionalText). */
 export function normalizeMemberProfileFields(data: MemberProfileFields) {
@@ -70,5 +86,7 @@ export function normalizeMemberProfileFields(data: MemberProfileFields) {
     ...data,
     email: data.email || undefined,
     yearsInBusiness: data.yearsInBusiness === "" ? undefined : data.yearsInBusiness,
+    photos: parseGalleryEntries(data.photos),
+    videos: parseGalleryEntries(data.videos),
   };
 }

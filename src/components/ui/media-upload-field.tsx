@@ -25,14 +25,23 @@ export function MediaUploadField({
   defaultValue,
   kind,
   helperText,
+  onValueChange,
 }: {
   label: string;
   name: string;
   defaultValue?: string | null;
   kind: MediaKind;
   helperText?: string;
+  /** Fires on every value change (typed or uploaded) — for composing several
+   * instances into one parent array (see the Member gallery editor) rather
+   * than relying solely on the uncontrolled `name` field at submit time. */
+  onValueChange?: (value: string) => void;
 }) {
-  const [value, setValue] = useState(defaultValue ?? "");
+  const [value, setValueState] = useState(defaultValue ?? "");
+  const setValue = (next: string) => {
+    setValueState(next);
+    onValueChange?.(next);
+  };
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

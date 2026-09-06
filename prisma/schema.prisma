@@ -294,6 +294,14 @@ model Member {
   brochureUrl String?
   videoUrl    String?
 
+  // --- Phase 17 — photo/video galleries, each a JSON array of
+  // { url: string, caption?: string }. Same shape/precedent as Blog.faq —
+  // an ordered list of small records edited inside this one record's form,
+  // not a separate child table (no per-parent relational child-row CRUD
+  // exists anywhere else in this schema either).
+  photos Json?
+  videos Json?
+
   /// Phase 11 — set once an admin grants this member portal login access
   /// (brief §12: "Members eventually receive login access"). Null until
   /// then; a Member can exist for years with no login, same as it did in
@@ -332,6 +340,7 @@ model Member {
   profileRevisions  MemberProfileRevision[]
   leads             Lead[]
   submittedArticles Blog[]
+  testimonials      Testimonial[]
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -588,11 +597,19 @@ model Testimonial {
   chapterId String?
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
 
+  /// Phase 17 — links a testimonial/success story to the specific Member
+  /// it's about, mirroring the existing chapterId/chapter pair exactly.
+  /// Nullable: a testimonial can still be chapter-only (or neither) same as
+  /// before this field existed.
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status, featured])
   @@index([chapterId])
+  @@index([memberId])
   @@map("testimonials")
 }
 

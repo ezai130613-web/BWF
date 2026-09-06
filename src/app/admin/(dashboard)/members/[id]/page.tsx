@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { EditMemberForm } from "@/components/admin/edit-member-form";
 import { MemberPortalAccess } from "@/components/admin/member-portal-access";
 import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-revision-form";
+import { MemberTestimonials } from "@/components/admin/member-testimonials";
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,6 +20,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
   const pendingRevision = await db.memberProfileRevision.findFirst({
     where: { memberId: member.id, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const testimonials = await db.testimonial.findMany({
+    where: { memberId: member.id },
     orderBy: { createdAt: "desc" },
   });
 
@@ -48,6 +54,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       ) : null}
 
       <EditMemberForm member={member} />
+
+      <MemberTestimonials memberId={member.id} testimonials={testimonials} />
     </div>
   );
 }
