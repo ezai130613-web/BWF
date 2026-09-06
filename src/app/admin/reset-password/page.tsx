@@ -2,7 +2,7 @@ import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export default function AdminResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
           Builders World Forum
@@ -16,6 +16,6 @@ export default function AdminResetPasswordPage() {
           />
         </div>
       </div>
-    </div>
+    </main>
   );
 }

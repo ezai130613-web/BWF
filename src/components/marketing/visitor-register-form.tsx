@@ -57,7 +57,7 @@ export function VisitorRegisterForm({
           <input
             name="name"
             required
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
@@ -65,7 +65,7 @@ export function VisitorRegisterForm({
           <input
             name="phone"
             required
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
@@ -74,14 +74,14 @@ export function VisitorRegisterForm({
             name="email"
             type="email"
             required
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
           Company (optional)
           <input
             name="company"
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
@@ -89,7 +89,7 @@ export function VisitorRegisterForm({
           <select
             name="categoryId"
             required
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           >
             <option value="">Select…</option>
             {categories.map((c) => (
@@ -103,7 +103,7 @@ export function VisitorRegisterForm({
         {fixedChapter ? (
           <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
             Chapter
-            <p className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100">
+            <p className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100">
               {fixedChapter.name}
             </p>
           </div>
@@ -113,7 +113,7 @@ export function VisitorRegisterForm({
             <select
               name="chapterId"
               required
-              className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+              className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
             >
               <option value="">Select…</option>
               {chapters?.map((c) => (
@@ -129,7 +129,7 @@ export function VisitorRegisterForm({
           Referred by a member? (optional)
           <select
             name="referringMemberId"
-            className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           >
             <option value="">None</option>
             {members.map((m) => (
@@ -146,7 +146,7 @@ export function VisitorRegisterForm({
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-navy-950 hover:bg-gold-400 disabled:opacity-50"
+        className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
       >
         {pending ? "Registering…" : "Register to visit"}
       </button>

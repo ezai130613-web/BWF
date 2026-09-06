@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
+import { getChapterPhotos } from "@/lib/chapters/photos";
 import { TrackedButton } from "@/components/analytics/tracked-button";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -59,8 +60,14 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
     <div>
       <JsonLd data={crumbs} />
       <div className="relative">
-        <MediaPlaceholder brief={`${chapter.name} — cinematic hero, meeting venue or member work`} className="h-[50vh]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/50 to-navy-950/10" />
+        <PhotoSlot
+          src={getChapterPhotos(chapter.slug)?.hero}
+          alt={chapter.name}
+          brief={`${chapter.name} — cinematic hero, meeting venue or member work`}
+          unoptimized={false}
+          className="h-[50vh]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/50 to-emerald-950/10" />
         <Container className="absolute inset-x-0 bottom-0 pb-12">
           <SectionLabel>Chapter</SectionLabel>
           <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{chapter.name}</h1>
@@ -82,7 +89,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
               <SectionLabel>Leadership</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {chapter.leadership.map((entry) => (
-                  <div key={entry.id} className="rounded-sm border border-navy-700 p-4">
+                  <div key={entry.id} className="rounded-sm border border-emerald-700 p-4">
                     <p className="text-ivory-100">{entry.member.name}</p>
                     <p className="mt-1 text-sm text-gold-400">{entry.role.label}</p>
                   </div>
@@ -98,7 +105,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                 <Link
                   key={member.id}
                   href={`/members/${member.slug}`}
-                  className="rounded-sm border border-navy-700 p-4 transition-colors hover:border-gold-500/50"
+                  className="rounded-sm border border-emerald-700 p-4 transition-colors hover:border-gold-500/50"
                 >
                   <p className="text-ivory-100">{member.name}</p>
                   <p className="mt-1 text-sm text-slate-400">
@@ -107,7 +114,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                 </Link>
               ))}
               {chapter.members.length === 0 ? (
-                <p className="text-sm text-slate-500">No members listed yet.</p>
+                <p className="text-sm text-slate-400">No members listed yet.</p>
               ) : null}
             </div>
           </div>
@@ -117,11 +124,11 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
               <SectionLabel>Testimonials</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {chapter.testimonials.map((t) => (
-                  <div key={t.id} className="rounded-sm border border-navy-700 p-5">
+                  <div key={t.id} className="rounded-sm border border-emerald-700 p-5">
                     <p className="text-slate-300">&ldquo;{t.content}&rdquo;</p>
                     <p className="mt-3 text-sm text-ivory-100">{t.name}</p>
                     {t.role || t.company ? (
-                      <p className="text-xs text-slate-500">{[t.role, t.company].filter(Boolean).join(" · ")}</p>
+                      <p className="text-xs text-slate-400">{[t.role, t.company].filter(Boolean).join(" · ")}</p>
                     ) : null}
                   </div>
                 ))}
@@ -132,16 +139,16 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
 
         <aside className="flex flex-col gap-8">
           {chapter.meetings.length > 0 ? (
-            <div className="rounded-sm border border-navy-700 p-6">
+            <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Upcoming meetings</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
                 {chapter.meetings.map((meeting) => (
-                  <div key={meeting.id} className="rounded-sm border border-navy-800 p-4">
+                  <div key={meeting.id} className="rounded-sm border border-emerald-800 p-4">
                     <p className="text-ivory-100">{meeting.title}</p>
                     <p className="mt-1 text-sm text-slate-400">
                       {meeting.startsAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                     </p>
-                    {meeting.venue ? <p className="text-sm text-slate-500">{meeting.venue}</p> : null}
+                    {meeting.venue ? <p className="text-sm text-slate-400">{meeting.venue}</p> : null}
                     {meeting.visitorRegistrationEnabled ? (
                       <Link href={`/visit/${meeting.id}`} className="mt-2 inline-block text-sm text-gold-400 hover:text-gold-300">
                         Register to visit →
@@ -154,7 +161,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           ) : null}
 
           {(chapter.meetingSchedule || chapter.meetingVenue) ? (
-            <div className="rounded-sm border border-navy-700 p-6">
+            <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Meetings</SectionLabel>
               {chapter.meetingSchedule ? <p className="mt-4 text-ivory-100">{chapter.meetingSchedule}</p> : null}
               {chapter.meetingVenue ? <p className="mt-1 text-sm text-slate-400">{chapter.meetingVenue}</p> : null}
@@ -167,7 +174,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
             </div>
           ) : null}
 
-          <div className="rounded-sm border border-navy-700 p-6">
+          <div className="rounded-sm border border-emerald-700 p-6">
             <SectionLabel>Available categories</SectionLabel>
             <div className="mt-4 flex flex-wrap gap-2">
               {availableCategories.map((category) => (
@@ -176,7 +183,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                 </span>
               ))}
               {availableCategories.length === 0 ? (
-                <p className="text-sm text-slate-500">No open categories in this chapter right now.</p>
+                <p className="text-sm text-slate-400">No open categories in this chapter right now.</p>
               ) : null}
             </div>
           </div>

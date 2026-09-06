@@ -14,7 +14,7 @@ export default async function FeedbackPage() {
 
   return (
     <div className="py-24">
-      <Container className="max-w-xl">
+      <Container>
         <SectionLabel>Feedback</SectionLabel>
         <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">
           Tell us what&rsquo;s on your mind.

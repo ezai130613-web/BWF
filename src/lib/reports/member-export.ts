@@ -81,6 +81,16 @@ export async function toXlsxBuffer(rows: MemberExportRow[], includeExtra: boolea
 export function toPdfBuffer(rows: MemberExportRow[], includeExtra: boolean, title: string): Promise<Buffer> {
   const columns = columnsFor(includeExtra);
   const columnWidth = 500 / columns.length;
+  // Columns sit edge-to-edge with no gap between them, so a label/value
+  // that nearly fills its column (found live: "Membership Status" measures
+  // 82.9pt against an 83.3pt column in the 6-column layout) visually runs
+  // straight into the next column's text with zero separation — not a
+  // wrapping bug, a legibility one. Text is drawn `textWidth`-wide, always
+  // narrower than the full column, while columns themselves stay
+  // `columnWidth` apart so the table's total width and alignment don't
+  // change.
+  const columnGutter = 6;
+  const textWidth = columnWidth - columnGutter;
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 40, size: "A4" });
@@ -96,27 +106,50 @@ export function toPdfBuffer(rows: MemberExportRow[], includeExtra: boolean, titl
 
     const startX = doc.x;
     let y = doc.y;
-    const rowHeight = 20;
+    const minRowHeight = 20;
+    // Bottom of the printable area, not a magic number, so this stays
+    // correct if the page size/margin ever changes.
+    const pageBottom = doc.page.height - doc.page.margins.bottom;
 
     function drawHeader() {
       doc.font("Helvetica-Bold").fontSize(9).fillColor("#000");
+      // Same fixed-height bug as the data rows, just for the header label
+      // itself — found live once the gutter fix above pushed "Membership
+      // Status" (6-column layout) just past its column's one-line width,
+      // wrapping it to two lines that the old fixed minRowHeight didn't
+      // reserve space for, so the divider line underneath overlapped it.
+      const headerHeight = Math.max(minRowHeight, ...columns.map((c) => doc.heightOfString(c.label, { width: textWidth })));
       columns.forEach((c, i) => {
-        doc.text(c.label, startX + i * columnWidth, y, { width: columnWidth, ellipsis: true });
+        doc.text(c.label, startX + i * columnWidth, y, { width: textWidth });
       });
-      y += rowHeight;
+      y += headerHeight;
       doc.moveTo(startX, y - 4).lineTo(startX + 500, y - 4).strokeColor("#ccc").stroke();
       doc.font("Helvetica").fontSize(9).fillColor("#000");
     }
 
     drawHeader();
     for (const row of rows) {
-      if (y > 760) {
+      const cellTexts = columns.map((c) => String(row[c.key] ?? ""));
+      // Backlog #16 — a fixed 20pt row height silently overlapped whenever a
+      // cell's real content (a long category/company name, mainly) wrapped
+      // to more than one line within its narrow column: PDFKit wraps by
+      // default (the `ellipsis: true` this replaced only truncates a
+      // single line already constrained by `height`, which nothing here
+      // set, so it never actually took effect). Measuring every cell's real
+      // wrapped height and using the tallest is more correct than
+      // truncating real operational data (company/category names) down to
+      // whatever fits on one line — confirmed with a live 500-row export
+      // containing genuinely long values, not just the ~4-row smoke test
+      // this had before.
+      const rowHeight = Math.max(minRowHeight, ...cellTexts.map((text) => doc.heightOfString(text, { width: textWidth })));
+
+      if (y + rowHeight > pageBottom) {
         doc.addPage();
         y = doc.y;
         drawHeader();
       }
       columns.forEach((c, i) => {
-        doc.text(String(row[c.key] ?? ""), startX + i * columnWidth, y, { width: columnWidth, ellipsis: true });
+        doc.text(cellTexts[i], startX + i * columnWidth, y, { width: textWidth });
       });
       y += rowHeight;
     }

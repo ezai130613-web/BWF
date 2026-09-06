@@ -33,6 +33,8 @@ const PERMISSIONS = [
   { key: "exports:manage", label: "Export member data (Excel/CSV/PDF)" },
   { key: "reports:manage", label: "Manage weekly report recipients & schedule" },
   { key: "chatbot:manage", label: "Manage Ask BWF chatbot settings & leads" },
+  { key: "leads:manage", label: "Manage the general Leads system (brief §35)" },
+  { key: "analytics:view", label: "View Admin Analytics (brief §51)" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -58,6 +60,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "exports:manage",
     "reports:manage",
     "chatbot:manage",
+    "leads:manage",
+    "analytics:view",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
@@ -68,6 +72,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // a blanket row here. reports:manage (the weekly-report recipient/schedule
   // config) is NOT scoped the same way — the brief never gives Chapter Admin
   // a role in that configuration, only in exporting their own chapter's data.
+  // leads:manage is scoped the same way as exports:manage — a Chapter Admin
+  // sees/updates only leads with their own chapterId (src/lib/auth/rbac.ts's
+  // requireChapterAccess), never the chapterless ones (chatbot, unassigned
+  // waitlist enquiries), which stay Central/Super-Admin-only.
+  // analytics:view is NOT chapter-scoped at all — brief §51's "Admin
+  // Analytics" reads as a site-wide funnel/conversion view (Central/Super
+  // Admin only), not a per-chapter breakdown like Members/Visitors/Leads.
   CHAPTER_ADMIN: [],
   MEMBER: [],
 };
@@ -103,6 +114,10 @@ const CHAPTER_LEADERSHIP_ROLES = [
   { key: "VICE_PRESIDENT", label: "Vice President" },
   { key: "SECRETARY", label: "Secretary" },
   { key: "COORDINATOR", label: "Coordinator" },
+  { key: "DIRECTOR", label: "Director" },
+  { key: "TREASURER", label: "Treasurer" },
+  { key: "FOUNDER", label: "Founder" },
+  { key: "CO_FOUNDER", label: "Co-Founder" },
 ] as const;
 
 // Brief §30's suggested initial list — admin can add/edit via /admin/blog-categories.
@@ -211,7 +226,7 @@ async function main() {
 
   // Ask BWF chatbot settings (brief §37) — singleton row, disabled by
   // default until an admin turns it on at /admin/chatbot (and a real
-  // ANTHROPIC_API_KEY exists — see src/lib/chatbot/client.ts).
+  // OPENAI_API_KEY exists — see src/lib/chatbot/client.ts).
   await db.chatbotSettings.upsert({
     where: { id: "singleton" },
     update: {},

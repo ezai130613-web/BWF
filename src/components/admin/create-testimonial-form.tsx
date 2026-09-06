@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createTestimonialDirect } from "@/app/admin/(dashboard)/testimonials/actions";
+import { MediaUploadField } from "@/components/ui/media-upload-field";
 
 const initialState: { error?: string } = {};
 
@@ -50,6 +51,13 @@ export function CreateTestimonialForm({ chapters }: { chapters: { id: string; na
         Testimonial
         <textarea name="content" rows={3} required className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
       </label>
+      <MediaUploadField label="Photo (optional)" name="imageUrl" kind="image" />
+      <MediaUploadField
+        label="Video (optional)"
+        name="videoUrl"
+        kind="video"
+        helperText="For a Video-type testimonial — upload a file or paste a Google Drive link."
+      />
       <label className="flex items-center gap-2 text-sm text-neutral-700 sm:col-span-2">
         <input type="checkbox" name="consent" className="h-4 w-4" />
         Confirmed with the person that this can be displayed publicly

@@ -10,6 +10,7 @@ const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
   website: z.string().optional(),
   description: z.string().optional(),
+  logoUrl: z.string().optional(),
 });
 
 export async function createCompany(_prevState: { error?: string } | undefined, formData: FormData) {
@@ -19,6 +20,7 @@ export async function createCompany(_prevState: { error?: string } | undefined, 
     name: formData.get("name"),
     website: formData.get("website") || undefined,
     description: formData.get("description") || undefined,
+    logoUrl: formData.get("logoUrl") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 

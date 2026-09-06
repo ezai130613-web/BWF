@@ -19,7 +19,7 @@ export function AskBwfLauncher() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close Ask BWF chat" : "Open Ask BWF chat"}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gold-500 text-navy-950 shadow-lg shadow-black/30 transition-transform hover:scale-105"
+        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gold-500 text-emerald-950 shadow-lg shadow-black/30 transition-transform hover:scale-105"
       >
         {open ? (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6" aria-hidden="true">

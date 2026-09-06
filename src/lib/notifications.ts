@@ -127,6 +127,40 @@ Your requested profile update has been ${input.approved ? "approved and is now l
   });
 }
 
+/** Brief §31 — "Admin notified" the moment a member submits an article. */
+export async function notifyArticleSubmitted(input: { memberName: string; title: string; blogId: string }) {
+  const notifyAddress = adminNotificationAddress();
+  if (!notifyAddress) return;
+
+  await sendEmail({
+    to: notifyAddress,
+    subject: `New article submission — ${input.title}`,
+    text: `${input.memberName} submitted an article for review: "${input.title}".
+
+Review it at /admin/blogs/${input.blogId}.`,
+  });
+}
+
+export async function notifyArticleReviewed(input: {
+  memberName: string;
+  memberEmail: string;
+  title: string;
+  approved: boolean;
+  reviewNotes?: string;
+}) {
+  await sendEmail({
+    to: input.memberEmail,
+    subject: input.approved ? `Your article was approved — ${input.title}` : `Your article was not approved — ${input.title}`,
+    text: `Hi ${input.memberName},
+
+Your submitted article "${input.title}" has been ${input.approved ? "approved and published" : "reviewed and was not approved"}.${
+      input.reviewNotes ? `\n\nNote from BWF: ${input.reviewNotes}` : ""
+    }
+
+— Builders World Forum`,
+  });
+}
+
 export async function notifyChatbotLeadCaptured(input: {
   name: string;
   phone: string;

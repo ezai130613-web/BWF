@@ -79,7 +79,7 @@ it were a code problem.
   brief's editorial-serif + clean-sans pairing without licensing cost; Inter specifically because
   it's what Stripe/Linear/Notion use, matching the brief's explicit admin-panel quality bar.
 - **Color tokens** live in `src/app/globals.css` under `@theme` (Tailwind v4's CSS-first config):
-  `navy-950/900/800/700/600`, `gold-300/400/500/600`, `ivory-100/200`, `slate-400/500`. Public
+  `emerald-950/900/800/700/600`, `gold-300/400/500/600`, `ivory-100/200`, `slate-400/500`. Public
   site only for now — admin/member get their own lighter, denser token set when those phases
   land (brief §14 is explicit that admin should not inherit the theatrical public theme).
 - **Component primitives**: hand-built (`src/components/ui/`), not a component library —
@@ -89,11 +89,30 @@ it were a code problem.
   headless-primitives dependency wasn't worth the tradeoff yet. Revisit if Phase 2+ needs real
   overlay/dialog/combobox behavior (RBAC forms, admin tables) — Radix is the natural choice then
   since it doesn't impose visual opinions.
-- **Photography**: real photography isn't sourced yet (still an open item below). Every image
-  slot uses `<MediaPlaceholder brief="...">` — a textured gradient block with a corner label
-  describing what should be shot/sourced for that exact slot. Swapping in real photography later
-  is a one-line change per slot (replace with `next/image`), and the `brief` text doubles as a
-  shot list.
+- **Photography**: real photography is fully sourced as of 2026-09-04. Any image slot without a
+  real photo still falls back to `<MediaPlaceholder brief="...">` — a textured gradient block with
+  a corner label describing what should be shot/sourced for that exact slot — but nothing on the
+  live site currently hits that fallback. Member/Blog/Event slots go through
+  `<PhotoSlot src={...} ...>` (`src/components/ui/photo-slot.tsx`): it renders the admin-supplied
+  `photoUrl` / `featuredImageUrl` / `imageUrl` via `next/image` (`unoptimized` by default, since
+  these are arbitrary admin-pasted URLs with no `remotePatterns` allowlist — no server-side fetch
+  of untrusted hosts) when present, falling back to `MediaPlaceholder` when not — so a *new*
+  member/post/event with no photo yet still degrades gracefully. Homepage and Chapters have no
+  per-record field to hang a real photo off (they're BWF's own curated brand imagery, not
+  admin-editable per item); the user supplied real photography for both directly, checked into
+  `public/images/` (`homepage-*.jpg`, `chapters/chapter-0N-{portrait,card,hero}.jpg`) and wired via
+  the same `<PhotoSlot>` component with `unoptimized={false}` (same-origin files, safe to run
+  through Next's built-in optimizer). Chapter photo lookup is a plain slug-keyed map in
+  `src/lib/chapters/photos.ts` — a new chapter with no entry falls back to `MediaPlaceholder`
+  automatically, same graceful-degradation pattern as the admin-supplied slots.
+  Two of the delivered images (both Chapter directory cards + portraits, and the three "Inside
+  BWF" homepage shots) shipped as delivered; four — Homepage Hero and all three Chapter Heroes —
+  needed a fix first: they were AI-generated composites with large headline text already baked
+  into the image (colliding with the site's own live overlaid heading), removed via a masked
+  inpainting pass before being checked in. See the Phase 1 entry in `docs/PHASES.md` for the full
+  account, including a real gotcha: Next's dev image optimizer caches by request URL, not by
+  source file content, so overwriting an image at the same path silently keeps serving the old
+  cached bytes until `.next` is cleared.
 
 ### Dev tooling
 **Playwright** (`devDependencies`) is used only for this developer's own visual QA (screenshotting
@@ -143,6 +162,26 @@ lock itself out. `requirePermission()`/`requireRole()` (`src/lib/auth/rbac.ts`) 
 enforcement and are called inside every protected page/Server Action, not just relied on via
 route protection — see the Route protection note below for why that matters.
 
+**Access-denied UX — resolved 2026-09-04 (backlog #14).** Every RBAC check in `rbac.ts` now
+calls `next/navigation`'s `forbidden()` instead of throwing a custom `ForbiddenError`, paired
+with `src/app/admin/(dashboard)/forbidden.tsx` for the UI (requires `experimental.authInterrupts`
+in `next.config.ts` — still an experimental Next API as of this version, per its own docs). The
+previous approach threw a plain `Error` and read `error.name`/`error.message` in
+`(dashboard)/error.tsx` to render a friendly screen — worked in local dev, but Next.js redacts
+both fields for errors thrown from a Server Component in production (only a generic message +
+`digest` survive, to avoid leaking implementation details), so in a real deployed build every
+out-of-scope-URL visit still fell through to the generic crash message. `forbidden()` is Next's
+own first-class navigation interrupt (the same mechanism `notFound()` uses), so it isn't subject
+to that redaction. Confirmed the distinction actually mattered, not just in theory: built and ran
+a real production server (`next build && next start` — dev mode masks this class of bug
+entirely), created a real Chapter Admin test account, and verified live — `/admin/users`
+(`requirePermission`, a global-only permission) returned a genuine HTTP `403` with the friendly
+screen and the sidebar/layout still intact; a member record in a different chapter
+(`requireChapterAccess`) did the same; the Chapter Admin's own in-scope pages still returned a
+normal `200`. All test data (user, member, company) deleted afterward. The old
+`(dashboard)/error.tsx` stays, simplified, for genuine unexpected errors — `forbidden()` calls
+never reach it now.
+
 **Route protection**: `src/proxy.ts` — **not** `middleware.ts`. Next.js 16 renamed the
 middleware file convention to `proxy.ts` (same behavior; `middleware.ts` is deprecated but
 still works with a console warning). This one genuinely surprised a training-data-based
@@ -190,10 +229,15 @@ out from under them (soft-deactivate instead, per §43).
 
 **Configurable leadership roles (brief §22)**: `ChapterLeadershipRole` is a real table (key +
 label), not a hardcoded enum, seeded with President/Vice President/Secretary/Coordinator.
-Assigning members to roles is fully self-service via `/admin/chapters/[id]`; adding a *new
-role type* currently requires a seed-script edit, not an admin UI — reasonable gap for now
-since new role types should be rare, but worth a small admin form later if that assumption
-turns out wrong.
+Assigning members to roles is fully self-service via `/admin/chapters/[id]`. **Resolved
+2026-09-04 (backlog #9)**: adding a *new role type* is now also self-service, at
+`/admin/leadership-roles` — a create-only admin page (deliberately no edit/delete, same
+precedent as `BlogCategory`'s admin UI) that derives the machine `key` from the label (e.g.
+"Treasurer" → `TREASURER`) and rejects a duplicate. No code elsewhere ever hardcoded a role
+key, so any label an admin types becomes immediately available on every chapter's leadership
+form. Verified live: added "Treasurer" through the real admin UI, confirmed the duplicate
+guard rejects re-adding it case-insensitively, confirmed it's the same
+`db.chapterLeadershipRole.findMany()` query the chapter-detail dropdown reads from.
 
 ### Member profiles & directory (Phase 4)
 **`MemberProfile` still isn't split out** — the Phase 3 decision holds. The brief's §19 profile
@@ -207,18 +251,42 @@ have genuinely different specialisations worth describing separately.
 member's name is later edited — so a published/shared link never breaks. Collisions get a
 numeric suffix.
 
-**Media fields (photo/brochure/video) are URL-only** — plain text columns, no upload UI, since
-object storage (Neon's sibling open item, R2) still isn't wired up. Same pattern as Company's
-`logoUrl` from Phase 3. `videoUrl`'s constraint to "direct file or Google Drive only" (brief
-§47) is documented in the field comment and the admin form's label, not enforced by validation
-— treated as a content-moderation judgment call for whoever fills it in, not something worth a
-regex fighting real Drive URL variations.
+**Media fields (photo/brochure/video) are URL-only** — plain `String?` columns on the model,
+unchanged since Phase 3. **Resolved 2026-09-04 (backlog #8)**: real Cloudflare R2 object storage
+is wired up (`src/lib/storage.ts`) and every one of these fields — Member photo/brochure/video,
+Company logo, Testimonial image/video, Blog featured/OG image, Author photo, Event image — now
+has a real upload path via `MediaUploadField` (`src/components/ui/media-upload-field.tsx`): the
+browser uploads straight to R2 through a presigned PUT URL from `POST /api/uploads`
+(`src/app/api/uploads/route.ts`), so file bytes never pass through a Next.js server function. The
+URL text input stays editable alongside the upload button — degrades to manual entry if
+`STORAGE_*` env vars aren't set (same pattern as `EMAIL_API_KEY`/`ANTHROPIC_API_KEY`), and stays
+the only way to satisfy `videoUrl`'s "direct file or Google Drive only" constraint (brief §47) —
+still a content-moderation judgment call, not something upload validation enforces. Verified live:
+real browser upload → real R2 object → saved to a real Company row → confirmed publicly
+readable, screenshotted. One real bug caught only by that live test (not by the standalone script
+check first): R2 has no CORS policy by default, so a browser's presigned PUT was blocked until a
+CORS policy (`AllowedOrigins: ["*"]`, PUT/GET) was added on the bucket — the presigned URL itself
+is the actual auth boundary (time-boxed, single-key, content-type-pinned), not CORS.
 
 **Search** (`/members`) is plain Postgres `ILIKE` (`contains`, `mode: "insensitive"`) across
 name/company/services/specialisations — no search index (Postgres full-text or external) yet.
 Fine at this scale; revisit if the member count grows enough that this gets slow, no earlier.
 Results are grouped chapter-wise per brief §18, with no ranking beyond that grouping (brief
 explicitly asks to avoid rankings that favor members).
+
+**Pagination** — **resolved 2026-09-04 (backlog #10)**: 24 members per page (`PAGE_SIZE` in
+`src/app/(public)/members/page.tsx`), plain `?page=N` query param alongside the existing
+`q`/`chapter`/`category` params — no client JS, same "works without JS, shareable links"
+principle the filters already followed. `db.member.count()` (same `where`) runs alongside the
+paginated `findMany()` to compute total pages; an out-of-range, negative, or non-numeric `page`
+value clamps to a valid page rather than erroring or 404ing. The chapter-wise grouping still
+applies per page — a chapter with members split across a page boundary shows a second,
+continued section on the next page, same as any grouped+paginated list. Verified live: seeded
+27 test members across the 3 real chapters (respecting the one-active-member-per-category-per-
+chapter constraint), confirmed 24/3 split across two pages, Previous/Next disabled at the right
+ends, clamping behavior on `?page=99`/`?page=-5`/`?page=abc` — then deleted all the test data.
+`Pagination` (`src/components/ui/pagination.tsx`) is a small standalone component so any future
+paginated list (Insights, Events, admin tables) can reuse it rather than reinventing.
 
 **Deferred, not forgotten**: brief §52's programmatic SEO landing pages
 (`/architects-in-chennai` style) were considered for this phase since they're directory-
@@ -328,16 +396,31 @@ doesn't publicly exist yet.
 
 **The applicant's Company doesn't exist as a real record until conversion.** `companyName` is
 plain text on `MembershipApplication`; `convertApplicationToMember` matches an existing Company
-by exact name or creates a new one. No dedup/fuzzy-matching beyond exact name match — a
-deliberate simplicity tradeoff, not an oversight; revisit if duplicate companies from slightly
-different name spellings turn out to be a real problem in practice.
+or creates a new one. **Resolved 2026-09-04 (backlog #12)**: matching is now fuzzy —
+`findMatchingCompany`/`normalizeCompanyName` (`src/lib/companies/match.ts`) strip case,
+punctuation, whitespace, and a trailing legal-entity suffix (Pvt Ltd, LLC, Inc, etc.) before
+comparing, so "Acme Construction Pvt Ltd" and "Acme Construction Pvt. Ltd." collapse to the same
+company instead of creating a duplicate. Deliberately *not* typo-tolerant
+(Levenshtein/trigram similarity) — that risks silently merging two genuinely different companies
+with similar names, which is worse than the duplicate this fixes; a human-confirmed "did you
+mean" step would be the right next move if formatting normalization alone isn't enough in
+practice. Fetches all companies and compares in JS rather than a DB-level fuzzy match — no new
+extension/index needed at this scale (same call the rate-limiter and other small-table code in
+this app already makes). Verified live: seeded an existing company and an application whose
+`companyName` was a case/punctuation/whitespace variant of it, converted through the real admin
+UI, confirmed via direct DB query that the existing Company row was reused (no duplicate
+created) — then deleted the test data.
 
-**Known UX gap**: `convertApplicationToMember` is a plain form action (no `useActionState`), so
-when it throws — the slot-taken case above, mainly — the error surfaces via the admin route's
-generic error boundary (`Something went wrong.` + the real message) rather than a friendly
-inline message on the button itself. Functionally correct and the message is still readable,
-just not as polished as the rest of the admin's form error handling. Worth a small refactor
-later if this comes up often in practice.
+**Resolved 2026-09-04 (backlog #11)**: `convertApplicationToMember` now follows the same
+`useActionState` + `{error?: string}` return convention as every other admin form action in this
+codebase, instead of throwing — a new `ConvertApplicationForm` client component
+(`src/components/admin/convert-application-form.tsx`) replaces the old plain
+`<form action={convertApplicationToMember.bind(null, id)}>`. The slot-taken case renders as a red
+inline message under the button, same place/style as every other form error in the admin, instead
+of Next's generic route error boundary. Verified live both ways: seeded a real chapter+category
+slot conflict and confirmed the inline message renders with the page fully intact (not the error
+boundary); seeded a conflict-free application and confirmed the happy path still converts
+correctly — then deleted all the test data.
 
 **No email notifications yet** — brief §49 lists application-related emails, but that's
 Phase 13's job (Email/Notification Automation) as its own phase; sending anything here now
@@ -369,9 +452,42 @@ there's no "global meeting" concept in the brief, so `meetings:manage` access is
 
 **Visitor registration re-validates on submit, never trusts the page's last render.** The
 shared `registerVisitor` action (`src/app/(public)/visit/actions.ts`) re-checks the
-meeting/event's live status, registration-enabled flag, deadline, and capacity server-side
-before creating the row — the same discipline `submitApplication` uses for chapter availability
-in Phase 7, for the same reason: the page could be stale by the time someone submits.
+meeting/event's live status, registration-enabled flag, and deadline server-side before
+creating the row — the same discipline `submitApplication` uses for chapter availability in
+Phase 7, for the same reason: the page could be stale by the time someone submits.
+
+**Event capacity is enforced atomically — resolved 2026-09-04 (backlog #13).** The re-check
+above used to be a plain `count()` then `create()`, a textbook TOCTOU race: two concurrent
+submissions right at the last slot could both read "under capacity" and both succeed,
+overshooting the cap. `createVisitorWithCapacityCheck()` in the same file now does both inside
+one `Serializable`-isolation transaction, so Postgres itself detects the write skew and aborts
+one side — closing the actual data-integrity gap, not just narrowing the window. Two real,
+non-obvious things only turned up by forcing genuine concurrency (8 truly-simultaneous
+submissions against a capacity-3 event via 8 separate Playwright browser contexts, not
+sequential calls) rather than reasoning about the fix on paper:
+- The write conflict does **not** surface as the documented `P2034` `PrismaClientKnownRequestError`
+  — at least not with `@prisma/adapter-pg` on Prisma 7. It's an `Error [DriverAdapterError]` whose
+  `.cause` carries Postgres's raw SQLSTATE (`originalCode: "40001"`) and a
+  `kind: "TransactionWriteConflict"` tag instead. `isRetryableTransactionError()` checks the raw
+  SQLSTATE (plus `P2034` for safety) rather than trusting only Prisma's documented code.
+- A burst of concurrent transactions can also fail with `P2028` ("unable to start a transaction
+  in the given time") purely from this app's Postgres connection pool being capped at 5
+  connections app-wide (`src/lib/db.ts`) — a different failure class from the write conflict
+  above, unrelated to whether the event is actually full, and also worth retrying rather than
+  surfacing as a hard error. `maxWait`/`timeout` on the transaction are raised so this is the
+  rarer fallback, not the common case; a short jittered delay before each retry avoids every
+  waiting request retrying in lockstep and re-creating the same contention.
+
+Verified live: reset a capacity-3 event to zero registrations, fired 8 truly-concurrent
+submissions, confirmed via direct DB query that exactly 3 Visitor rows were created (all within
+half a second of each other, proving real concurrency rather than accidental serialization) and
+the other 5 received the existing "This event has reached capacity." inline error, with no
+server crash. Along the way, found and deliberately did **not** fix an unrelated bug: with a
+real `EMAIL_API_KEY` configured, `notifyVisitorRegistered` throwing (e.g. Resend rejecting a
+malformed/test recipient address) crashes the whole `registerVisitor` action with a 500 *after*
+the Visitor row already committed — the registration silently succeeds while the visitor sees a
+generic error. Worth its own backlog item; out of scope for the capacity race this session was
+about.
 
 **Visitors are explicitly not required to hold an open category** (brief §23) — so unlike
 `Member`, there's no `activeSlotKey` / exclusivity check on `Visitor`. A visitor can register
@@ -397,7 +513,43 @@ table-layout plugin — the export is a fixed 4-6 column report, not general doc
 plugin dependency wasn't worth it. `exceljs` pulled in a vulnerable transitive `uuid@8` (moderate
 severity, unrelated to anything this app does with it — internal use only, for conditional-
 formatting rule IDs); overridden to `uuid@^11.1.1` in `package.json`, same pattern as Phase 0's
-`mysql2`/`deepmerge-ts` overrides for a Prisma-tooling transitive dependency.
+`mysql2`/`deepmerge-ts` overrides for a Prisma-tooling transitive dependency. **Re-checked
+2026-09-06 (backlog #15), still needed**: exceljs's latest stable (still `4.4.0`) and even its
+newest prerelease still declare `uuid: ^8.3.0` — nothing upstream to drop the override for yet.
+
+**PDF table layout — three real bugs found and fixed 2026-09-06 (backlog #16), only visible at
+real scale/content.** The hand-drawn table above was written and only exercised against ~4 short
+test rows through Phase 9; re-tested with a real 500-row export containing genuinely long values
+(the seeded category list's own "Project Management Consultant" is 30 characters) and found three
+overlapping issues in `toPdfBuffer()` (`src/lib/reports/member-export.ts`), fixed together since
+each one only became visible once the previous was fixed:
+1. **Row overlap when a cell wraps.** A fixed 20pt row height didn't account for PDFKit's default
+   text wrapping — a cell whose content didn't fit its column's width (any sufficiently long
+   category/company name) wrapped to 2+ lines that silently overlapped the next row. The
+   `ellipsis: true` on the original `doc.text()` calls looks like an attempt to prevent this, but
+   PDFKit only truncates-with-ellipsis when a single-line `height` is also constrained, which
+   nothing here set — it had no effect. Fixed by measuring every cell's real wrapped height via
+   `doc.heightOfString()` and using the tallest per row, rather than truncating real operational
+   data (company/category names) down to whatever fits on one line.
+2. **Columns touching with zero gutter.** Columns sit exactly `columnWidth` apart with no gap;
+   `doc.widthOfString("Membership Status")` in the 6-column layout measures 82.9pt against an
+   83.3pt column — it fits on one line, but butts directly against the next column's text with no
+   visible separation ("Membership StatusChapter" reading as one run-on phrase). Fixed with a 6pt
+   `columnGutter` subtracted from the text width actually passed to `doc.text()`, while columns
+   themselves stay `columnWidth` apart.
+3. **Header height was still fixed.** Fixing #2 pushed "Membership Status" just past its
+   one-line width in the 6-column layout, wrapping the *header* label itself — which
+   `drawHeader()` didn't account for either, so the divider line (and the first data row) drew
+   right through the wrapped second line. Same `heightOfString()`-based fix, applied to the header.
+
+Verified visually, not just by re-reading the code: rendered actual pages from the real 500-row
+PDF (via `pdfjs-dist` + `@napi-rs/canvas`, temporary dev-only tooling, `--no-save`) to confirm no
+overlap anywhere, and cross-checked all 500 member numbers are present exactly once via text
+extraction (`pdf-parse`) after each fix, since intentional multi-line wrapping means a naive
+substring count needs whitespace-normalizing first. Page count is correct and expected to grow
+slightly from a naive row estimate now that wrapped rows correctly reserve real vertical space
+(14 pages at 4 columns, 16 at 6 — was silently 14 for both before the fix, i.e. artificially
+short from the overlap). All test data (500 members, 1 company) deleted afterward.
 
 **Export permission is scoped like Members/Meetings/Events/Visitors, not like Reports.**
 `exports:manage` follows the established `requireChapterAccess()`/`getChapterScope()` pattern —
@@ -440,15 +592,17 @@ view for would be a new inconsistency this phase introduced, not a helpful summa
 "Chapter Admin can only access their assigned chapter" is read here as applying to what they can
 *see*, not just what they can edit.
 
-**"New leads" is the one brief §39 base-list metric this phase omits.** The Leads system (brief
-§35) has no phase of its own in the brief's own Phase Structure table (§70) — it isn't Phase 9's
-"Reporting + Exports + Weekly Reports," and nothing else claims it either (chatbot lead capture in
-Phase 12 covers one lead *source*, not the general Leads model brief §35 describes). Building a
-Leads model now, just to populate one dashboard tile, would be exactly the kind of early
-future-phase feature brief §72 warns against. Following the Phase 1 precedent (an honest "coming
-soon" over a fabricated number), the tile is simply absent rather than showing a fake zero.
-Whichever future phase does add Leads should also give this dashboard tile a home — noted in both
-here and the Phase 9 follow-ups so it isn't lost.
+**"New leads" is the one brief §39 base-list metric this phase omits.** *(Resolved 2026-09-06 —
+Phase 15 gave the Leads system brief §35 a real phase/home, and the dashboard tile a real number.
+Left as written below for the historical reasoning; see Phase 15 in `docs/PHASES.md` for what
+actually shipped.)* The Leads system (brief §35) has no phase of its own in the brief's own Phase
+Structure table (§70) — it isn't Phase 9's "Reporting + Exports + Weekly Reports," and nothing else
+claims it either (chatbot lead capture in Phase 12 covers one lead *source*, not the general Leads
+model brief §35 describes). Building a Leads model now, just to populate one dashboard tile, would
+be exactly the kind of early future-phase feature brief §72 warns against. Following the Phase 1
+precedent (an honest "coming soon" over a fabricated number), the tile is simply absent rather than
+showing a fake zero. Whichever future phase does add Leads should also give this dashboard tile a
+home — noted in both here and the Phase 9 follow-ups so it isn't lost.
 
 ### Analytics, SEO & structured data (Phase 10)
 **GA4/GSC/Organization schema live in `(public)/layout.tsx`, not the root layout.** Brief §50's
@@ -479,7 +633,8 @@ keyword search? a category filter? both?) without the double-count.
 anything more concrete than "someone tried to reach this member," and the only such touchpoint
 that exists on a member profile today is the phone/WhatsApp/email/website/maps contact block.
 Revisit if a real enquiry *form* (distinct from a contact link) is ever added — brief §35's Leads
-system, once it has a phase, might be exactly that.
+system now has a phase (Phase 15), but its `MEMBER_PROFILE_ENQUIRY` source still has no such form
+to populate it from; this stays the plan for whenever one is built.
 
 **"Blog performance" and "Member page views" need no custom event** — GA4's own automatic
 pageview tracking already covers per-URL views once the base `gtag.js` script is loaded
@@ -583,14 +738,20 @@ whether that's the member's proposal verbatim or admin's own edits on top of it 
 "Edit and Approve" as a separate mutation from "Approve" would have meant two ways to reach the
 identical `Member.update()` call.
 
-**Member article submissions (brief §31) still have no phase.** Brief §12 lists "submit blogs/
-articles" as something a logged-in member can do, and Phase 11's login work would have made it
-technically reachable, but §31's own workflow ("Admin notified" on submission) leans on Phase 13's
-email infrastructure, and — like brief §35's Leads system (flagged in Phase 9) — the brief's own
-Phase Structure table (§70) never assigns §31 anywhere. Phase 11's title is specifically "Member
-Login + Profile Edit Approval Workflow," not article submission; building it now would be exactly
-the early-future-phase scope brief §72 warns against. Whichever future phase picks this up should
-also close this gap — noted here and in the Open Decisions table below so it isn't lost twice.
+**Member article submissions (brief §31) — resolved 2026-09-06, Phase 16 (backlog #21).** Brief
+§12 lists "submit blogs/articles" as something a logged-in member can do; §31's own workflow
+("Member submits → Draft stored → Admin notified → Admin reviews → Approved/Rejected/Edited →
+Published") reuses the `Blog` model directly — that model's own Phase 5 doc comment had already
+anticipated exactly this, tagging a submission with `submittedByMemberId` +
+`BlogSubmissionStatus` (`PENDING`/`APPROVED`/`REJECTED`) rather than a parallel table, so every
+existing blog admin feature (SEO, tags, FAQ, scheduling) works on a member's post unchanged.
+Approving and "editing then approving" are one code path (the existing `updateBlog` save action,
+same precedent as `reviewMemberProfileRevision`) — it only flips `PENDING → APPROVED` the moment
+an admin's save actually publishes/schedules the post, not on an intermediate draft save while
+still reviewing. "If author is a member: link article to their member profile" is automatic via
+`Author.memberId`'s existing unique constraint (Phase 5), not admin busywork. See `docs/PHASES.md`
+Phase 16 for the full verification (a real submit → approve → publish loop and a real reject loop,
+both driven through the actual UI, not just reasoned about).
 
 ### Ask BWF RAG chatbot (Phase 12)
 **Retrieval is plain structured Prisma queries, not vector embeddings.** Confirmed with the user
@@ -612,9 +773,11 @@ convenience.
 member FK columns** — the same "avoid unnecessarily large forms at first interaction" pattern
 this project has used since Phase 7's application wizard. An admin who wants to record a matched
 member/chapter/category during follow-up uses the existing free-text `notes` field, same as
-`MembershipApplication.notes` today. This is also, per `docs/PHASES.md`'s Phase 9 note and the
-Open Decisions table below, **one lead source, not brief §35's general Leads system** — no attempt
-was made to design `ChatbotLead` as a foundation the future Leads model would extend.
+`MembershipApplication.notes` today. This is also, per `docs/PHASES.md`'s Phase 9 note, **one lead
+source, not brief §35's general Leads system** — no attempt was made to design `ChatbotLead` as a
+foundation the Leads model would extend when Phase 15 eventually built it; `ChatbotLead` keeps its
+own detailed record exactly as before, and a `CHATBOT`-sourced `Lead` row is created *alongside* it
+via `recordLead()`, not by touching `ChatbotLead` itself.
 
 **The chatbot's floating launcher is gated on `ChatbotSettings.isEnabled` alone, not also on
 `ANTHROPIC_API_KEY` being set.** These looked redundant at first (why show a launcher for a
@@ -740,7 +903,7 @@ itself, and what it found *already* satisfied, is worth recording as much as the
 | SQL injection prevention | ✅ | Prisma parameterizes every query; no raw SQL in application code |
 | Secure cookies | ✅ | NextAuth's secure-by-default cookie config (httpOnly, sameSite, `secure` in production) — never overridden |
 | Rate limiting / form abuse protection | ✅ (Phase 14) | `src/lib/rate-limit.ts`, see below |
-| Secure file upload validation | N/A | No upload UI exists yet (object storage still unwired, per every phase's own "known issues" since Phase 3) — nothing to validate |
+| Secure file upload validation | ✅ (2026-09-04, backlog #8) | `POST /api/uploads` requires a signed-in session, rate-limits per user (30/10min), and validates content-type against a per-kind allowlist (`MEDIA_KINDS` in `src/lib/storage.ts`) and size before issuing a presigned URL — the file itself never transits the server, so there's no server-side body to scan, only the request metadata to validate |
 | Permission checks for every protected action | ✅ | Audited live every phase since Phase 3 |
 | Audit logs | ✅ | `AuditLog` + `logActivity()`, every mutating action since Phase 2 |
 | Backups | ✅ (documented, Phase 14) | See below — a managed-provider feature, not application code |
@@ -796,11 +959,14 @@ documented preferred provider) takes automatic backups and supports point-in-tim
 its branching model — restoring means creating a new branch from a timestamp before the incident
 and repointing `DATABASE_URL` at it, not running a custom restore script. A manual `pg_dump`
 export is the documented fallback for an out-of-band snapshot (e.g. before a risky migration).
-Object storage (R2/S3-compatible, still unwired per Phase 3's own notes) should have versioning
-enabled on the bucket once it exists, for the same reason. None of this was — or could be —
-actually exercised in this environment: there is no real Neon project, so "automatic backups
-happen" is a documented expectation of the chosen provider, not a tested behavior of this
-codebase.
+Object storage (R2, wired up 2026-09-04 per backlog #8) should have versioning enabled on the
+`bwfmedia` bucket for the same reason — **not yet done**, a real remaining follow-up, not
+something this wiring pass turned on. This paragraph originally noted no real Neon project or R2
+bucket existed to test any of this against; that's since changed for both (see Phase 2's Neon
+entry and backlog #8) — "automatic backups happen" is still a documented expectation of the
+chosen providers rather than a manually tested restore, since deliberately triggering data loss
+against a real environment to test recovery isn't a check worth running outside an actual
+incident.
 
 **Deployment runbook** lives in `README.md`'s new "## Deployment" section rather than here, since
 it's the operational document someone actually deploying would open first. `prisma migrate
@@ -824,17 +990,18 @@ they aren't lost, with the phase they'd first block:
 | ~~Headless component primitives~~ | ~~Phase 1~~ | **Resolved Phase 1**: hand-built, no library — see Design System above. |
 | Real chapter names/locations for the 3 active chapters | Before launch | Seeded as "Chapter 01/02/03" (Chennai) — now live-editable at `/admin/chapters` (not a code change), so this no longer blocks any phase. Rename whenever real names exist. |
 | Real business-category taxonomy (Plumbing, Architect, etc.) | Before launch | Seeded with a 10-category starter list grounded in the brief's own examples — live-editable at `/admin/categories`. Refine/expand whenever BWF confirms the real list. |
-| Real email provider (Resend API key) | Phase 2 (before real use) | `sendEmail()` supports Resend already (`EMAIL_PROVIDER=resend` + `EMAIL_API_KEY`) — until set, every email (OTP, password reset, and all 8 Phase 13 triggers) logs to the server console instead of sending. Fine for local dev, not for staging/production. SMS OTP was considered and deliberately deferred — email-only for now, architecture doesn't block adding SMS later. |
-| Real `NOTIFICATION_EMAIL` (business alert address) | Phase 13 (before real use) | Currently unset — admin alerts for new applications/chatbot leads skip silently until it's set (`src/lib/notifications.ts`). |
+| Real email provider (Resend API key) | Phase 2 (before real use) | **Partially resolved 2026-09-04**, **advanced 2026-09-06**: a real Resend API key is set locally and verified with a real send. The real domain (`buildersworldforum.com`) is now registered with Resend via its Domains API, which returned the DKIM/SPF/MX DNS records needed to verify it — see `docs/PHASES.md`'s Phase 2 follow-ups for the exact values. Adding them requires DNS access at GoDaddy (where the domain's nameservers point), which the user doesn't have yet — it sits with the previous website developer. `EMAIL_FROM_ADDRESS` stays on Resend's shared `onboarding@resend.dev` test address until the domain actually verifies. |
+| ~~Real `NOTIFICATION_EMAIL` (business alert address)~~ | ~~Phase 13~~ | **Resolved 2026-09-06**: set to `buildersworldforum1@gmail.com` (the user's choice among the real admin addresses already in use) — admin alerts for new applications/chatbot leads now reach a real inbox instead of skipping silently. |
 | Real Vercel deployment (needed to actually fire the weekly-report cron) | Phase 13/14 | `vercel.json`'s daily schedule has never fired for real — only manually curled locally with `CRON_SECRET`. Not blocking now (Phase 14/15's deployment work), but the cron send itself is unverified against real infrastructure until then. |
-| Domain name + whether the old site stays live during build | Phase 14–15 | Affects redirect planning and DNS cutover timing. |
-| Real photography (or interim placeholder/stock strategy) | Phase 1 (ongoing) | Every image slot is a `MediaPlaceholder` with a shot-list caption in the meantime — see Design System above. Still needs a real answer before launch; placeholders shouldn't ship to production. |
-| Real founder/Super Admin credentials | Phase 2 (before real use) | Seed mechanism exists (`npm run db:seed` reads `SEED_SUPER_ADMIN_EMAIL`/`_NAME`/`_PASSWORD` from env) — currently seeded with local-dev-only placeholder credentials, not real ones. |
+| Domain name + whether the old site stays live during build | Phase 14–15 | **Domain half answered 2026-09-06**: `buildersworldforum.com` is the real domain (already live, registered via GoDaddy) — no separate decision needed there. Still open: whether the old site stays live during the build, and DNS/registrar access itself (see the email-provider row above — same blocker). |
+| ~~Real photography for Homepage + Chapters~~ | ~~Phase 1~~ | **Resolved 2026-09-04**: see Design System above — all 13 shots (Homepage's 5 brand images + 2 per chapter) sourced and wired in via `public/images/`. |
+| ~~Real founder/Super Admin credentials~~ | ~~Phase 2~~ | **Resolved 2026-09-06**: real Super Admin (`abiramanathank1@gmail.com`) and two Central Admin accounts created; old placeholder (`admin@bwf.local`) suspended, not deleted. See `docs/PHASES.md`'s Phase 2 follow-ups. |
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
-| Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII — placeholder pages exist (`/privacy`, `/terms`) but must not launch with AI-drafted legal text unreviewed. |
-| Leads system (brief §35) has no phase of its own | Noticed in Phase 9 | Still true after Phase 12 — the brief's Phase Structure table (§70) never assigns brief §35's general Leads model to a phase. Phase 12 built `ChatbotLead`, one lead *source*, not the general model (source/member/chapter/category/status fields brief §35 describes for every lead everywhere) — the dashboard's "New chatbot leads" tile (Phase 12) is real now, but brief §39's general "New leads" tile still has no home. See `docs/PHASES.md` Phase 9 and Phase 12. |
-| Member article submissions (brief §31) has no phase of its own | Noticed in Phase 11 | Same gap as Leads above — brief §12 says a logged-in member can "submit blogs/articles," but §31's own workflow and the brief's Phase Structure table (§70) never give it a home. Phase 11 built member login/profile-edit-approval only, per its own title; see `docs/PHASES.md` Phase 11. |
+| Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
+| ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | **Resolved 2026-09-06** (backlog #17) — given Phase 15, a real `Lead` model aggregating across `MembershipApplication`/`Visitor`/`ChatbotLead` plus the site's other lead-generating flows, `/admin/leads`, and a real "New leads" dashboard tile (replacing the narrower "New chatbot leads" stand-in Phase 12 shipped). Two of brief §35's 7 listed sources ("Member profile enquiry", "Contact form") still have no real capture form on the site and so don't populate a `Lead` yet — flagged as Phase 15's own follow-up, not silently dropped. See `docs/PHASES.md` Phase 15. |
+| Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording | Noted since Phase 10 | **Built anyway 2026-09-06** (backlog #20), at the user's explicit request after being told plainly this is a deliberate brief deferral (unlike Leads' plain "unassigned" gap) and that most of what §51 asks for needs real GA4 data that doesn't exist yet (#19). `getAdminAnalytics()`/`/admin/analytics` cover only what's honestly derivable today — `Lead`/`MembershipApplication`/`Visitor` counts and conversion rates — with an explicit on-page note (not a silent gap, not a fabricated number) for the GA4-dependent metrics §51 also asks for. See `docs/PHASES.md` Phase 15's addendum. |
+| ~~Member article submissions (brief §31) has no phase of its own~~ | Noticed in Phase 11 | **Resolved 2026-09-06** (backlog #21) — Phase 16, reusing the `Blog` model directly (new `submittedByMemberId`/`BlogSubmissionStatus` fields) rather than a parallel submissions table, new `/member/articles` + admin review surfaced on the existing `/admin/blogs` pages. See `docs/PHASES.md` Phase 16. |
 | Real `ANTHROPIC_API_KEY` for the Ask BWF chatbot | Phase 12 (before real use) | `src/lib/chatbot/client.ts` supports it already — until set, `/api/chatbot` reports itself unavailable and the widget shows an honest "not available" state, same pattern as `EMAIL_API_KEY`. Access-mode enforcement (`LOGIN_REQUIRED`/`LIMITED_FREE_QUESTIONS`) is written but couldn't be exercised live in this environment either, since it sits behind the same "is the chatbot configured" gate — see `docs/PHASES.md` Phase 12. |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)

@@ -44,10 +44,24 @@ export default async function MemberDashboardPage() {
         </Link>
       </div>
 
+      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-neutral-900">Articles</h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          Submit an article for BWF to review (brief §31) — nothing goes public until an admin
+          approves it.
+        </p>
+        <Link
+          href="/member/articles"
+          className="mt-4 inline-block rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          Submit / view my articles
+        </Link>
+      </div>
+
       <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6">
         <p className="text-sm text-neutral-500">
-          Article submissions, profile view statistics, and lead visibility are planned member-portal features
-          (brief §12) without an assigned phase yet — see docs/ARCHITECTURE.md. Not available here yet.
+          Profile view statistics and lead visibility are planned member-portal features (brief
+          §12) without an assigned phase yet — see docs/ARCHITECTURE.md. Not available here yet.
         </p>
       </div>
     </div>

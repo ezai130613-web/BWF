@@ -18,13 +18,13 @@ const PILLARS = [
 
 export function WhyBwf() {
   return (
-    <section className="bg-navy-800 py-28">
+    <section className="bg-emerald-800 py-28">
       <Container>
         <SectionLabel number="02">Why BWF</SectionLabel>
         <div className="mt-10 grid gap-12 lg:grid-cols-3">
           {PILLARS.map((pillar) => (
             <div key={pillar.title}>
-              <h3 className="font-display text-2xl text-ivory-100">{pillar.title}</h3>
+              <h2 className="font-display text-2xl text-ivory-100">{pillar.title}</h2>
               <p className="mt-4 text-sm leading-relaxed text-slate-400">{pillar.body}</p>
             </div>
           ))}

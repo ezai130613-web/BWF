@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-navy-900 font-sans text-ivory-100">
+      <body className="flex min-h-full flex-col bg-emerald-900 font-sans text-ivory-100">
         {children}
       </body>
     </html>

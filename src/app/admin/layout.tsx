@@ -1,7 +1,7 @@
 import { AppSessionProvider } from "@/components/session-provider";
 
 /**
- * Deliberately does NOT inherit the public site's dark navy/gold theme —
+ * Deliberately does NOT inherit the public site's dark emerald/gold theme —
  * see docs/ARCHITECTURE.md ("admin panel should not use this design
  * heavily", brief §14). This is just a light-theme reset; the actual admin
  * chrome (sidebar, nav) lives in the (dashboard) route group's layout so

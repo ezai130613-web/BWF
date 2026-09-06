@@ -14,7 +14,7 @@ export async function TestimonialsSection() {
   if (testimonials.length === 0) return null;
 
   return (
-    <section className="bg-navy-900 py-28">
+    <section className="bg-emerald-900 py-28">
       <Container>
         <div className="flex items-end justify-between gap-4">
           <SectionLabel number="08">Testimonials</SectionLabel>
@@ -25,10 +25,10 @@ export async function TestimonialsSection() {
 
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {testimonials.map((t) => (
-            <div key={t.id} className="rounded-sm border border-navy-700 p-6">
+            <div key={t.id} className="rounded-sm border border-emerald-700 p-6">
               <p className="text-slate-300">&ldquo;{t.content}&rdquo;</p>
               <p className="mt-4 text-sm text-ivory-100">{t.name}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {[t.role, t.company, t.chapter?.name].filter(Boolean).join(" · ")}
               </p>
             </div>

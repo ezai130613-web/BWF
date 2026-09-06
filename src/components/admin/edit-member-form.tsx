@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateMemberProfile } from "@/app/admin/(dashboard)/members/actions";
+import { MediaUploadField } from "@/components/ui/media-upload-field";
 import type { Member } from "@/generated/prisma/client";
 
 const initialState: { error?: string } = {};
@@ -53,7 +54,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <Field label="Name" name="name" defaultValue={member.name} />
         <Field label="Designation" name="designation" defaultValue={member.designation} />
         <Field label="Bio" name="bio" defaultValue={member.bio} textarea />
-        <Field label="Photo URL" name="photoUrl" defaultValue={member.photoUrl} />
+        <MediaUploadField label="Photo" name="photoUrl" kind="image" defaultValue={member.photoUrl} />
       </section>
 
       <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
@@ -85,12 +86,13 @@ export function EditMemberForm({ member }: { member: Member }) {
         <Field label="Instagram URL" name="instagramUrl" type="url" defaultValue={member.instagramUrl} />
         <Field label="LinkedIn URL" name="linkedinUrl" type="url" defaultValue={member.linkedinUrl} />
         <Field label="Facebook URL" name="facebookUrl" type="url" defaultValue={member.facebookUrl} />
-        <Field label="Brochure URL (PDF)" name="brochureUrl" type="url" defaultValue={member.brochureUrl} />
-        <Field
-          label="Video URL (direct file or Google Drive only — no YouTube/Instagram, brief §47)"
+        <MediaUploadField label="Brochure (PDF)" name="brochureUrl" kind="pdf" defaultValue={member.brochureUrl} />
+        <MediaUploadField
+          label="Video"
           name="videoUrl"
-          type="url"
+          kind="video"
           defaultValue={member.videoUrl}
+          helperText="Upload a file, or paste a Google Drive link — no YouTube/Instagram embeds (brief §47)."
         />
       </section>
 

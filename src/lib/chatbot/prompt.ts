@@ -1,5 +1,3 @@
-import type Anthropic from "@anthropic-ai/sdk";
-
 const GROUNDING_RULES = `You are "Ask BWF", the official assistant for Builders World Forum (BWF) — a private, chapter-based business networking community for the construction ecosystem in Chennai.
 
 Rules:
@@ -10,27 +8,19 @@ Rules:
 - Keep answers concise and conversational — a few sentences, not an essay.`;
 
 /**
- * Builds the `system` param as two text blocks: the grounding rules + the
+ * Builds the system prompt as one plain string: the grounding rules + the
  * baseline context (chapters/categories/FAQs/content — barely changes
- * between messages) behind a prompt-cache breakpoint, then the per-message
- * keyword-matched context (members/blogs) as the volatile tail after it.
- * See src/lib/chatbot/retrieval.ts for where each half comes from.
+ * between messages) followed by the per-message keyword-matched context
+ * (members/blogs) as the volatile tail. Previously returned Anthropic's
+ * multi-block `system` shape with an explicit `cache_control` breakpoint
+ * (their manual prompt-caching annotation); OpenAI has no equivalent
+ * concept to opt into on a Chat Completions request — it caches long
+ * repeated prompt prefixes automatically server-side — so a single string
+ * is both sufficient and the actual API shape now. See
+ * src/lib/chatbot/retrieval.ts for where each half of the context comes
+ * from.
  */
-export function buildChatbotSystemPrompt(
-  baselineContext: string,
-  keywordContext: string,
-): Anthropic.Messages.TextBlockParam[] {
-  const blocks: Anthropic.Messages.TextBlockParam[] = [
-    {
-      type: "text",
-      text: baselineContext ? `${GROUNDING_RULES}\n\n${baselineContext}` : GROUNDING_RULES,
-      cache_control: { type: "ephemeral" },
-    },
-  ];
-
-  if (keywordContext) {
-    blocks.push({ type: "text", text: keywordContext });
-  }
-
-  return blocks;
+export function buildChatbotSystemPrompt(baselineContext: string, keywordContext: string): string {
+  const base = baselineContext ? `${GROUNDING_RULES}\n\n${baselineContext}` : GROUNDING_RULES;
+  return keywordContext ? `${base}\n\n${keywordContext}` : base;
 }

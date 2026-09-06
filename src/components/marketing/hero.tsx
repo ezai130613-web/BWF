@@ -1,16 +1,20 @@
+import Image from "next/image";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { TrackedButton } from "@/components/analytics/tracked-button";
 
 export function Hero() {
   return (
     <section className="relative flex min-h-[92vh] items-end overflow-hidden">
-      <MediaPlaceholder
-        brief="Hero background — full-bleed cinematic photo or video of premium architecture/interiors, very minimal text overlay"
-        className="absolute inset-0"
+      <Image
+        src="/images/homepage-hero.jpg"
+        alt=""
+        fill
+        preload
+        sizes="100vw"
+        style={{ objectFit: "cover" }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/70 to-navy-950/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/70 to-emerald-950/20" />
 
       <Container className="relative pb-24 pt-40">
         <h1 className="max-w-3xl font-display text-5xl leading-[1.05] text-ivory-100 sm:text-6xl lg:text-7xl">

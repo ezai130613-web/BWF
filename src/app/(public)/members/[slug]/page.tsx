@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 import { Button } from "@/components/ui/button";
 import { TrackedAnchor } from "@/components/analytics/tracked-anchor";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
@@ -89,8 +89,13 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       <JsonLd data={localBusinessJsonLd} />
       <JsonLd data={crumbs} />
       <div className="relative">
-        <MediaPlaceholder brief={`${member.name} — portrait or company work`} className="h-[40vh]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/60 to-navy-950/10" />
+        <PhotoSlot
+          src={member.photoUrl}
+          alt={member.name}
+          brief={`${member.name} — portrait or company work`}
+          className="h-[40vh]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/60 to-emerald-950/10" />
         <Container className="absolute inset-x-0 bottom-0 pb-10">
           <SectionLabel>{member.category.name}</SectionLabel>
           <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{member.name}</h1>
@@ -148,7 +153,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
         <aside className="flex flex-col gap-8">
           {contactItems.length > 0 ? (
-            <div className="rounded-sm border border-navy-700 p-6">
+            <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Contact</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
                 {contactItems.map((item) => (
@@ -182,7 +187,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
           ) : null}
 
           {socialLinks.length > 0 ? (
-            <div className="rounded-sm border border-navy-700 p-6">
+            <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Social</SectionLabel>
               <div className="mt-4 flex flex-col gap-2">
                 {socialLinks.map((item) => (

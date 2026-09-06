@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getContent } from "@/lib/content";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
+import { getChapterPhotos } from "@/lib/chapters/photos";
 
 export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
 
@@ -12,6 +14,9 @@ export default async function ChaptersPage() {
     include: { _count: { select: { members: true } } },
     orderBy: { name: "asc" },
   });
+
+  const content = await getContent(["meetings.intro", "meetings.details"]);
+  const meetingDetails = content["meetings.details"]?.split("\n").filter(Boolean) ?? [];
 
   return (
     <div className="py-24">
@@ -25,15 +30,44 @@ export default async function ChaptersPage() {
           category, per chapter.
         </p>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {content["meetings.intro"] || meetingDetails.length > 0 ? (
+          <div className="mt-16 border-y border-emerald-700/60 py-12">
+            <SectionLabel>How BWF Meetings Work</SectionLabel>
+            {content["meetings.intro"] ? (
+              <p className="mt-4 max-w-3xl text-slate-300">{content["meetings.intro"]}</p>
+            ) : null}
+            {meetingDetails.length > 0 ? (
+              <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+                {meetingDetails.map((line, i) => {
+                  const [heading, ...rest] = line.split(":");
+                  const detail = rest.join(":").trim();
+                  return (
+                    <div key={i}>
+                      <p className="font-medium text-ivory-100">{heading}</p>
+                      <p className="mt-1 text-sm text-slate-400">{detail}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {chapters.map((chapter) => (
             <Link
               key={chapter.id}
               href={`/chapters/${chapter.slug}`}
-              className="group overflow-hidden rounded-sm border border-navy-700"
+              className="group overflow-hidden rounded-sm border border-emerald-700"
             >
-              <MediaPlaceholder brief={`${chapter.name} — meeting venue or member work`} className="aspect-[4/3]" />
-              <div className="bg-navy-800 p-5">
+              <PhotoSlot
+                src={getChapterPhotos(chapter.slug)?.card}
+                alt={chapter.name}
+                brief={`${chapter.name} — meeting venue or member work`}
+                unoptimized={false}
+                className="aspect-[4/3]"
+              />
+              <div className="bg-emerald-800 p-5">
                 <p className="font-display text-xl text-ivory-100">{chapter.name}</p>
                 <p className="mt-1 text-sm text-slate-400">
                   {chapter.location ?? "Chennai"} · {chapter._count.members}{" "}

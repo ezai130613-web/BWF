@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { ApplicationStatusControl } from "@/components/admin/application-status-control";
 import { ApplicationNotesForm } from "@/components/admin/application-notes-form";
 import { ReassignChapterForm } from "@/components/admin/reassign-chapter-form";
-import { convertApplicationToMember } from "../actions";
+import { ConvertApplicationForm } from "@/components/admin/convert-application-form";
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("applications:manage");
@@ -109,15 +109,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                   Only do this once payment is confirmed (brief §17 step 7) — this creates the
                   real, public member profile.
                 </p>
-                <form action={convertApplicationToMember.bind(null, application.id)} className="mt-3">
-                  <button
-                    type="submit"
-                    disabled={!application.chapterId}
-                    className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-                  >
-                    Create member account
-                  </button>
-                </form>
+                <ConvertApplicationForm applicationId={application.id} disabled={!application.chapterId} />
               </>
             )}
           </div>

@@ -1,16 +1,22 @@
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { redirect, forbidden } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 import type { Session } from "next-auth";
 
-export class ForbiddenError extends Error {
-  constructor(message = "You do not have permission to do this.") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
+/**
+ * Access-denied checks throw via next/navigation's forbidden() (backlog
+ * #14, requires experimental.authInterrupts — see next.config.ts) instead
+ * of a custom ForbiddenError class. The previous approach relied on
+ * src/app/admin/(dashboard)/error.tsx reading error.name/error.message to
+ * show a friendly screen — works in dev, but Next redacts both on errors
+ * thrown from a Server Component in production (only a generic message +
+ * digest survive), so every real out-of-scope-URL visit still fell through
+ * to the generic crash page. forbidden() is Next's own first-class
+ * navigation interrupt (same mechanism as notFound()), so it isn't subject
+ * to that redaction — see src/app/admin/(dashboard)/forbidden.tsx for the UI.
+ */
 
 /** Cached per-request so repeated checks in one render don't repeat the query. */
 export const getUserPermissionKeys = cache(async (userId: string) => {
@@ -64,7 +70,7 @@ export async function requirePermission(permissionKey: string) {
   const session = await requireAdminSession();
   const permissions = await getUserPermissionKeys(session.user.id);
   if (!permissions.has(permissionKey)) {
-    throw new ForbiddenError(`Missing permission: ${permissionKey}`);
+    forbidden();
   }
   return session;
 }
@@ -72,7 +78,7 @@ export async function requirePermission(permissionKey: string) {
 export async function requireRole(roleKeys: string[]) {
   const session = await requireAdminSession();
   if (!session.user.roles.some((role) => roleKeys.includes(role))) {
-    throw new ForbiddenError();
+    forbidden();
   }
   return session;
 }
@@ -85,7 +91,7 @@ export async function requireRole(roleKeys: string[]) {
 export function requireRecentAuth(session: Session, maxAgeMinutes = 15) {
   const authTime = session.user?.authTime ?? 0;
   if (Date.now() - authTime > maxAgeMinutes * 60 * 1000) {
-    throw new ForbiddenError("Please sign in again to confirm this action.");
+    forbidden();
   }
 }
 
@@ -111,7 +117,7 @@ export async function requireChapterAccess(
     return chapterId;
   }
 
-  throw new ForbiddenError("You do not have access to this chapter.");
+  forbidden();
 }
 
 /** Chapter id a Chapter Admin is scoped to, or "ALL" for Super/Central Admin — for filtering a list view rather than a single-record check. */
@@ -124,5 +130,5 @@ export async function getChapterScope(globalPermissionKey: string): Promise<"ALL
     return session.user.chapterId;
   }
 
-  throw new ForbiddenError();
+  forbidden();
 }

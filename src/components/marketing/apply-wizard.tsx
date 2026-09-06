@@ -46,15 +46,18 @@ export function ApplyWizard({
     <div className="flex flex-col gap-10">
       {/* Step 1 */}
       <div>
-        <p className="text-sm font-medium text-gold-500">Step 1 — Category</p>
+        <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-4 py-1.5 text-sm font-medium text-gold-300">
+          Step 1 — Category
+        </span>
         <select
+          aria-label="Business category"
           value={categoryId}
           onChange={(e) => {
             setCategoryId(e.target.value);
             setChapterId(null);
             setJoiningWaitlist(false);
           }}
-          className="mt-3 w-full rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          className="mt-3 w-full rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
         >
           <option value="">Select your business category…</option>
           {categories.map((c) => (
@@ -68,7 +71,9 @@ export function ApplyWizard({
       {/* Step 2 — availability */}
       {categoryId ? (
         <div>
-          <p className="text-sm font-medium text-gold-500">Step 2 — Chapter availability</p>
+          <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-4 py-1.5 text-sm font-medium text-gold-300">
+            Step 2 — Chapter availability
+          </span>
           <div className="mt-3 flex flex-col gap-2">
             {availability.map((c) => (
               <button
@@ -83,8 +88,8 @@ export function ApplyWizard({
                   chapterId === c.chapterId
                     ? "border-gold-500 text-gold-300"
                     : c.available
-                      ? "border-navy-600 text-ivory-100 hover:border-gold-500/50"
-                      : "cursor-not-allowed border-navy-700 text-slate-600"
+                      ? "border-emerald-600 text-ivory-100 hover:border-gold-500/50"
+                      : "cursor-not-allowed border-emerald-700 text-slate-600"
                 }`}
               >
                 <span>
@@ -96,7 +101,7 @@ export function ApplyWizard({
           </div>
 
           {availableChapters.length === 0 ? (
-            <div className="mt-4 rounded-md border border-navy-600 p-4">
+            <div className="mt-4 rounded-md border border-emerald-600 p-4">
               <p className="text-sm text-slate-300">
                 Currently unavailable in existing chapters — every active chapter already has a
                 member in this category.
@@ -107,7 +112,7 @@ export function ApplyWizard({
                   setJoiningWaitlist(true);
                   setChapterId(null);
                 }}
-                className="mt-3 rounded-full bg-gold-500 px-5 py-2 text-sm font-medium text-navy-950 hover:bg-gold-400"
+                className="mt-3 rounded-full bg-gold-500 px-5 py-2 text-sm font-medium text-emerald-950 hover:bg-gold-400"
               >
                 Join the waiting list
               </button>
@@ -119,44 +124,44 @@ export function ApplyWizard({
       {/* Step 3/4 — application form */}
       {showForm ? (
         <form action={formAction} className="flex flex-col gap-4">
-          <p className="text-sm font-medium text-gold-500">
+          <span className="inline-flex w-fit items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-4 py-1.5 text-sm font-medium text-gold-300">
             Step 3 — {joiningWaitlist ? "Waiting list" : "Your details"}
-          </p>
+          </span>
           <input type="hidden" name="categoryId" value={categoryId} />
           {chapterId ? <input type="hidden" name="chapterId" value={chapterId} /> : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               Name
-              <input name="name" required className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="name" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               Phone
-              <input name="phone" required className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="phone" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
               Email
-              <input name="email" type="email" required className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="email" type="email" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               Company
-              <input name="companyName" required className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="companyName" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               Designation
-              <input name="designation" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="designation" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               Years in business
-              <input name="yearsInBusiness" type="number" min="0" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="yearsInBusiness" type="number" min="0" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
               How did you hear about BWF?
-              <input name="referralSource" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <input name="referralSource" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
               Short company information
-              <textarea name="companyInfo" rows={3} className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+              <textarea name="companyInfo" rows={3} className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
           </div>
 
@@ -170,7 +175,7 @@ export function ApplyWizard({
           <button
             type="submit"
             disabled={pending}
-            className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-navy-950 hover:bg-gold-400 disabled:opacity-50"
+            className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
           >
             {pending ? "Submitting…" : "Submit application"}
           </button>

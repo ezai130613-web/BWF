@@ -3,18 +3,18 @@
 
 /*
  * BWF design tokens — see docs/ARCHITECTURE.md for the visual-direction
- * rationale. The public site runs on this dark, warm-metallic palette;
+ * rationale. The public site runs on this dark, rich-emerald palette;
  * admin/member surfaces (Phase 2+) intentionally do NOT inherit this theme
  * wholesale — see the brief §14 "Admin panel should NOT use this design
  * heavily". Keep admin tokens separate when that phase lands rather than
  * reusing these.
  */
 @theme {
-  --color-navy-950: #050810; /* near-black navy — footer, deepest contrast blocks */
-  --color-navy-900: #0a1220; /* midnight navy — dominant background */
-  --color-navy-800: #0f2436; /* deep petrol / blue-teal — secondary sections */
-  --color-navy-700: #1a3247; /* card borders, dividers on dark */
-  --color-navy-600: #26445c; /* hover states on dark surfaces */
+  --color-emerald-950: #03110c; /* near-black emerald — footer, deepest contrast blocks */
+  --color-emerald-900: #0a2118; /* deep forest emerald — dominant background */
+  --color-emerald-800: #123d2c; /* rich emerald — secondary sections */
+  --color-emerald-700: #1c5a3f; /* card borders, dividers on dark */
+  --color-emerald-600: #2f7a56; /* hover states on dark surfaces */
 
   --color-gold-300: #e4cd9c;
   --color-gold-400: #d8b879; /* hover / lighter accent */
@@ -32,13 +32,13 @@
 }
 
 body {
-  background: var(--color-navy-900);
+  background: var(--color-emerald-900);
   color: var(--color-ivory-100);
 }
 
 ::selection {
   background: var(--color-gold-500);
-  color: var(--color-navy-950);
+  color: var(--color-emerald-950);
 }
 
 a:focus-visible,
@@ -53,7 +53,7 @@ button:focus-visible {
   top: 1rem;
   z-index: 100;
   background: var(--color-gold-500);
-  color: var(--color-navy-950);
+  color: var(--color-emerald-950);
   padding: 0.75rem 1.25rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;

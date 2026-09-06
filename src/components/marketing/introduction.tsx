@@ -3,7 +3,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 
 export function Introduction() {
   return (
-    <section className="bg-navy-900 py-28">
+    <section className="bg-emerald-900 py-28">
       <Container className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:items-start">
         <SectionLabel number="01">About BWF</SectionLabel>
         <div>

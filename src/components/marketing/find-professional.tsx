@@ -11,7 +11,7 @@ export async function FindProfessional() {
   });
 
   return (
-    <section className="bg-navy-800 py-28">
+    <section className="bg-emerald-800 py-28">
       <Container className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
         <div>
           <SectionLabel number="04">Find a BWF Professional</SectionLabel>
@@ -31,7 +31,7 @@ export async function FindProfessional() {
           {categories.map((category) => (
             <span
               key={category.id}
-              className="rounded-full border border-navy-600 px-4 py-2 text-sm text-slate-400"
+              className="rounded-full border border-emerald-600 px-4 py-2 text-sm text-slate-400"
             >
               {category.name}
             </span>

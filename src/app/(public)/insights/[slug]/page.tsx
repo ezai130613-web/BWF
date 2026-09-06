@@ -6,7 +6,7 @@ import { publiclyVisibleBlogWhere } from "@/lib/blog/query";
 import { renderMarkdown } from "@/lib/blog/render";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 
@@ -91,7 +91,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       {faqJsonLd ? <JsonLd data={faqJsonLd} /> : null}
       <JsonLd data={crumbs} />
 
-      <Container className="max-w-3xl">
+      <Container>
         <SectionLabel>{post.category.name}</SectionLabel>
         <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{post.title}</h1>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
@@ -102,7 +102,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <span>· Updated {post.updatedAt.toLocaleDateString()}</span>
         </div>
 
-        <MediaPlaceholder brief={`${post.title} — featured image`} className="mt-8 aspect-[16/9]" />
+        <PhotoSlot
+          src={post.featuredImageUrl}
+          alt={post.title}
+          brief={`${post.title} — featured image`}
+          className="mt-8 aspect-[16/9]"
+        />
 
         <div
           className="prose prose-invert prose-headings:font-display prose-a:text-gold-400 mt-10 max-w-none"
@@ -126,7 +131,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         {post.tags.length > 0 ? (
           <div className="mt-10 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
-              <span key={tag.id} className="rounded-full border border-navy-600 px-3 py-1 text-xs text-slate-400">
+              <span key={tag.id} className="rounded-full border border-emerald-600 px-3 py-1 text-xs text-slate-400">
                 {tag.name}
               </span>
             ))}
@@ -134,7 +139,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         ) : null}
 
         {relatedPosts.length > 0 ? (
-          <div className="mt-16 border-t border-navy-700 pt-10">
+          <div className="mt-16 border-t border-emerald-700 pt-10">
             <SectionLabel>More in {post.category.name}</SectionLabel>
             <div className="mt-6 flex flex-col gap-3">
               {relatedPosts.map((related) => (

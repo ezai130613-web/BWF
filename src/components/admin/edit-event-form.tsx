@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateEvent } from "@/app/admin/(dashboard)/events/actions";
+import { MediaUploadField } from "@/components/ui/media-upload-field";
 import type { Event } from "@/generated/prisma/client";
 
 const initialState: { error?: string } = {};
@@ -100,15 +101,9 @@ export function EditEventForm({ event }: { event: Event }) {
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
-        Image URL
-        <input
-          name="imageUrl"
-          type="url"
-          defaultValue={event.imageUrl ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        />
-      </label>
+      <div className="sm:col-span-2">
+        <MediaUploadField label="Image" name="imageUrl" kind="image" defaultValue={event.imageUrl} />
+      </div>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Description
         <textarea

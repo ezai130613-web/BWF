@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
+import { findMatchingCompany } from "@/lib/companies/match";
 import { slugify } from "@/lib/slugify";
 import { notifyApplicationStatusChanged } from "@/lib/notifications";
 import type { $Enums } from "@/generated/prisma/client";
@@ -28,11 +29,18 @@ export async function updateApplicationStatus(applicationId: string, status: $En
     metadata: { status },
   });
 
-  await notifyApplicationStatusChanged({
-    applicantName: application.name,
-    applicantEmail: application.email,
-    status: application.status,
-  });
+  // Backlog #35 — the status change above is already committed; a failed
+  // notification email must not turn a successful status update into a 500
+  // for the admin.
+  try {
+    await notifyApplicationStatusChanged({
+      applicantName: application.name,
+      applicantEmail: application.email,
+      status: application.status,
+    });
+  } catch (error) {
+    console.error("notifyApplicationStatusChanged failed (status change still saved):", error);
+  }
 
   revalidateApplicationPaths(applicationId);
 }
@@ -87,25 +95,39 @@ export async function reassignApplicationChapter(_prevState: { error?: string } 
   return { error: undefined };
 }
 
+const convertSchema = z.object({ applicationId: z.string() });
+
 /**
  * Brief §17 step 7 — the only way a Member ever gets created from an
  * application. Never automatic on approval/payment; always this explicit
- * admin action. Auto-creates (or reuses, matched by name) the applicant's
- * Company since it doesn't exist as a real record yet at application time.
+ * admin action. Auto-creates (or reuses, fuzzy-matched by name via
+ * findMatchingCompany — backlog #12) the applicant's Company since it
+ * doesn't exist as a real record yet at application time.
+ *
+ * Returns `{error}` instead of throwing (backlog #11) — a raw throw from a
+ * plain `<form action={fn.bind(null, id)}>` has no error-state channel back
+ * to the page, so it surfaces as Next's generic route error boundary
+ * instead of an inline message. `SLOT_TAKEN_ERROR` in particular is a real,
+ * expected outcome here (another application could win the same
+ * chapter+category race first), not an exceptional failure.
  */
-export async function convertApplicationToMember(applicationId: string) {
+export async function convertApplicationToMember(_prevState: { error?: string } | undefined, formData: FormData) {
   const session = await requirePermission("applications:manage");
+
+  const parsed = convertSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Invalid input." };
+  const { applicationId } = parsed.data;
 
   const application = await db.membershipApplication.findUniqueOrThrow({ where: { id: applicationId } });
 
   if (!application.chapterId) {
-    throw new Error("Assign a chapter before converting this application to a member.");
+    return { error: "Assign a chapter before converting this application to a member." };
   }
   if (application.convertedMemberId) {
-    throw new Error("This application has already been converted.");
+    return { error: "This application has already been converted." };
   }
 
-  let company = await db.company.findFirst({ where: { name: application.companyName } });
+  let company = await findMatchingCompany(application.companyName);
   if (!company) {
     company = await db.company.create({ data: { name: application.companyName } });
   }
@@ -153,7 +175,7 @@ export async function convertApplicationToMember(applicationId: string) {
       error.code === "P2002" &&
       JSON.stringify((error as { meta?: unknown }).meta).includes("activeSlotKey")
     ) {
-      throw new Error(SLOT_TAKEN_ERROR);
+      return { error: SLOT_TAKEN_ERROR };
     }
     throw error;
   }
@@ -163,4 +185,5 @@ export async function convertApplicationToMember(applicationId: string) {
   revalidatePath("/chapters/[slug]", "page");
   revalidatePath("/members");
   revalidatePath("/");
+  return { error: undefined };
 }

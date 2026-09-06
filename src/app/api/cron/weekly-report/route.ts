@@ -46,12 +46,13 @@ export async function GET(request: Request) {
       const chapterFilter = recipient.scope === "CHAPTER" && recipient.chapterId ? { chapterId: recipient.chapterId } : {};
       const scopeLabel = recipient.scope === "MASTER" ? "All Chapters" : (recipient.chapter?.name ?? "Chapter");
 
-      // Default columns only, same as an on-demand export with nothing
-      // extra selected — brief §44's "must not alter requested export
-      // unless selected" extends naturally here (no per-recipient UI to
-      // select extra columns from).
-      const rows = await buildMemberExportRows(chapterFilter, false);
-      const buffer = await toXlsxBuffer(rows, false, `Weekly Member Export — ${scopeLabel}`);
+      // Backlog #26 — each recipient now has their own Chapter & Company
+      // columns preference (set on /admin/reports), same brief §44
+      // discipline as the on-demand export's checkbox: off unless the
+      // recipient explicitly opted in.
+      const includeExtra = recipient.includeExtraColumns;
+      const rows = await buildMemberExportRows(chapterFilter, includeExtra);
+      const buffer = await toXlsxBuffer(rows, includeExtra, `Weekly Member Export — ${scopeLabel}`);
 
       await sendEmail({
         to: recipient.email,

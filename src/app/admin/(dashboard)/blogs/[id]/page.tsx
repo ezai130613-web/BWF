@@ -3,13 +3,14 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { EditBlogForm } from "@/components/admin/edit-blog-form";
+import { RejectArticleForm } from "@/components/admin/reject-article-form";
 import { deleteBlog } from "../actions";
 
 export default async function BlogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("blogs:manage");
   const { id } = await params;
 
-  const post = await db.blog.findUnique({ where: { id }, include: { tags: true } });
+  const post = await db.blog.findUnique({ where: { id }, include: { tags: true, submittedByMember: true } });
   if (!post) notFound();
 
   const [categories, authors] = await Promise.all([
@@ -36,6 +37,25 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ id:
           </form>
         ) : null}
       </div>
+
+      {post.submissionStatus === "PENDING" ? (
+        <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-6">
+          <p className="text-sm text-amber-800">
+            Submitted by <span className="font-medium">{post.submittedByMember?.name}</span> for review (brief §31).
+            Edit and set Status to Published/Scheduled below to approve, or reject it here.
+          </p>
+          <RejectArticleForm blogId={post.id} />
+        </div>
+      ) : post.submissionStatus === "REJECTED" ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+          Rejected {post.reviewedAt?.toLocaleDateString()}
+          {post.reviewNotes ? ` — ${post.reviewNotes}` : ""}
+        </div>
+      ) : post.submissionStatus === "APPROVED" ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
+          Submitted by {post.submittedByMember?.name}, approved {post.reviewedAt?.toLocaleDateString()}.
+        </div>
+      ) : null}
 
       <EditBlogForm post={post} categories={categories} authors={authors} tagNames={post.tags.map((t) => t.name)} />
     </div>

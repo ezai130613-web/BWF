@@ -17,6 +17,9 @@ export default async function MemberPortalLayout({ children }: { children: React
             <Link href="/member/profile" className="text-neutral-600 hover:text-neutral-900">
               My Profile
             </Link>
+            <Link href="/member/articles" className="text-neutral-600 hover:text-neutral-900">
+              Articles
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

@@ -276,14 +276,21 @@ export async function reviewMemberProfileRevision(_prevState: { error?: string }
   // (member.user.email) always exists — prefer it over the public contact
   // field (member.email), which is a separate, often-empty column and would
   // otherwise silently skip notifying members who never filled it in.
+  // Backlog #35 — the review decision above is already committed; a failed
+  // notification email must not turn a successful review into a 500 for
+  // the admin.
   const notifyEmail = member.user?.email ?? member.email;
   if (notifyEmail) {
-    await notifyProfileRevisionReviewed({
-      memberName: member.name,
-      memberEmail: notifyEmail,
-      approved: intent === "approve",
-      reviewNotes: reviewNotes || undefined,
-    });
+    try {
+      await notifyProfileRevisionReviewed({
+        memberName: member.name,
+        memberEmail: notifyEmail,
+        approved: intent === "approve",
+        reviewNotes: reviewNotes || undefined,
+      });
+    } catch (error) {
+      console.error("notifyProfileRevisionReviewed failed (review decision still saved):", error);
+    }
   }
 
   revalidatePath(`/admin/members/${member.id}`);

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", permission: null },
   { href: "/admin/chapters", label: "Chapters", permission: "chapters:manage" },
+  { href: "/admin/leadership-roles", label: "Leadership Roles", permission: "chapters:manage" },
   { href: "/admin/companies", label: "Companies", permission: "companies:manage" },
   { href: "/admin/categories", label: "Categories", permission: "categories:manage" },
   { href: "/admin/members", label: "Members", permission: "members:manage" },
@@ -14,6 +15,8 @@ const NAV_ITEMS = [
   { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage" },
   { href: "/admin/events", label: "Events", permission: "events:manage" },
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage" },
+  { href: "/admin/leads", label: "Leads", permission: "leads:manage" },
+  { href: "/admin/analytics", label: "Analytics", permission: "analytics:view" },
   { href: "/admin/reports", label: "Reports", permission: "reports:manage" },
   { href: "/admin/exports", label: "Exports", permission: "exports:manage" },
   { href: "/admin/chatbot", label: "Ask BWF", permission: "chatbot:manage" },
@@ -44,15 +47,22 @@ export function Sidebar({
     if (item.permission === null) return true;
     if (permissions.has(item.permission)) return true;
     // Chapter Admin holds no global permissions but does get scoped access
-    // to Members/Meetings/Events/Visitors within their own chapter (see
-    // requireChapterAccess) — show those links for them.
-    const chapterScopedPermissions = ["members:manage", "meetings:manage", "events:manage", "visitors:manage", "exports:manage"];
+    // to Members/Meetings/Events/Visitors/Leads within their own chapter
+    // (see requireChapterAccess) — show those links for them.
+    const chapterScopedPermissions = [
+      "members:manage",
+      "meetings:manage",
+      "events:manage",
+      "visitors:manage",
+      "exports:manage",
+      "leads:manage",
+    ];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
   });
 
   return (
-    <aside className="flex w-64 flex-shrink-0 flex-col bg-navy-900 text-ivory-100">
+    <aside className="flex w-64 flex-shrink-0 flex-col bg-emerald-900 text-ivory-100">
       <div className="px-6 py-6">
         <p className="font-display text-base">Builders World Forum</p>
         <p className="mt-0.5 text-xs text-slate-400">Admin</p>
@@ -67,7 +77,7 @@ export function Sidebar({
               href={item.href}
               className={cn(
                 "block rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-navy-700 text-gold-300" : "text-slate-400 hover:bg-navy-800 hover:text-ivory-100",
+                active ? "bg-emerald-700 text-gold-300" : "text-slate-400 hover:bg-emerald-800 hover:text-ivory-100",
               )}
             >
               {item.label}
@@ -76,7 +86,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-navy-700 px-6 py-4">
+      <div className="border-t border-emerald-700 px-6 py-4">
         <p className="truncate text-sm text-ivory-200">{userName}</p>
       </div>
     </aside>

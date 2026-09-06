@@ -4,11 +4,10 @@ import { db } from "@/lib/db";
  * Brief §39 — the admin dashboard's operational metrics. Only the base list
  * is implemented; the "Later:" items (business generated, referral count,
  * attendance, renewals, website performance) are explicitly future work and
- * deliberately not built early (brief §72). The general Leads system (brief
- * §35) still has no phase of its own (see docs/ARCHITECTURE.md), but Phase 12
- * gives one real lead source — the Ask BWF chatbot — so "New chatbot leads"
- * is now a real, honest tile rather than the placeholder gap noted since
- * Phase 9. It's still not the general "New leads" brief §39 asks for.
+ * deliberately not built early (brief §72). "New leads" is now real —
+ * backlog #17 gave the general Leads system (brief §35) an actual phase/
+ * home, closing the gap this comment used to describe (a chatbot-only count
+ * standing in for the general tile brief §39 actually asks for).
  *
  * Chapter Admin gets a materially smaller set, not the same set pre-filtered
  * — several of these (companies, applications, blog, audit log) sit outside
@@ -32,7 +31,7 @@ export type GlobalDashboardMetrics = {
   openCategorySlots: number;
   publishedBlogCount: number;
   latestPublishedBlog: { title: string; publishedAt: Date } | null;
-  newChatbotLeads: number;
+  newLeads: number;
   recentActivity: { action: string; entity: string | null; entityId: string | null; createdAt: Date; userName: string | null }[];
 };
 
@@ -45,6 +44,7 @@ export type ChapterDashboardMetrics = {
   upcomingMeetings: number;
   upcomingEvents: number;
   openCategorySlots: number;
+  newLeads: number;
 };
 
 export type DashboardMetrics = GlobalDashboardMetrics | ChapterDashboardMetrics;
@@ -60,7 +60,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
 
   if (scope !== "ALL") {
     const chapterId = scope;
-    const [chapter, activeMembers, totalVisitors, newVisitorsThisMonth, upcomingMeetings, upcomingEvents, activeCategories] =
+    const [chapter, activeMembers, totalVisitors, newVisitorsThisMonth, upcomingMeetings, upcomingEvents, activeCategories, newLeads] =
       await Promise.all([
         db.chapter.findUniqueOrThrow({ where: { id: chapterId } }),
         db.member.count({ where: { chapterId, status: "ACTIVE" } }),
@@ -69,6 +69,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
         db.meeting.count({ where: { chapterId, status: "SCHEDULED", startsAt: { gte: now } } }),
         db.event.count({ where: { chapterId, status: "SCHEDULED", startsAt: { gte: now } } }),
         db.category.count({ where: { isActive: true } }),
+        db.lead.count({ where: { chapterId, status: "NEW" } }),
       ]);
 
     return {
@@ -80,6 +81,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
       upcomingMeetings,
       upcomingEvents,
       openCategorySlots: Math.max(activeCategories - activeMembers, 0),
+      newLeads,
     };
   }
 
@@ -96,7 +98,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
     activeCategories,
     publishedBlogCount,
     latestPublishedBlog,
-    newChatbotLeads,
+    newLeads,
     recentActivity,
   ] = await Promise.all([
     db.member.count({ where: { status: "ACTIVE" } }),
@@ -115,7 +117,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
       orderBy: { publishedAt: "desc" },
       select: { title: true, publishedAt: true },
     }),
-    db.chatbotLead.count({ where: { status: "NEW" } }),
+    db.lead.count({ where: { status: "NEW" } }),
     db.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -140,7 +142,7 @@ export async function getDashboardMetrics(scope: "ALL" | string): Promise<Dashbo
       latestPublishedBlog?.publishedAt != null
         ? { title: latestPublishedBlog.title, publishedAt: latestPublishedBlog.publishedAt }
         : null,
-    newChatbotLeads,
+    newLeads,
     recentActivity: recentActivity.map((log) => ({
       action: log.action,
       entity: log.entity,

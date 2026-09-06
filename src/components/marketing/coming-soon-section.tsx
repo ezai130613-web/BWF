@@ -13,7 +13,7 @@ export function ComingSoonSection({
   note: string;
 }) {
   return (
-    <section className="bg-navy-800 py-24">
+    <section className="bg-emerald-800 py-24">
       <Container>
         <SectionLabel number={number}>{label}</SectionLabel>
         <p className="mt-6 font-display text-2xl text-ivory-100 sm:text-3xl">{title}</p>

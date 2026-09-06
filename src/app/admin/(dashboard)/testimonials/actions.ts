@@ -22,6 +22,8 @@ const createSchema = z.object({
   content: z.string().min(1, "Testimonial text is required"),
   type: z.enum(TYPES),
   chapterId: z.string().optional(),
+  imageUrl: z.string().optional(),
+  videoUrl: z.string().optional(),
   consent: z.literal("on").optional(),
 });
 

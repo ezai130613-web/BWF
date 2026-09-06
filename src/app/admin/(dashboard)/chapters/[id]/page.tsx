@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { EditChapterForm } from "@/components/admin/edit-chapter-form";
@@ -32,8 +33,11 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
       <div>
         <h2 className="text-sm font-semibold text-neutral-900">Leadership</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          Configurable role types (brief §22) — manage the role list itself via the database
-          seed for now; assigning members to existing roles is fully self-service here.
+          Configurable role types (brief §22) — manage the role list itself at{" "}
+          <Link href="/admin/leadership-roles" className="text-neutral-900 underline">
+            Leadership Roles
+          </Link>
+          ; assign members to those roles here.
         </p>
 
         <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white">

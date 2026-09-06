@@ -3,7 +3,7 @@ import { TrackedButton } from "@/components/analytics/tracked-button";
 
 export function MembershipCta() {
   return (
-    <section className="bg-navy-950 py-28">
+    <section className="bg-emerald-950 py-28">
       <Container className="flex flex-col items-start gap-8">
         <p className="font-display text-5xl leading-[1.05] text-ivory-100 sm:text-6xl">
           Your category.

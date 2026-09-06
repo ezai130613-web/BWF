@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createCompany } from "@/app/admin/(dashboard)/companies/actions";
+import { MediaUploadField } from "@/components/ui/media-upload-field";
 
 const initialState: { error?: string } = {};
 
@@ -35,6 +36,9 @@ export function CreateCompanyForm() {
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>
+      <div className="sm:col-span-2">
+        <MediaUploadField label="Logo (optional)" name="logoUrl" kind="image" />
+      </div>
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}
       <div className="sm:col-span-2">
         <button

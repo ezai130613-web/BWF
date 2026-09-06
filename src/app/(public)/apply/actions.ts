@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getChapterAvailability } from "@/lib/applications/availability";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
 import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
+import { recordLead } from "@/lib/leads/record";
 
 const submitSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -64,13 +65,30 @@ export async function submitApplication(
     },
   });
 
-  const category = await db.category.findUnique({ where: { id: rest.categoryId }, select: { name: true } });
-  await notifyApplicationSubmitted({
-    applicantName: rest.name,
-    applicantEmail: rest.email,
-    companyName: rest.companyName,
-    categoryName: category?.name ?? "your category",
-    waitlisted: status === "WAITLISTED",
+  // Backlog #35 — the application above is already committed; a failed
+  // confirmation/admin-alert email must not turn a successful submission
+  // into a 500 for the applicant.
+  try {
+    const category = await db.category.findUnique({ where: { id: rest.categoryId }, select: { name: true } });
+    await notifyApplicationSubmitted({
+      applicantName: rest.name,
+      applicantEmail: rest.email,
+      companyName: rest.companyName,
+      categoryName: category?.name ?? "your category",
+      waitlisted: status === "WAITLISTED",
+    });
+  } catch (error) {
+    console.error("notifyApplicationSubmitted failed (application still submitted):", error);
+  }
+
+  await recordLead({
+    source: status === "WAITLISTED" ? "CATEGORY_WAITLIST" : "MEMBERSHIP_ENQUIRY",
+    name: rest.name,
+    phone: rest.phone,
+    email: rest.email,
+    requirement: rest.companyInfo,
+    chapterId: finalChapterId,
+    categoryId: rest.categoryId,
   });
 
   revalidatePath("/admin/applications");

@@ -1,12 +1,22 @@
 import { z } from "zod";
-import type Anthropic from "@anthropic-ai/sdk";
+import type OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth/config";
-import { isChatbotConfigured, getAnthropicClient } from "@/lib/chatbot/client";
+import { isChatbotConfigured, getOpenAIClient } from "@/lib/chatbot/client";
 import { getBaselineChatbotContext, getKeywordMatchedChatbotContext } from "@/lib/chatbot/retrieval";
 import { buildChatbotSystemPrompt } from "@/lib/chatbot/prompt";
 import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
+
+/**
+ * Configurable rather than hardcoded (unlike the Claude model this replaced,
+ * backlog #22) — OpenAI's model lineup has almost certainly moved on since
+ * this was written, and guessing a specific current model id with any
+ * confidence isn't possible here. `gpt-4o-mini` is a safe, well-established
+ * default; override with OPENAI_CHATBOT_MODEL if a newer/different model is
+ * preferred, no code change needed.
+ */
+const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL || "gpt-4o-mini";
 
 /** Bounds how long any single conversation can run — separate from the
  * per-IP velocity limit below (Phase 14), which catches a single client
@@ -89,19 +99,18 @@ export async function POST(request: Request) {
 
   const system = buildChatbotSystemPrompt(baselineContext, keywordContext);
 
-  const client = getAnthropicClient();
-  const anthropicMessages: Anthropic.Messages.MessageParam[] = [
-    ...history.map((m) => ({ role: m.role, content: m.content })),
+  const client = getOpenAIClient();
+  const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: system },
+    ...history.map((m) => ({ role: m.role, content: m.content }) as const),
     { role: "user", content: message },
   ];
 
-  const stream = client.messages.stream({
-    model: "claude-opus-5",
-    max_tokens: 2048,
-    system,
-    thinking: { type: "adaptive" },
-    output_config: { effort: "medium" },
-    messages: anthropicMessages,
+  const stream = await client.chat.completions.create({
+    model: CHATBOT_MODEL,
+    max_completion_tokens: 2048,
+    messages: openaiMessages,
+    stream: true,
   });
 
   const encoder = new TextEncoder();
@@ -111,10 +120,11 @@ export async function POST(request: Request) {
       let assistantText = "";
 
       try {
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            assistantText += event.delta.text;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            assistantText += delta;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: delta })}\n\n`));
           }
         }
 

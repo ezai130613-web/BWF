@@ -7,7 +7,6 @@ const EXPLORE_LINKS = [
   { href: "/chapters", label: "Chapters" },
   { href: "/members", label: "Member Directory" },
   { href: "/insights", label: "Insights" },
-  { href: "/events", label: "Events" },
 ];
 
 const MEMBERSHIP_LINKS = [
@@ -31,7 +30,7 @@ export async function Footer() {
   const content = await getContent(["footer.tagline", "contact.phone", "contact.email", "contact.address"]);
 
   return (
-    <footer className="border-t border-navy-700/60 bg-navy-950">
+    <footer className="border-t border-emerald-700/60 bg-emerald-950">
       <Container className="grid gap-12 py-16 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div>
           <p className="font-display text-lg text-ivory-100">Builders World Forum</p>
@@ -55,8 +54,8 @@ export async function Footer() {
         <FooterColumn title="More" links={MORE_LINKS} />
       </Container>
 
-      <div className="border-t border-navy-700/60">
-        <Container className="flex flex-col items-center justify-between gap-4 py-6 text-xs text-slate-500 sm:flex-row">
+      <div className="border-t border-emerald-700/60">
+        <Container className="flex flex-col items-center justify-between gap-4 py-6 text-xs text-slate-400 sm:flex-row">
           <p>&copy; {new Date().getFullYear()} Builders World Forum. All rights reserved.</p>
           <p>{content["contact.address"] ?? "Chennai, India"}</p>
         </Container>

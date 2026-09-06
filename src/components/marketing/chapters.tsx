@@ -2,7 +2,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
+import { getChapterPhotos } from "@/lib/chapters/photos";
 
 export async function Chapters() {
   const chapters = await db.chapter.findMany({
@@ -13,7 +14,7 @@ export async function Chapters() {
   if (chapters.length === 0) return null;
 
   return (
-    <section className="bg-navy-900 py-28">
+    <section className="bg-emerald-900 py-28">
       <Container>
         <div className="flex items-end justify-between gap-4">
           <SectionLabel number="03">Chapters</SectionLabel>
@@ -24,13 +25,16 @@ export async function Chapters() {
             <Link
               key={chapter.id}
               href={`/chapters/${chapter.slug}`}
-              className="group relative w-[80vw] flex-shrink-0 snap-start overflow-hidden rounded-sm border border-navy-700 sm:w-[60vw] lg:w-auto"
+              className="group relative w-[80vw] flex-shrink-0 snap-start overflow-hidden rounded-sm border border-emerald-700 sm:w-[60vw] lg:w-auto"
             >
-              <MediaPlaceholder
+              <PhotoSlot
+                src={getChapterPhotos(chapter.slug)?.portrait}
+                alt={chapter.name}
                 brief={`${chapter.name} — chapter meeting venue or member work, photographic`}
+                unoptimized={false}
                 className="aspect-[4/5]"
               />
-              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-navy-950 via-navy-950/40 to-transparent p-6">
+              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-emerald-950 via-emerald-950/40 to-transparent p-6">
                 <p className="font-display text-2xl text-ivory-100">{chapter.name}</p>
                 <p className="mt-1 text-sm text-slate-400">{chapter.location ?? "Chennai"}</p>
                 <span className="mt-4 text-sm font-medium text-gold-400 transition-transform group-hover:translate-x-1">

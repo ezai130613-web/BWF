@@ -11,12 +11,19 @@ const STATUS_STYLES: Record<string, string> = {
   ARCHIVED: "bg-red-50 text-red-700",
 };
 
+/** Brief §31 — only member-submitted posts ever have a submissionStatus; admin-authored ones are null and show nothing here. */
+const SUBMISSION_STYLES: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700",
+  APPROVED: "bg-emerald-50 text-emerald-700",
+  REJECTED: "bg-red-50 text-red-700",
+};
+
 export default async function BlogsPage() {
   await requirePermission("blogs:manage");
 
   const [posts, categories, authors] = await Promise.all([
     db.blog.findMany({
-      include: { category: true, author: true },
+      include: { category: true, author: true, submittedByMember: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
     }),
     db.blogCategory.findMany({ orderBy: { name: "asc" } }),
@@ -28,7 +35,8 @@ export default async function BlogsPage() {
       <div>
         <h1 className="text-xl font-semibold text-neutral-900">Blog</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Start a draft here, then fill in content/SEO/FAQ on the post&rsquo;s own page.
+          Start a draft here, then fill in content/SEO/FAQ on the post&rsquo;s own page. Posts
+          members submit for review (brief §31) show up here too, marked Pending.
         </p>
       </div>
 
@@ -40,6 +48,7 @@ export default async function BlogsPage() {
               <th className="px-4 py-3 font-medium">Category</th>
               <th className="px-4 py-3 font-medium">Author</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Submission</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -54,6 +63,15 @@ export default async function BlogsPage() {
                     {post.status}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  {post.submissionStatus ? (
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SUBMISSION_STYLES[post.submissionStatus]}`}>
+                      {post.submissionStatus === "PENDING" ? `Pending — ${post.submittedByMember?.name}` : post.submissionStatus}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-neutral-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/admin/blogs/${post.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
                     Edit →
@@ -63,7 +81,7 @@ export default async function BlogsPage() {
             ))}
             {posts.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-neutral-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
                   No posts yet.
                 </td>
               </tr>

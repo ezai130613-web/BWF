@@ -54,6 +54,7 @@ model User {
   /// are admins with no Member row at all.
   memberAccount     Member?
   reviewedRevisions MemberProfileRevision[]
+  reviewedArticles  Blog[]
 
   @@map("users")
 }
@@ -201,6 +202,7 @@ model Chapter {
   events           Event[]
   visitors         Visitor[]
   reportRecipients WeeklyReportRecipient[]
+  leads            Lead[]
 
   @@map("chapters")
 }
@@ -218,6 +220,7 @@ model Category {
   members      Member[]
   applications MembershipApplication[]
   visitors     Visitor[]
+  leads        Lead[]
 
   @@map("categories")
 }
@@ -322,11 +325,13 @@ model Member {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leadershipRoles  ChapterLeadership[]
-  authorProfile    Author?
-  fromApplication  MembershipApplication?
-  referredVisitors Visitor[]               @relation("VisitorReferrals")
-  profileRevisions MemberProfileRevision[]
+  leadershipRoles   ChapterLeadership[]
+  authorProfile     Author?
+  fromApplication   MembershipApplication?
+  referredVisitors  Visitor[]               @relation("VisitorReferrals")
+  profileRevisions  MemberProfileRevision[]
+  leads             Lead[]
+  submittedArticles Blog[]
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -428,6 +433,16 @@ enum BlogStatus {
   ARCHIVED
 }
 
+/// Null on every admin-authored post — set only when a member submitted it
+/// (brief §31, backlog #21). Mirrors MemberProfileRevisionStatus's 3-state
+/// shape, kept as its own enum rather than reusing that one since a Blog is
+/// a real published entity being reviewed, not a JSON delta being applied.
+enum BlogSubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Author {
   id       String  @id @default(cuid())
   name     String
@@ -475,11 +490,25 @@ model Blog {
   slug    String     @unique
   excerpt String?
   /// Markdown — rendered server-side via `marked` (src/lib/blog/render.ts).
-  /// Trusted admin-authored content; even the future member-submission path
-  /// (Phase 11) stays behind admin approval before a post can reach
+  /// Trusted admin-authored content; the member-submission path (brief §31,
+  /// backlog #21) stays behind admin approval before a post can reach
   /// PUBLISHED, so this never renders unreviewed user input.
   content String
   status  BlogStatus @default(DRAFT)
+
+  /// Brief §31 — set when a member submitted this post; null for every
+  /// admin-authored one. `submissionStatus` starts PENDING and only ever
+  /// moves forward once (see admin/blogs/actions.ts) — approving is just
+  /// the normal edit-and-save flow (brief's "Edited" and "Approved" are the
+  /// same code path, same precedent as MemberProfileRevision's review
+  /// action), rejecting is its own explicit action.
+  submittedByMemberId String?
+  submittedByMember   Member?               @relation(fields: [submittedByMemberId], references: [id], onDelete: SetNull)
+  submissionStatus    BlogSubmissionStatus?
+  reviewedById        String?
+  reviewedBy          User?                 @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes         String?
+  reviewedAt          DateTime?
 
   /// FAQ entries for AEO/GEO (brief §29) — [{ question, answer }, ...].
   /// Rendered as an on-page FAQ section and FAQPage structured data.
@@ -510,6 +539,7 @@ model Blog {
   @@index([status, publishedAt])
   @@index([authorId])
   @@index([categoryId])
+  @@index([submissionStatus])
   @@map("blogs")
 }
 
@@ -800,6 +830,12 @@ model WeeklyReportRecipient {
 
   isActive Boolean @default(true)
 
+  /// Backlog #26 — per-recipient column preference, mirroring the same
+  /// "include Chapter & Company" checkbox /admin/exports already offers for
+  /// an on-demand export (brief §44's "must not alter requested export
+  /// unless selected" applies the same way here: off by default).
+  includeExtraColumns Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   @@map("weekly_report_recipients")
@@ -965,4 +1001,81 @@ model RateLimitHit {
 
   @@index([expiresAt])
   @@map("rate_limit_hits")
+}
+
+// ---------------------------------------------------------------------------
+// Leads system (brief §35) — a rollup across every lead-generating touchpoint
+// on the site, given its own phase/home here (backlog item #17; the brief's
+// own Phase Structure table §70 never assigned it one). This does NOT
+// replace any existing specific record — MembershipApplication, Visitor, and
+// ChatbotLead each keep their own detailed model, admin page, and workflow
+// exactly as before. `Lead` is purely the cross-source summary brief §35's
+// field list and brief §39's dashboard "New leads" tile actually describe:
+// every one of those flows additionally writes one Lead row here (see
+// src/lib/leads/record.ts) alongside doing whatever it already did.
+//
+// Two of the brief's seven listed sources — "Member profile enquiry" and
+// "Contact form" — have no real capture point on the site yet (a member's
+// public contact block is a plain mailto/tel/WhatsApp link a visitor leaves
+// the site to use, not a form with data to record; no general Contact Us
+// page exists at all). Modeled as real LeadSource values so nothing about
+// the schema needs to change whenever those forms are eventually built, but
+// nothing populates them yet — see docs/ARCHITECTURE.md.
+// ---------------------------------------------------------------------------
+
+enum LeadSource {
+  MEMBER_PROFILE_ENQUIRY
+  CONTACT_FORM
+  CHATBOT
+  MEMBERSHIP_ENQUIRY
+  VISITOR_REGISTRATION
+  EVENT_REGISTRATION
+  CATEGORY_WAITLIST
+}
+
+/// Mirrors ChatbotLeadStatus's own 4-state lifecycle (brief §35's "Future
+/// system should track whether lead became business" is just CONVERTED —
+/// no separate boolean needed for the same fact).
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  DISCARDED
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  source      LeadSource
+  name        String
+  phone       String
+  email       String?
+  requirement String?
+
+  /// The member a lead is "involved" with, per brief §35's field list — set
+  /// when known (e.g. who referred a visitor); most sources don't have one.
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  /// Null for sources with no chapter of their own (chatbot, a waitlisted
+  /// membership enquiry with no chapter assigned yet) — deliberately, not a
+  /// missing-data bug. A Chapter Admin's admin view (requireChapterAccess)
+  /// can only ever show leads with a real chapterId; a null-chapter lead is
+  /// visible only to Central/Super Admin via the blanket leads:manage
+  /// permission, same visibility rule ChatbotLead's own page already used.
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  status LeadStatus @default(NEW)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([chapterId])
+  @@index([source])
+  @@map("leads")
 }

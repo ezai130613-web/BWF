@@ -104,13 +104,40 @@ is complete and committed.
   pass (only structural a11y — landmarks, focus, skip link — verified, not an actual AT pass).
 
 **Known issues / follow-ups:**
-- No real photography — every image slot is a placeholder. This must be resolved before
-  production launch, not left for Phase 14.
+- ~~No real photography — every image slot is a placeholder.~~ **Resolved 2026-09-04.** Member,
+  Blog, and Event photo slots (`Member.photoUrl`, `Blog.featuredImageUrl`, `Event.imageUrl`) had
+  admin form fields since their respective phases but the public pages never read them — always
+  rendering the placeholder regardless. Fixed via `<PhotoSlot>` (`src/components/ui/photo-slot.tsx`),
+  which renders the real photo when an admin has supplied one and falls back to `MediaPlaceholder`
+  otherwise — so those three get their photography through normal admin data entry going forward.
+  Homepage (5 shots) and Chapters (2/chapter) have no per-record field — the user supplied real
+  photography for all of these directly, now checked in under `public/images/` and wired via
+  `next/image`/`<PhotoSlot>` with `unoptimized={false}` (same-origin, safe to run through Next's
+  optimizer, unlike the admin-supplied arbitrary URLs above). Chapter photo mapping lives in
+  `src/lib/chapters/photos.ts`, keyed by chapter slug — a new chapter simply has no entry until its
+  photos are sourced, falling back to `MediaPlaceholder` automatically.
+  **Real defect caught and fixed along the way**: the delivered Homepage Hero and all three Chapter
+  Hero images turned out to be AI-generated composites with their own large headline text already
+  baked into the photo (e.g. "Built on connections...", "CC1 / CHAPTER 1"), which visibly collided
+  with the site's own live overlaid heading. Removed via a masked-inpaint pass (luminance
+  thresholding to isolate the glyphs + a downsample/inpaint/upsample fill for the large lettering,
+  since a direct `cv2.inpaint` left visible ghosting on regions that large) — not reflected in any
+  committed script, a one-off image-editing pass on the 4 affected source files before they were
+  optimized into `public/images/`. Verified by re-screenshotting all four pages after a full
+  `.next` cache clear (Next's dev image optimizer caches by URL, not by source file content —
+  overwriting a same-named file silently served stale cached bytes until the cache was cleared).
+  A hero image sourced at 1672×941 (below the 3840×2160 the shot list asked for) also shipped as-is
+  — usable, just softer than ideal if viewed at very large desktop widths.
 - Chapter section shows 3 generic placeholder panels; becomes data-driven in Phase 3.
 - Insights/Events sections are intentionally inert "coming soon" states until Phases 5/8 ship
   real content — don't mistake this for a bug.
-- `/privacy` and `/terms` are placeholders, not real legal text — flagged in
-  `docs/ARCHITECTURE.md` open decisions, needs actual legal review before launch.
+- `/privacy` and `/terms` now render a full first-draft Privacy Policy / Terms & Conditions
+  (2026-09-04), grounded in the platform's actual data model and integrations rather than generic
+  boilerplate — see `src/components/legal/legal-page-shell.tsx`. Still explicitly marked as a
+  draft on-page (with bracketed placeholders for entity name, jurisdiction, grievance officer,
+  fee terms, and liability/indemnification boilerplate) and must not be treated as final until a
+  real lawyer reviews it and fills in those placeholders — flagged in `docs/ARCHITECTURE.md` open
+  decisions.
 - GA4/Search Console (brief §50) not wired up yet — that's Phase 10.
 
 ---
@@ -183,11 +210,32 @@ is complete and committed.
   migration, `20260903235600_blogs_events_visitors_indexes`, ordered after the migrations that
   create those tables. All three branches (`dev`, `staging`, `main`) now apply cleanly from empty
   via `prisma migrate deploy`.
-- Seeded Super Admin uses local-dev-only placeholder credentials
-  (`SEED_SUPER_ADMIN_EMAIL`/`_PASSWORD` in `.env`) — replace with real founder credentials
-  before this touches anything real.
-- No real email provider configured — OTP codes currently only work because they're logged to
-  the server console. This is fine for continued local development, not for staging.
+- ~~Seeded Super Admin uses local-dev-only placeholder credentials~~ — **Resolved 2026-09-06**
+  (backlog #6): real founder Super Admin account created (`abiramanathank1@gmail.com`), plus two
+  real Central Admin accounts for day-to-day data entry (`arasubwf1@gmail.com`,
+  `buildersworldforum1@gmail.com`) — Central Admin was chosen over Chapter Admin since the two
+  aren't scoped to one chapter. The old placeholder (`admin@bwf.local`) was suspended rather than
+  deleted, keeping its audit-log history intact while its password no longer works.
+  `SEED_SUPER_ADMIN_EMAIL`/`_NAME`/`_PASSWORD` in local `.env` updated to match, so a future
+  reseed of an empty database creates the real account, not the placeholder.
+  **Real regression caught and fixed 2026-09-06, while auditing for backlog #30** (leftover test
+  data): a Playwright verification script written for this same item had a button-selector bug
+  (`page.click('button[type="submit"]')` matched the *first* matching button on `/admin/users` —
+  the Suspend/Reactivate toggle for the table's first row, not the create-user form's own submit
+  button, since `admin@bwf.local` sorts first by `createdAt`) that silently flipped the placeholder
+  account's status 3 times across 2 broken script runs before the selector was fixed, leaving it
+  **Active** instead of the intended **Suspended** for roughly 20 minutes. Caught only by directly
+  querying the database rather than trusting the earlier "suspended" confirmation message from
+  memory. `lastLoginAt` confirmed no login happened during that window — no actual account misuse,
+  just a real gap between "I did X" and "X is still true." Re-suspended immediately.
+- ~~No real email provider configured~~ — **Partially resolved** (backlog #7): a real Resend
+  account and API key were wired up 2026-09-04. Still sends from Resend's shared
+  `onboarding@resend.dev` test address, not a real BWF domain — **2026-09-06**: registered
+  `buildersworldforum.com` with Resend via its Domains API and got back the 3 DNS records it needs
+  (DKIM TXT, SPF TXT, and an MX record) to verify the domain, but adding them requires DNS access
+  at GoDaddy (where the domain's nameservers currently point), which the user doesn't have yet —
+  it sits with the previous website developer. Blocked until that access is obtained; `EMAIL_FROM_ADDRESS`
+  stays on the shared test address until the domain actually verifies.
 - `/api/admin/auth/request-otp` has account-level lockout but no IP-based rate limiting —
   documented as an accepted gap for now in `docs/ARCHITECTURE.md`, worth revisiting before
   real traffic.
@@ -261,10 +309,11 @@ is complete and committed.
   repeated test runs (Company has no unique-name constraint, unlike Chapter/Category) —
   harmless local test data, not a schema bug, but worth a manual cleanup or a
   `db.company.deleteMany()` before any demo.
-- No admin UI to add a *new* leadership role type (e.g. "Treasurer") — the four seeded roles
-  cover the brief's named examples; adding another currently means a seed-script edit.
-- Object storage still isn't wired up (Neon isn't either) — Company/Member logo/photo fields
-  exist in the schema but there's no upload UI yet; both are still open decisions.
+- ~~No admin UI to add a *new* leadership role type~~ — **Resolved 2026-09-04** at
+  `/admin/leadership-roles`, see `docs/ARCHITECTURE.md`.
+- ~~Object storage still isn't wired up~~ — **Resolved 2026-09-04** (backlog #8): real Cloudflare
+  R2 + presigned-upload UI now covers every media field including Company logo — see
+  `docs/ARCHITECTURE.md`'s Member section and Phase 9's follow-up entry below.
 - Individual public member profile pages and the member-directory search are explicitly Phase 4
   — the chapter detail page lists members inline but doesn't link to a profile page yet.
 
@@ -314,11 +363,11 @@ is complete and committed.
   (search/filter tested with 2 members, not load-tested).
 
 **Known issues / follow-ups:**
-- No photo/brochure/video upload UI — URL fields only, pending Neon/R2 credentials.
+- ~~No photo/brochure/video upload UI~~ — **Resolved 2026-09-04**, see `docs/ARCHITECTURE.md`.
 - Programmatic SEO landing pages (brief §52) deliberately deferred — see
   `docs/ARCHITECTURE.md`.
-- Directory search has no pagination — fine at current scale, will need it once member counts
-  grow.
+- ~~Directory search has no pagination~~ — **Resolved 2026-09-04** (backlog #10), see
+  `docs/ARCHITECTURE.md`.
 - No structured data (Person/LocalBusiness schema) on profile pages yet — that's explicitly
   Phase 10's job (brief §53), not skipped by oversight.
 
@@ -500,11 +549,11 @@ is complete and committed.
   and slow down before assuming the app is wrong.
 
 **Known issues / follow-ups:**
-- `convertApplicationToMember`'s error path (slot already taken) surfaces via the admin route's
-  generic error boundary rather than a friendly inline message — functionally correct, just
-  less polished than the rest of the admin's form handling. Noted in `docs/ARCHITECTURE.md`.
-- Company matching on conversion is exact-name-only, no fuzzy dedup — fine for now, revisit if
-  duplicate companies from spelling variants become a real problem.
+- ~~`convertApplicationToMember`'s error path (slot already taken) surfaces via the admin
+  route's generic error boundary~~ — **Resolved 2026-09-04** (backlog #11), see
+  `docs/ARCHITECTURE.md`.
+- ~~Company matching on conversion is exact-name-only, no fuzzy dedup~~ — **Resolved
+  2026-09-04** (backlog #12), see `docs/ARCHITECTURE.md`.
 - No application-related emails yet (confirmation to applicant, notification to admin) —
   that's explicitly Phase 13's job, not an oversight here.
 - Left a handful of test "Karthik Architect ..." applications and members in the local database
@@ -574,14 +623,31 @@ is complete and committed.
   form.
 
 **Known issues / follow-ups:**
-- Event capacity enforcement (`registerVisitor`'s count-then-create check) has the same
-  theoretical race condition as any check-then-act without a transaction — two simultaneous
-  submissions right at the last slot could both succeed. Not worth a DB-level constraint at
-  this traffic scale; revisit if it ever actually happens.
-- `ForbiddenError` on a direct out-of-scope URL still surfaces as Next.js's generic 500 error
-  page rather than a friendly "you don't have access" screen — same known gap already recorded
-  for Phase 7's conversion error path; a proper error boundary for admin routes is a good
-  candidate for a later polish pass, not specific to this phase.
+- ~~Event capacity enforcement (`registerVisitor`'s count-then-create check) has the same
+  theoretical race condition as any check-then-act without a transaction~~ — **Resolved
+  2026-09-04** (backlog #13): a Serializable transaction now closes the race, verified live
+  with 8 truly-concurrent submissions against a capacity-3 event (exactly 3 created, no
+  overshoot). See `docs/ARCHITECTURE.md` — also surfaced an unrelated real bug along the way
+  (an email-send failure in `notifyVisitorRegistered` crashes `registerVisitor` *after* the
+  Visitor row already committed), deliberately left unfixed as out of scope for this item.
+  **Resolved 2026-09-06** (backlog #35): wrapped every `notify*` call in
+  `src/lib/notifications.ts` at its 7 call sites (visitor registration, membership application
+  submission, application status change, member profile-revision review, member article
+  submission, and both article-review actions) in try/catch — a failed notification email now
+  logs and moves on instead of throwing, since the real state change it's reporting on is always
+  already committed by that point. `recordLead()` didn't need the same fix — it already swallowed
+  its own errors (see its own doc comment). Verified live, not just read: temporarily broke
+  `EMAIL_API_KEY` in `.env`, submitted two real visitor registrations through the actual public
+  `/events/[slug]` form, confirmed both succeeded with the real "thanks for registering" message
+  and a real `Visitor` row each, while the server log showed the genuine Resend 401 being caught
+  and logged rather than crashing the request. Restored the real key and cleaned up test data
+  afterward.
+- ~~`ForbiddenError` on a direct out-of-scope URL still surfaces as Next.js's generic 500 error
+  page~~ — **Resolved 2026-09-04** (backlog #14): every RBAC check now uses `next/navigation`'s
+  `forbidden()` + a `forbidden.tsx` screen instead. Verified against a real production build
+  (`next build && next start`), not just dev mode — see `docs/ARCHITECTURE.md`'s RBAC section
+  for why that distinction mattered here. Phase 7's version of this gap (the conversion error
+  path) was a separate, form-level fix (backlog #11, `useActionState`).
 - No visitor confirmation email or admin notification yet — Phase 13's job, consistent with
   every other "we'll wire up email later" note in this log.
 - The admin dashboard home page (`/admin`) still doesn't surface any of the new counts (upcoming
@@ -687,10 +753,18 @@ is complete and committed.
   an oversight; see "Deliberately not built" above.
 - `exceljs`'s own `uuid@8` dependency is overridden rather than upgraded upstream — revisit if a
   future `exceljs` release drops the vulnerable transitive dependency on its own, at which point
-  the override in `package.json` can be removed.
-- The PDF export's table layout is hand-drawn (no table-layout library) — correct and paginating
-  for the data volumes tested, but only lightly exercised; worth a visual re-check once real
-  member counts are much larger.
+  the override in `package.json` can be removed. **Re-checked 2026-09-06 (backlog #15), still
+  blocked**: exceljs's latest stable (`4.4.0`) is unchanged, and even its newest prerelease
+  (`4.4.1-prerelease.0`) still declares `uuid: ^8.3.0` — nothing upstream to drop the override
+  for yet. `npm audit` still clean (0 vulnerabilities) with the override in place.
+- ~~The PDF export's table layout is hand-drawn (no table-layout library) — correct and
+  paginating for the data volumes tested, but only lightly exercised~~ — **Re-checked and fixed
+  2026-09-06** (backlog #16): a real 500-row export with genuinely long values (not the ~4-row
+  smoke test above) surfaced three real, related layout bugs — fixed row height not accounting
+  for wrapped cell content (silent row overlap), zero inter-column gutter (adjacent columns'
+  text touching), and the header's own height having the same fixed-height bug once the gutter
+  fix pushed a header label into wrapping. See `docs/ARCHITECTURE.md` for the fix and how it was
+  verified (actual page renders, not just re-reading the code).
 - A `phase9-chapter-admin@bwf.local` Chapter Admin test account (Chapter 01) was created during
   verification and left in the local database — harmless test data, same category as prior
   phases' leftover test rows (Phase 3's duplicate company, Phase 7's "Karthik Architect"
@@ -800,16 +874,24 @@ is complete and committed.
   only after a real successful registration against a real meeting, with the right `meetingId`),
   and `membership_application_submitted` (fired after a real end-to-end application submission,
   correct `categoryId`/`chapterId`) all produced the exact expected event name and params.
-  `whatsapp_click` and `event_registration` share code paths with events that were verified
+  `whatsapp_click` and `event_registration` shared code paths with events verified above
   (`member_contact_click`'s `TrackedAnchor`, `visitor_registration`'s success-effect) but weren't
-  independently fired in this pass — `whatsapp_click` because `NEXT_PUBLIC_WHATSAPP_NUMBER` isn't
-  set in this environment (the CTA doesn't render at all), `event_registration` because no
+  independently fired in this pass — `whatsapp_click` because `NEXT_PUBLIC_WHATSAPP_NUMBER` wasn't
+  set in this environment (the CTA didn't render at all), `event_registration` because no
   currently-open event registration was available to click through in this session's test data.
+  **Independently verified 2026-09-06 (backlog #18)**: temporarily set both env vars (test-only
+  values, `EMAIL_PROVIDER` also unset to sidestep backlog #35's unrelated real-Resend crash on a
+  fake test email) and fired each for real — `whatsapp_click` produced
+  `["event","whatsapp_click",{"location":"floating_cta"}]` in `window.dataLayer` on a real click
+  (opens in a new tab per its `target="_blank"`, so the original page's tracking call was never at
+  risk of being cut off by an unload — confirmed, not assumed), and `event_registration` produced
+  `{"eventId":"..."}` after a real successful registration against a real test event. Also checked
+  the sibling `visitor_registration` branch (meeting, not event) for completeness: correct
+  `{"meetingId":"..."}`. All test data deleted afterward, env vars reverted to normal.
 
 **Known issues / follow-ups:**
-- `whatsapp_click` and `event_registration` are wired but not independently fired-and-observed
-  this phase (see above) — low risk given the shared-code-path reasoning, but worth a real check
-  once `NEXT_PUBLIC_WHATSAPP_NUMBER` is set and an open event exists.
+- ~~`whatsapp_click` and `event_registration` are wired but not independently fired-and-observed~~
+  — **Resolved 2026-09-06** (backlog #18), see above.
 - Real GA4 property, Search Console property, and public domain (`NEXT_PUBLIC_SITE_URL`) don't
   exist yet — all three are open decisions already tracked in `docs/ARCHITECTURE.md` (domain was
   already there from Phase 0; GA4/GSC values are new). Nothing here is fabricated as if it were
@@ -824,8 +906,11 @@ is complete and committed.
   form). `prisma dev ls` / `prisma dev start <name>` is the fix each time — worth remembering as
   the first thing to check before debugging a "phantom" connection error against local dev, before
   assuming application code is at fault.
-- Admin Analytics (brief §51, explicitly "Later") and Legacy SEO/redirects (brief §54, explicitly
-  Phase 15) were not built — both are the brief's own future work, not gaps in this phase.
+- ~~Admin Analytics (brief §51, explicitly "Later")~~ and Legacy SEO/redirects (brief §54,
+  explicitly Phase 15, now Phase 17 per this project's own numbering — see Phase 15's numbering
+  note) were not built this phase — both are the brief's own future work, not gaps in this phase.
+  Admin Analytics was later built
+  as part of Phase 15's Leads work — see Phase 15 in this document.
 
 ---
 
@@ -1050,6 +1135,36 @@ is complete and committed.
   their own conversation this way (no cross-session data exposure), but worth a second look if
   Public mode is ever combined with something more sensitive than Q&A + lead capture.
 
+### Addendum — real OpenAI key + live verification (backlog #22, #23)
+
+Switched providers 2026-09-06: the user's Anthropic account had no billing/credits set up, but
+already had OpenAI credits, so `src/lib/chatbot/client.ts` and `src/app/api/chatbot/route.ts` were
+rewritten against the OpenAI SDK (`gpt-4o-mini` default, overridable via `OPENAI_CHATBOT_MODEL`)
+rather than spend time provisioning a second provider's billing. The retrieval/grounding design
+(`src/lib/chatbot/retrieval.ts`) is provider-agnostic and didn't change. A real `OPENAI_API_KEY`
+was then set in `.env`, closing the gap this phase's original verification flagged.
+
+**Verification performed** (real Playwright pass, not code inspection — closes both open gaps
+above):
+- Temporarily unset `EMAIL_PROVIDER` so OTP codes land in the dev console instead of Resend (the
+  same workaround backlog #18 used), to allow scripted login.
+- Logged in as the real Super Admin, enabled the chatbot via the real `/admin/chatbot` form, and
+  confirmed a real streamed `gpt-4o-mini` answer grounded in actual seeded data (chapter/category
+  names) came back through the real public widget in `PUBLIC` mode.
+- Switched to `LOGIN_REQUIRED`: confirmed an anonymous visitor gets the exact "Please sign in to
+  use Ask BWF" message with no model call, and the same signed-in browser still gets a real
+  grounded answer.
+- Switched to `LIMITED_FREE_QUESTIONS` (limit 2): confirmed an anonymous visitor gets 2 real
+  answers, then the exact "You've used your free questions" message on the 3rd.
+- **Backlog #23, previously code-inspection-only**: created a real temporary Chapter Admin account
+  (scoped to Chapter 01), logged in live, and confirmed the dashboard has no "chatbot" text
+  anywhere, no sidebar link to `/admin/chatbot`, and a direct visit to `/admin/chatbot` renders the
+  friendly `forbidden()` "You don't have access to this" screen from backlog #14 — not a 500.
+- Reset `ChatbotSettings` back to its seeded default (`isEnabled: false`, `PUBLIC`, limit 5)
+  afterward, same discipline as the original verification pass. Cleaned up all test chatbot
+  conversations, the temporary Chapter Admin account, and the OTP rate-limit rows the scripted
+  login attempts tripped. Restored `EMAIL_PROVIDER=resend`.
+
 ---
 
 ## Phase 13 — Email / Notification Automation
@@ -1150,10 +1265,18 @@ is complete and committed.
 - Password-reset request has a cheap 60-second per-user cooldown against accidental resend spam,
   but no real IP-based rate limiting — same accepted-gap category as the OTP-request endpoint since
   Phase 2 (no shared-memory rate-limiter infrastructure exists in this serverless target).
-- The weekly report cron always sends the default four-column export (no chapter/company columns)
-  — there's no per-recipient "include extra columns" preference in `WeeklyReportRecipient` today,
-  matching the on-demand export's own default. Revisit if a recipient specifically wants the richer
-  columns automated too.
+- ~~The weekly report cron always sends the default four-column export (no chapter/company
+  columns) — there's no per-recipient "include extra columns" preference~~ — **Resolved
+  2026-09-06** (backlog #26): new `WeeklyReportRecipient.includeExtraColumns` (default `false`,
+  same off-by-default discipline as the on-demand export's own checkbox), settable when adding a
+  recipient or toggled anytime from `/admin/reports` ("Standard columns" / "+ Chapter & Company").
+  The cron route now reads each recipient's own flag instead of hardcoding `false`. Verified live:
+  added one recipient of each kind through the real UI, manually enabled the schedule and triggered
+  the actual cron route (`{"sent":2,"failed":0}`), then read back the two generated `.xlsx`
+  buffers directly (bypassing email, since real Resend delivery was intentionally kept off for this
+  test) and confirmed their header rows genuinely differ — the extra-columns recipient's sheet has
+  "Chapter"/"Company" headers, the standard one doesn't. Test recipients and the temporarily-enabled
+  schedule were both cleaned up afterward.
 - Left real test data from this phase's verification in the local database: a "Verify Applicant" /
   "Verify Landscaping Co" application (status `CONTACTED`), a "Verify Visitor" visitor
   registration, a "Verify Lead" chatbot lead, a `weekly-report-test@bwf.local` report recipient,
@@ -1254,16 +1377,42 @@ is complete and committed.
   live-effect reset, same discipline as resetting `ChatbotSettings.isEnabled` post-Phase-12).
 
 **Known issues / follow-ups:**
-- **Nothing in this phase was verified against real production infrastructure** — no live Vercel
-  deployment, no real Neon database, no real object storage, no real Resend API key exist in this
-  environment. Everything above was verified as thoroughly as a local environment allows (a real
-  production build + production server, not dev mode) but the actual backup/recovery runbook and
-  the deployment runbook are both necessarily unverified prose until a real deployment happens —
+- **Nothing in this phase was verified against real production infrastructure** — true at the time
+  this phase closed: no live Vercel deployment, no real Neon database, no real object storage, no
+  real Resend API key existed in this environment. Since then (2026-09-04, backlog items #1/#7/#8)
+  a real Neon database, a real Resend account, and a real Cloudflare R2 bucket all now exist and
+  were each verified with a real operation (a real query, a real sent email, a real uploaded/
+  fetched object) — only the live Vercel deployment (#24, needed for the weekly-report cron and a
+  true production build/CDN path) is still outstanding. Everything above was verified as thoroughly
+  as a local environment allows (a real production build + production server, not dev mode) but
+  the actual backup/recovery runbook and the deployment runbook are both necessarily unverified
+  prose until a real deployment happens —
   flagged honestly rather than presented as tested.
-- Lighthouse was run against exactly 3 representative pages, not the whole site — a full sweep
-  might surface more of the same class of issue the `/members` run caught. Worth repeating once
-  real photography replaces every `MediaPlaceholder` (the current placeholders are cheap to
-  render; real images will change the performance profile).
+- ~~Lighthouse was run against exactly 3 representative pages, not the whole site~~ — **Resolved
+  2026-09-06** (backlog #28): ran a real production-build sweep across 17 pages (every major
+  public route plus both login pages, using temporary seeded content for `[slug]` pages that had
+  no real records). Performance 81-91, Best Practices 100, SEO 100 everywhere except the two admin/
+  member login pages (SEO 63 — correctly flagged as "blocked from indexing," which is intentional,
+  not a bug). Found and fixed 4 real issues, each investigated and fixed rather than dismissed,
+  same discipline as this phase's original robots.txt/aria-label catches: (1) **systemic contrast
+  bug** — the entire dark theme's `slate-500` meta-text color measures 3.99:1 against the navy
+  background, short of WCAG's 4.5:1; fixed site-wide (11 files, not just the 2 the sweep happened
+  to catch — most only render that text in an empty-state or once real data exists) by switching to
+  `slate-400` (6.25:1, computed and confirmed, not guessed); (2) homepage heading order jumped
+  H1→H3 with no H2 (`WhyBwf`'s pillar headings) — promoted to H2; (3) `/apply`'s category `<select>`
+  had no accessible name — added `aria-label`; (4) all 4 standalone login/reset-password pages
+  (`/admin/login`, `/admin/reset-password`, `/member/login`, `/member/reset-password`) were missing
+  a `<main>` landmark entirely — the dashboard/portal layouts already had one, these standalone
+  pages just never got it. **A real false-negative caught mid-verification**: the first
+  re-verification pass showed none of the 4 fixes had taken effect — traced to an orphaned old
+  `next start` process still holding port 3005 from a previous restart (`npm run start`'s actual
+  `next-server` child survives its parent shell being killed), so the second `npm run start`
+  silently failed with `EADDRINUSE` while the *stale* server kept answering requests. Found via
+  `lsof -i :3005`, fixed by killing the orphaned PID directly, confirmed the freshly-built HTML
+  actually contained the fixes via `curl`, then re-ran Lighthouse a third time: all 4 pages hit
+  Accessibility 100 / Best Practices 100. `docs/ARCHITECTURE.md`-worthy lesson: `pkill -f "next
+  start"` is not reliable for stopping a `npm run start` server — kill the actual `next-server`
+  PID (from `lsof -i :<port>`), not the npm wrapper.
 - Rate limiting is IP-based with no cleanup of expired `RateLimitHit` rows — an accepted
   simplification given this is a private, chapter-based community site, not expected to see
   traffic that makes either limitation a real problem. Revisit if that stops being true.
@@ -1277,3 +1426,269 @@ is complete and committed.
   notes already reasoned that `requireRecentAuth()`'s step-up check for specific high-risk actions
   is the intended mechanism instead of a shorter blanket session, and this phase's review found no
   reason to revisit that call.
+
+---
+
+## Phase 15 — Leads System + Admin Analytics
+
+**Status:** Complete
+
+**Numbering note:** the brief's own Phase Structure table (§70) never assigns brief §35's Leads
+system a phase at all — every prior phase noted this gap without closing it (see Phase 9/12's own
+follow-up entries). Built now, out of the brief's original sequence, at the user's explicit
+request (backlog item #17: "give the Leads system an actual phase/home"). The brief's own
+"Phase 15 — Legacy Website Migration + Redirects + Production Cutover" becomes **Phase 17** in
+this project's actual build order, whenever it's tackled — phase numbers here track build
+sequence, not the brief's original numbering, for anything the brief itself left unassigned.
+(Updated again below: Phase 16 went to Member Article Submissions, another brief item the Phase
+Structure table left unassigned, bumping Legacy Migration from 16 to 17.)
+
+**What shipped:**
+- **New `Lead` model** (`prisma/schema.prisma`) — one row per lead-generating event, aggregating
+  across every source brief §35 lists: `source`, `name`, `phone`, `email`, `requirement`,
+  `memberId`/`chapterId`/`categoryId` (all optional — not every source has one), `status`
+  (`NEW`/`CONTACTED`/`CONVERTED`/`DISCARDED`, mirroring `ChatbotLeadStatus`'s existing 4-state
+  lifecycle — brief §35's "track whether lead became business" is just `CONVERTED`, no separate
+  boolean needed), `notes`, `createdAt`. This does **not** replace any existing specific record —
+  `MembershipApplication`, `Visitor`, and `ChatbotLead` all keep their own detailed model, admin
+  page, and workflow exactly as before; `Lead` is purely the cross-source rollup brief §35's field
+  list and brief §39's dashboard "New leads" tile actually describe.
+- **`recordLead()`** (`src/lib/leads/record.ts`) — the one function every source calls, alongside
+  whatever it already did. Deliberately swallows its own errors (try/catch, logs and moves on)
+  rather than throwing: this rides alongside a real registration/application/chatbot-capture flow,
+  and a missed `Lead` row is a strictly lesser problem than that flow's own success response
+  breaking because of it. A deliberately more defensive choice than the pre-existing `notify*`
+  functions it sits next to, which do throw on failure (see backlog #35, a separate, already-flagged
+  bug this phase didn't touch).
+- **Wired into 3 of the brief's 7 listed sources** — every one that already has a real capture
+  point on the site:
+  - `submitApplication` (`src/app/(public)/apply/actions.ts`) — `MEMBERSHIP_ENQUIRY` when a
+    chapter is assigned, `CATEGORY_WAITLIST` when it isn't (mirrors the function's own existing
+    status computation, not a new decision).
+  - `registerVisitor` (`src/app/(public)/visit/actions.ts`) — `EVENT_REGISTRATION` when an
+    `eventId` is present, `VISITOR_REGISTRATION` otherwise.
+  - `captureChatbotLead` (`src/app/(public)/ask-bwf/actions.ts`) — `CHATBOT`, always chapterless
+    (the widget's lead form never collects one).
+  The other 4 sources ("Member profile enquiry", "Contact form") have no real capture point on the
+  site yet — a member's public contact block is a plain mailto/tel/WhatsApp link a visitor leaves
+  the site to use, not a form with data to record, and no general Contact Us page exists at all.
+  Modeled as real `LeadSource` enum values so nothing about the schema needs to change whenever
+  those forms are eventually built, but nothing populates them yet — flagged, not silently dropped.
+- **`/admin/leads`** (`src/app/admin/(dashboard)/leads/{page,actions}.tsx`) — one shared list
+  across every source, chapter-scoped the same way Members/Visitors/Exports already are
+  (`getChapterScope("leads:manage")`/`requireChapterAccess`). A chapterless lead (chatbot, an
+  unassigned waitlist enquiry) is reachable only through the blanket `leads:manage` permission —
+  same visibility rule `ChatbotLead`'s own admin page already used, not a new inconsistency.
+  Status-change buttons match the existing `/admin/chatbot` leads-table pattern exactly (same
+  `NEXT_STATUS` transitions, same badge styling) rather than inventing a new one.
+- **New `leads:manage` permission** — Super/Central Admin get it as a blanket grant; Chapter Admin
+  gets scoped access via `requireChapterAccess`, same pattern as `visitors:manage`/`exports:manage`
+  (seeded with `CHAPTER_ADMIN: []`, scoping enforced in code, not a role-permission row).
+- **Dashboard "New leads" tile is now real** (`src/lib/dashboard/metrics.ts`,
+  `admin/(dashboard)/page.tsx`) — replaces the narrower "New chatbot leads" tile Phase 12 shipped
+  as a stand-in; the general tile brief §39 actually asks for now exists on both the global and
+  chapter-scoped dashboard views. Closes the exact gap `docs/ARCHITECTURE.md` flagged since Phase 9.
+
+**Verification performed:**
+- `npm run typecheck`/`lint`/`build` all clean. Migration (`add_leads_system`) applied cleanly
+  against the real Neon database with `prisma migrate dev` — no shadow-DB issues this time (those
+  were specific to the old local `prisma dev` daemon, resolved by Phase 2's real-Neon migration).
+- **All 3 wired sources driven through the real public UI, not called directly** — submitted a
+  membership application via `/apply` (available chapter → `MEMBERSHIP_ENQUIRY`), a second
+  application against a category with every chapter deliberately pre-occupied by fixture members
+  (→ `CATEGORY_WAITLIST`, `chapterId` correctly null), registered a visitor for a real test event
+  (→ `EVENT_REGISTRATION`), and captured a chatbot lead via the actual floating widget (temporarily
+  enabling `ChatbotSettings.isEnabled`, then restoring it to `false` afterward — same discipline as
+  every prior phase's chatbot-testing note). Confirmed via direct DB query that all 4 `Lead` rows
+  were created with exactly the expected `source`/`chapterId`/`categoryId` — including confirming
+  the two chapterless sources genuinely have `chapterId: null`, not an empty string or missing row.
+- **Admin UI verified live, logged in as the real seeded admin**: `/admin/leads` renders all 4
+  test leads with correct source labels/contact info/chapter-category, the dashboard's "New leads"
+  tile showed the correct count (4) with the sidebar's new "Leads" entry in place, and a real
+  "Mark contacted" click correctly transitioned a lead's status (confirmed via the badge changing
+  and via a direct DB re-check).
+- **Chapter-scoping verified at the query level**: confirmed a Chapter-Admin-shaped `where:
+  {chapterId}` filter returns only the 2 chapter-scoped test leads and correctly excludes the 2
+  chapterless ones — the underlying `requireChapterAccess`/`getChapterScope` mechanism itself was
+  already exhaustively verified with a real Chapter Admin test account in backlog #14 (a different
+  route, same shared function), so this phase didn't re-derive a full duplicate login test for it.
+- All test data (4 leads, 2 applications, 1 visitor, 3 waitlist-fixture members, 2 companies, 1
+  event) deleted afterward; confirmed zero leftover rows via a final count query.
+
+**Known issues / follow-ups:**
+- The 2 unwired lead sources ("Member profile enquiry", "Contact form") need their own capture
+  forms built before they can ever populate a `Lead` row — not a `recordLead()` gap, a missing
+  public-facing UI gap. Worth its own backlog item if/when either is prioritized.
+- Brief §35's routing requirement ("Website-generated member enquiries should eventually go to:
+  1. BWF Central Team, 2. Relevant Member") applies specifically to the still-unbuilt "Member
+  profile enquiry" source — not addressed this phase since that source has no capture form to
+  route from yet. The other 3 wired sources already have their own existing notification paths
+  (`notifyApplicationSubmitted`, `notifyVisitorRegistered`, `notifyChatbotLeadCaptured`), so no new
+  notification logic was added for `Lead` creation itself — would double-notify otherwise.
+- `Lead.notes` has a write path (`updateLeadNotes`) but no UI exposes it yet on `/admin/leads` —
+  the list page mirrors `/admin/chatbot`'s table exactly, which also has no inline notes field;
+  worth adding a detail view later if notes turn out to matter in practice, same "don't build UI
+  nothing's asked for yet" discipline as everywhere else in this project.
+
+### Addendum — Admin Analytics (brief §51, backlog #20)
+
+Built immediately after the Leads work above, in the same phase, since it's the natural next
+consumer of the `Lead` model this phase introduced — not a separate numbered phase, to avoid a
+cascading renumbering of the brief's still-unbuilt "Phase 15 — Legacy Migration" (now Phase 17,
+see the numbering note above) every time an unassigned brief item gets built out of sequence.
+
+**Numbering note:** brief §51 opens with the literal words "**Later** dashboard should surface
+simplified analytics" — an explicit deferral, not an unassigned gap like Leads (§35) was. Built now
+anyway at the user's explicit request after being told this distinction plainly (both that it's
+explicitly "Later" per the brief, and that most of what it asks for depends on real GA4 data that
+doesn't exist yet either — backlog #19, itself put on hold this same session pending domain/client
+details).
+
+**What shipped:**
+- **New `getAdminAnalytics()`** (`src/lib/dashboard/admin-analytics.ts`) and **`/admin/analytics`**
+  — deliberately covers only what's honestly derivable from data this app already has: `Lead`
+  counts by source and status, `MembershipApplication` counts by status, `Visitor` counts by
+  status, and three conversion rates (visitor→CONVERTED, application→PAID, lead→CONVERTED) each
+  computed as a real ratio over a real total (guarded against divide-by-zero when a table is
+  empty, returning `0` rather than `NaN`).
+- **Everything brief §51 actually asks for that this app can't honestly derive was *not*
+  fabricated** — website visitors, most-viewed member profiles, most-searched categories,
+  most-viewed chapters, and top blogs all need real traffic data (GA4's job, brief §50), which
+  doesn't exist without a live GA4 property (#19). Rather than estimate these from something
+  unrelated in the database (which would be a fake number wearing a real label) or silently drop
+  them, the page has an explicit "Needs a real GA4 property (backlog #19)" panel naming exactly
+  which metrics are missing and why — the same "honest gap over a fabricated number" precedent
+  Phase 1 set for the dashboard's own "New leads" tile before Phase 12/15 made it real.
+- Brief §51's closing line — "Members should eventually see their own profile performance" — is a
+  member-portal-facing feature for a completely different audience than an admin dashboard, and
+  the brief's own wording defers it a second time ("eventually") independent of the "Later" already
+  on the whole section. Not attempted; flagged below, not silently dropped.
+- **New `analytics:view` permission** — Super/Central Admin only, no chapter scoping (unlike
+  `leads:manage`/`visitors:manage`/etc.) — brief §51 reads as a site-wide funnel view, not a
+  per-chapter breakdown, so this doesn't follow the `requireChapterAccess()` pattern the way most
+  other admin sections do.
+
+**Verification performed:**
+- `npm run typecheck`/`lint` clean.
+- **Verified with real, varied seeded data, not just an empty table**: created 5 leads across 3
+  sources/4 statuses, 5 applications across 4 statuses (2 `PAID`), 4 visitors across 4 statuses (1
+  `CONVERTED`), logged in as the real seeded admin, and confirmed every tile/breakdown/conversion
+  percentage on `/admin/analytics` matched hand-computed expected values exactly (e.g. 2 of 5
+  applications `PAID` → "40%" application→paid, breakdowns summing to the same total both by
+  source and by status). Real HTTP `200`, zero console errors.
+- **Then re-verified the empty-data path separately**, after deleting the test data: confirmed the
+  page still renders a real `200` with honest `0`/`0%` tiles and "No data yet." in every breakdown
+  card — no `NaN%`, no crash, no fabricated placeholder numbers.
+- **Caught and fixed a real gap in a previous item's cleanup, not a bug in this one**: found 2
+  leftover `Lead` rows from backlog #18's `event_registration`/`visitor_registration` testing —
+  that session's cleanup deleted the test `Visitor`/`Event`/`Meeting` rows but didn't know to also
+  delete the `Lead` rows Phase 15's `recordLead()` integration silently creates alongside every
+  registration, since that integration didn't exist yet when #18's cleanup script was first
+  written earlier in the same session. Deleted both; confirmed zero `Lead` rows with "Test" in the
+  name remain anywhere in the database.
+
+**Known issues / follow-ups:**
+- The GA4-dependent half of brief §51 (website visitors, most-viewed profiles/chapters,
+  most-searched categories, top blogs) stays an honest gap until a real GA4 property exists (#19)
+  — at that point these should be pulled via the GA4 Data API, not estimated from this database.
+- Brief §51's "Members should eventually see their own profile performance" — a member-portal
+  feature, not an admin one — remains unbuilt; would need its own scoping discussion (which
+  metrics, member-portal UI placement) rather than folding into `/admin/analytics`.
+- No date-range filtering (all-time counts only) — brief §51 doesn't ask for one explicitly; worth
+  adding if all-time totals turn out to be too coarse in practice once there's real usage.
+
+---
+
+## Phase 16 — Member Article Submissions
+
+**Status:** Complete
+
+**Numbering note:** brief §31 has no phase of its own in the brief's own Phase Structure table
+(§70) — same category of gap as Leads (§35, Phase 15), not an explicit "Later" like Admin
+Analytics (§51). Built now at the user's explicit request (backlog item #21), after being told
+plainly it's the sibling gap to Leads, not a deliberate deferral. Numbered 16 in this project's own
+build-order sequence — see Phase 15's numbering note for why phase numbers here track build order
+rather than the brief's own numbering for anything left unassigned; the brief's "Phase 15 — Legacy
+Migration" is Phase 17 as of this phase.
+
+**What shipped:**
+- **Reused the `Blog` model directly, per its own Phase 5 doc comment** — that comment
+  specifically said the (then-hypothetical) member-submission path would "stay behind admin
+  approval before a post can reach PUBLISHED," anticipating exactly this. No parallel
+  "ArticleSubmission" table: a member's submission *is* a real `Blog` row (`status: DRAFT`), just
+  tagged with 5 new fields — `submittedByMemberId`, a new `BlogSubmissionStatus` enum
+  (`PENDING`/`APPROVED`/`REJECTED`, mirroring `MemberProfileRevisionStatus`'s 3-state shape),
+  `reviewedById`, `reviewNotes`, `reviewedAt`. This means every existing blog admin feature
+  (SEO fields, tags, FAQ, scheduling, the public `/insights` render path) works on a
+  member-submitted post with zero new code — only the review step itself is new.
+- **`submitArticle`** (`src/app/member/(portal)/articles/actions.ts`) — brief §31's "Member
+  submits article → Draft stored → Admin notified" in one action. Blocks a second submission
+  while one is still `PENDING`, same guard `submitProfileRevision` already uses for profile edits
+  (one pending item at a time, not a brief requirement but a consistent anti-spam precedent this
+  app already established).
+- **"If author is a member: link article to their member profile" (brief §31) is automatic**, not
+  admin busywork — `getOrCreateAuthorForMember()` upserts on `Author.memberId` (already unique
+  from Phase 5), reusing an existing Author profile if the member has one (e.g. an admin already
+  added them as a blog author) or creating one from their Member name/bio/photo on first
+  submission. A member never has to ask an admin to "set up their author profile" first.
+- **Approving and editing-then-approving are the same code path**, exactly like
+  `reviewMemberProfileRevision`'s own precedent: `updateBlog` (the *existing* save action every
+  blog post already uses) now detects a `PENDING` submission and flips it to `APPROVED` — but only
+  the moment the admin's save actually sets status to `PUBLISHED`/`SCHEDULED`, not on an
+  intermediate `DRAFT` save while still mid-review/editing. Rejecting is deliberately its own
+  explicit action (`rejectArticleSubmission`, new `RejectArticleForm` component) — never implied
+  by an admin simply not publishing yet.
+- **Two new notification functions** (`notifyArticleSubmitted`, `notifyArticleReviewed`, matching
+  `notifyChatbotLeadCaptured`/`notifyProfileRevisionReviewed`'s existing shape) — admin is emailed
+  on submission, the member is emailed the decision (approved+published, or rejected with the
+  admin's optional reason) either way.
+- **New member-portal surface**: `/member/articles` (submission form + a table of the member's
+  own past submissions with status/rejection-reason) and a nav link, replacing the member
+  dashboard's old "not available here yet" placeholder for this exact feature.
+- **Admin surface reuses the existing `/admin/blogs` list/detail pages** — a new "Submission"
+  column (blank for admin-authored posts, a badge naming the submitting member for pending ones)
+  and a submission-status banner + reject control on the post's own edit page, rather than a
+  separate review queue UI.
+- **New `blog.submission_approved` / `blog.submission_rejected` audit-log actions** — distinct
+  from the existing generic `blog.updated`, so an approval is auditable as the review decision it
+  actually is, not indistinguishable from any other content edit.
+
+**Verification performed:**
+- `npm run typecheck`/`lint`/`build` all clean. Migration
+  (`add_member_article_submissions`) applied cleanly against the real Neon database.
+- **Full submit → approve → publish loop driven live, not just reasoned about**: created a real
+  Member with real portal login access, logged in as them, submitted a real article through
+  `/member/articles`. Confirmed via direct DB query that the `Blog` row, the auto-created
+  `Author` (correctly linked via `memberId`), `submissionStatus: PENDING`, and every submitted
+  field were exactly right. Logged in as the real seeded admin, confirmed the pending submission
+  showed correctly on `/admin/blogs` (badge naming the member) and on the post's own page,
+  approved it by setting Status to Published and saving, then confirmed via a **fresh page
+  navigation** (not the stale post-Server-Action client state — see below) and a direct DB query
+  that `status: PUBLISHED`, `submissionStatus: APPROVED`, `reviewedAt`/`publishedAt` were all
+  correctly set, and confirmed the post is genuinely live at `/insights/my-first-bwf-article`
+  (real HTTP `200`, real title in the HTML).
+- **Full reject loop also driven live**: a second real submission from the same member, rejected
+  by the admin with a real reason, confirmed the rejection banner + reason on the admin side,
+  confirmed the member's own `/member/articles` view shows `REJECTED` with that same reason, and
+  confirmed the "one pending at a time" guard correctly released — the submission form reappeared
+  for the member immediately after the decision, not still blocked.
+- **Caught and correctly diagnosed a false alarm, not a real bug**: right after approving, the
+  admin edit page's Status `<select>` still visually showed "Draft" — traced this to
+  `EditBlogForm`'s `useState(post.status)` initializer not re-running after a Server-Action-driven
+  re-render (React preserves client component state across that kind of update; it isn't a full
+  remount). Confirmed via a genuine fresh navigation to the same page that the dropdown correctly
+  shows `PUBLISHED` there — a pre-existing cosmetic quirk in `EditBlogForm` common to any blog
+  save, not something this phase introduced or needs to fix.
+- All test data (2 blogs, 1 author, 1 member + login, 1 company) deleted afterward; confirmed zero
+  leftover rows via a final count query.
+
+**Known issues / follow-ups:**
+- Brief §31's "Admin notified" is a plain email to `NOTIFICATION_EMAIL` (skipped silently if
+  unset, same pattern as every other admin alert) — no in-app notification/badge count exists yet
+  for pending submissions specifically (the `/admin/blogs` list surfaces them, but there's no
+  dashboard tile the way Leads got one).
+- No rich-text/markdown preview in the member submission form — plain `<textarea>`, matching the
+  admin's own blog editor exactly (same markdown-in-a-textarea approach, not a regression specific
+  to the member-facing side).
+- A member can only submit fresh articles, not request an edit to one that's already published —
+  out of scope for brief §31's own workflow, which describes submission, not post-publish editing.

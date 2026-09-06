@@ -26,14 +26,14 @@ function LeadCaptureForm({ sessionId, defaultRequirement }: { sessionId: string;
 
   if (state?.success) {
     return (
-      <div className="border-t border-navy-700 p-4 text-sm text-ivory-100">
+      <div className="border-t border-emerald-700 p-4 text-sm text-ivory-100">
         Thanks — BWF will reach out to you shortly.
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 border-t border-navy-700 p-4">
+    <form action={formAction} className="flex flex-col gap-3 border-t border-emerald-700 p-4">
       <input type="hidden" name="sessionId" value={sessionId} />
       <p className="text-sm font-medium text-ivory-100">Want BWF to connect with you?</p>
       <label className="flex flex-col gap-1 text-xs font-medium text-slate-300">
@@ -41,7 +41,7 @@ function LeadCaptureForm({ sessionId, defaultRequirement }: { sessionId: string;
         <input
           name="name"
           required
-          className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-slate-300">
@@ -49,7 +49,7 @@ function LeadCaptureForm({ sessionId, defaultRequirement }: { sessionId: string;
         <input
           name="phone"
           required
-          className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-slate-300">
@@ -57,7 +57,7 @@ function LeadCaptureForm({ sessionId, defaultRequirement }: { sessionId: string;
         <input
           name="email"
           type="email"
-          className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-slate-300">
@@ -67,14 +67,14 @@ function LeadCaptureForm({ sessionId, defaultRequirement }: { sessionId: string;
           required
           rows={2}
           defaultValue={defaultRequirement}
-          className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
         />
       </label>
       {state?.error ? <p className="text-xs text-red-400">{state.error}</p> : null}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-gold-500 px-4 py-2 text-sm font-medium text-navy-950 hover:bg-gold-400 disabled:opacity-50"
+        className="rounded-full bg-gold-500 px-4 py-2 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
       >
         {pending ? "Sending…" : "Connect me with BWF"}
       </button>
@@ -172,8 +172,8 @@ export function AskBwfWidget({ onClose }: { onClose: () => void }) {
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 flex h-[32rem] w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-sm border border-navy-700 bg-navy-950 shadow-lg shadow-black/40">
-      <div className="flex items-center justify-between border-b border-navy-700 px-4 py-3">
+    <div className="fixed bottom-24 right-6 z-50 flex h-[32rem] w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-sm border border-emerald-700 bg-emerald-950 shadow-lg shadow-black/40">
+      <div className="flex items-center justify-between border-b border-emerald-700 px-4 py-3">
         <p className="font-display text-base text-ivory-100">Ask BWF</p>
         <button type="button" onClick={onClose} aria-label="Close chat" className="text-slate-400 hover:text-ivory-100">
           ✕
@@ -197,8 +197,8 @@ export function AskBwfWidget({ onClose }: { onClose: () => void }) {
                 key={i}
                 className={
                   m.role === "user"
-                    ? "self-end rounded-sm border border-gold-500/40 bg-navy-900 px-3 py-2 text-sm text-ivory-100"
-                    : "self-start rounded-sm border border-navy-700 px-3 py-2 text-sm text-ivory-100"
+                    ? "self-end rounded-sm border border-gold-500/40 bg-emerald-900 px-3 py-2 text-sm text-ivory-100"
+                    : "self-start rounded-sm border border-emerald-700 px-3 py-2 text-sm text-ivory-100"
                 }
               >
                 {m.content || (pending && i === messages.length - 1 ? "…" : "")}
@@ -207,18 +207,18 @@ export function AskBwfWidget({ onClose }: { onClose: () => void }) {
             {error ? <p className="text-xs text-red-400">{error}</p> : null}
           </div>
 
-          <form onSubmit={sendMessage} className="flex gap-2 border-t border-navy-700 p-3">
+          <form onSubmit={sendMessage} className="flex gap-2 border-t border-emerald-700 p-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question…"
               disabled={pending}
-              className="flex-1 rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none disabled:opacity-50"
+              className="flex-1 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className="rounded-full bg-gold-500 px-4 py-2 text-sm font-medium text-navy-950 hover:bg-gold-400 disabled:opacity-50"
+              className="rounded-full bg-gold-500 px-4 py-2 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
             >
               Send
             </button>
@@ -235,7 +235,7 @@ export function AskBwfWidget({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={() => setShowLeadForm(true)}
-          className="border-t border-navy-700 px-4 py-3 text-left text-sm text-gold-400 hover:text-gold-300"
+          className="border-t border-emerald-700 px-4 py-3 text-left text-sm text-gold-400 hover:text-gold-300"
         >
           Want BWF to connect with you? →
         </button>

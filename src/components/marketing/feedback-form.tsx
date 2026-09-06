@@ -20,7 +20,7 @@ export function FeedbackForm({ chapters }: { chapters: { id: string; name: strin
     <form action={formAction} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
         Type
-        <select name="type" required defaultValue="GENERAL" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none">
+        <select name="type" required defaultValue="GENERAL" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none">
           <option value="GENERAL">General</option>
           <option value="MEETING">Meeting</option>
           <option value="EVENT">Event</option>
@@ -30,7 +30,7 @@ export function FeedbackForm({ chapters }: { chapters: { id: string; name: strin
       {chapters.length > 0 ? (
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
           Chapter (optional)
-          <select name="chapterId" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none">
+          <select name="chapterId" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none">
             <option value="">Not chapter-specific</option>
             {chapters.map((c) => (
               <option key={c.id} value={c.id}>
@@ -42,24 +42,24 @@ export function FeedbackForm({ chapters }: { chapters: { id: string; name: strin
       ) : null}
       <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
         Name (optional)
-        <input name="name" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+        <input name="name" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
         Email (optional — only if you&rsquo;d like a response)
-        <input name="email" type="email" className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+        <input name="email" type="email" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
         Your feedback
-        <textarea name="message" rows={5} required className="rounded-md border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
+        <textarea name="message" rows={5} required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
       </label>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-400">
         Feedback is only visible to BWF&rsquo;s Super Admin and is never published publicly.
       </p>
       {state?.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-navy-950 hover:bg-gold-400 disabled:opacity-50"
+        className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
       >
         {pending ? "Sending…" : "Send feedback"}
       </button>

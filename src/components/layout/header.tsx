@@ -11,14 +11,14 @@ const NAV_LINKS = [
   { href: "/chapters", label: "Chapters" },
   { href: "/members", label: "Members" },
   { href: "/insights", label: "Insights" },
-  { href: "/events", label: "Events" },
+  { href: "/faqs", label: "FAQ" },
 ];
 
 export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-navy-700/60 bg-navy-950/80 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-emerald-700/60 bg-emerald-950/80 backdrop-blur">
       <Container className="flex h-20 items-center justify-between">
         <Link href="/" className="font-display text-lg tracking-wide text-ivory-100">
           Builders World Forum
@@ -59,7 +59,7 @@ export function Header() {
           aria-expanded={open}
           aria-controls="mobile-nav"
           aria-label={open ? "Close menu" : "Open menu"}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-navy-700 text-ivory-100 lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-700 text-ivory-100 lg:hidden"
         >
           <span className="relative block h-3 w-4">
             <span
@@ -76,14 +76,14 @@ export function Header() {
       </Container>
 
       {open ? (
-        <div id="mobile-nav" className="border-t border-navy-700/60 bg-navy-950 lg:hidden">
+        <div id="mobile-nav" className="border-t border-emerald-700/60 bg-emerald-950 lg:hidden">
           <Container className="flex flex-col gap-1 py-4">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-3 text-base font-medium text-ivory-100 hover:bg-navy-800"
+                className="rounded-md px-2 py-3 text-base font-medium text-ivory-100 hover:bg-emerald-800"
               >
                 {link.label}
               </Link>
@@ -91,7 +91,7 @@ export function Header() {
             <Link
               href="/member"
               onClick={() => setOpen(false)}
-              className="rounded-md px-2 py-3 text-base font-medium text-slate-400 hover:bg-navy-800"
+              className="rounded-md px-2 py-3 text-base font-medium text-slate-400 hover:bg-emerald-800"
             >
               Member Login
             </Link>

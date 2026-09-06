@@ -80,7 +80,7 @@ export default async function ProgrammaticLandingPage({ params }: { params: Prom
             <Link
               key={member.id}
               href={`/members/${member.slug}`}
-              className="rounded-sm border border-navy-700 p-5 transition-colors hover:border-gold-500/50"
+              className="rounded-sm border border-emerald-700 p-5 transition-colors hover:border-gold-500/50"
             >
               <p className="text-ivory-100">{member.name}</p>
               <p className="mt-1 text-sm text-gold-400">{member.chapter.name}</p>

@@ -52,6 +52,11 @@ export function AddReportRecipientForm({ chapters }: { chapters: { id: string; n
         <div />
       )}
 
+      <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 sm:col-span-3">
+        <input name="includeExtraColumns" type="checkbox" className="h-4 w-4 rounded border-neutral-300" />
+        Include Chapter &amp; Company columns for this recipient
+      </label>
+
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-3">{state.error}</p> : null}
 
       <div className="sm:col-span-3">

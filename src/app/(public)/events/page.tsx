@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 
 export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
 
@@ -42,9 +42,9 @@ export default async function EventsPage() {
             <Link
               key={event.id}
               href={`/events/${event.slug}`}
-              className="group flex flex-col overflow-hidden rounded-sm border border-navy-700 transition-colors hover:border-gold-500/50"
+              className="group flex flex-col overflow-hidden rounded-sm border border-emerald-700 transition-colors hover:border-gold-500/50"
             >
-              <MediaPlaceholder brief={`${event.title} — event photo`} className="h-40" />
+              <PhotoSlot src={event.imageUrl} alt={event.title} brief={`${event.title} — event photo`} className="h-40" />
               <div className="flex flex-1 flex-col gap-2 p-5">
                 <span className="text-xs uppercase tracking-wide text-gold-400">
                   {EVENT_TYPE_LABELS[event.eventType]}
@@ -53,12 +53,12 @@ export default async function EventsPage() {
                 <p className="text-sm text-slate-400">
                   {event.startsAt.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </p>
-                <p className="text-sm text-slate-500">{event.chapter?.name ?? "All chapters"}</p>
+                <p className="text-sm text-slate-400">{event.chapter?.name ?? "All chapters"}</p>
               </div>
             </Link>
           ))}
           {events.length === 0 ? (
-            <p className="text-sm text-slate-500">No upcoming events scheduled right now — check back soon.</p>
+            <p className="text-sm text-slate-400">No upcoming events scheduled right now — check back soon.</p>
           ) : null}
         </div>
       </Container>

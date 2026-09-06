@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { notifyChatbotLeadCaptured } from "@/lib/notifications";
 import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
+import { recordLead } from "@/lib/leads/record";
 
 const captureLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -45,7 +46,21 @@ export async function captureChatbotLead(
     },
   });
 
-  await notifyChatbotLeadCaptured({ name: rest.name, phone: rest.phone, email: email || undefined, requirement: rest.requirement });
+  // Backlog #35 — the lead above is already committed; a failed admin-alert
+  // email must not turn a successful capture into a 500 for the visitor.
+  try {
+    await notifyChatbotLeadCaptured({ name: rest.name, phone: rest.phone, email: email || undefined, requirement: rest.requirement });
+  } catch (error) {
+    console.error("notifyChatbotLeadCaptured failed (lead still captured):", error);
+  }
+
+  await recordLead({
+    source: "CHATBOT",
+    name: rest.name,
+    phone: rest.phone,
+    email,
+    requirement: rest.requirement,
+  });
 
   revalidatePath("/admin/chatbot");
   return { error: undefined, success: true };

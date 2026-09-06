@@ -23,7 +23,7 @@ const organizationJsonLd = {
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   // No dead entry point ships — same rule as WhatsAppCta/GoogleAnalytics —
   // but gated on isEnabled alone, not isChatbotConfigured() too: an admin
-  // can legitimately enable the widget before ANTHROPIC_API_KEY exists (the
+  // can legitimately enable the widget before OPENAI_API_KEY exists (the
   // settings page warns about exactly this), and /api/chatbot itself reports
   // "unavailable" for the widget to show honestly in that case — the two
   // checks aren't redundant, they cover different moments. Plain findUnique,

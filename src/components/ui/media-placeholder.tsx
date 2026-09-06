@@ -17,7 +17,7 @@ export function MediaPlaceholder({
   return (
     <div
       className={cn(
-        "relative overflow-hidden bg-gradient-to-br from-navy-600 via-navy-800 to-navy-950",
+        "relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-800 to-emerald-950",
         className,
       )}
     >
@@ -30,9 +30,9 @@ export function MediaPlaceholder({
         }}
       />
       <div className="pointer-events-none absolute -right-10 -top-10 h-64 w-64 rounded-full bg-gold-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-navy-600/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-emerald-600/40 blur-3xl" />
       <div className="absolute inset-0 flex items-end p-4">
-        <p className="rounded-sm border border-gold-500/30 bg-navy-950/70 px-2.5 py-1 text-[11px] leading-snug text-slate-400">
+        <p className="rounded-sm border border-gold-500/30 bg-emerald-950/70 px-2.5 py-1 text-[11px] leading-snug text-slate-400">
           {brief}
         </p>
       </div>

@@ -3,7 +3,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AddReportRecipientForm } from "@/components/admin/add-report-recipient-form";
 import { ReportScheduleForm } from "@/components/admin/report-schedule-form";
-import { removeReportRecipient, toggleReportRecipientActive } from "./actions";
+import { removeReportRecipient, toggleReportRecipientActive, toggleReportRecipientColumns } from "./actions";
 
 export default async function ReportsPage() {
   await requirePermission("reports:manage");
@@ -51,6 +51,7 @@ export default async function ReportsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Report</th>
+                <th className="px-4 py-3 font-medium">Columns</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -60,6 +61,13 @@ export default async function ReportsPage() {
                 <tr key={r.id}>
                   <td className="px-4 py-3 text-neutral-900">{r.email}</td>
                   <td className="px-4 py-3 text-neutral-600">{r.scope === "MASTER" ? "Master (all chapters)" : r.chapter?.name}</td>
+                  <td className="px-4 py-3">
+                    <form action={toggleReportRecipientColumns.bind(null, r.id)}>
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                        {r.includeExtraColumns ? "+ Chapter & Company" : "Standard columns"}
+                      </button>
+                    </form>
+                  </td>
                   <td className="px-4 py-3 text-neutral-600">{r.isActive ? "Active" : "Paused"}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-4">
@@ -79,7 +87,7 @@ export default async function ReportsPage() {
               ))}
               {recipients.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-neutral-400">
                     No recipients configured yet.
                   </td>
                 </tr>

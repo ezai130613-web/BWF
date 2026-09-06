@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { publiclyVisibleBlogWhere } from "@/lib/blog/query";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 
 export const metadata: Metadata = {
   title: "Insights",
@@ -41,7 +41,7 @@ export default async function InsightsPage({
         <div className="mt-8 flex flex-wrap gap-2">
           <Link
             href="/insights"
-            className={`rounded-full border px-4 py-1.5 text-sm ${!categorySlug ? "border-gold-500 text-gold-300" : "border-navy-600 text-slate-400"}`}
+            className={`rounded-full border px-4 py-1.5 text-sm ${!categorySlug ? "border-gold-500 text-gold-300" : "border-emerald-600 text-slate-400"}`}
           >
             All
           </Link>
@@ -49,7 +49,7 @@ export default async function InsightsPage({
             <Link
               key={c.id}
               href={`/insights?category=${c.slug}`}
-              className={`rounded-full border px-4 py-1.5 text-sm ${categorySlug === c.slug ? "border-gold-500 text-gold-300" : "border-navy-600 text-slate-400"}`}
+              className={`rounded-full border px-4 py-1.5 text-sm ${categorySlug === c.slug ? "border-gold-500 text-gold-300" : "border-emerald-600 text-slate-400"}`}
             >
               {c.name}
             </Link>
@@ -59,11 +59,16 @@ export default async function InsightsPage({
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
             <Link key={post.id} href={`/insights/${post.slug}`} className="group flex flex-col">
-              <MediaPlaceholder brief={`${post.title} — featured image`} className="aspect-[16/10]" />
+              <PhotoSlot
+                src={post.featuredImageUrl}
+                alt={post.title}
+                brief={`${post.title} — featured image`}
+                className="aspect-[16/10]"
+              />
               <p className="mt-4 text-xs uppercase tracking-wide text-gold-400">{post.category.name}</p>
               <p className="mt-2 font-display text-xl text-ivory-100 group-hover:text-gold-300">{post.title}</p>
               {post.excerpt ? <p className="mt-2 text-sm text-slate-400">{post.excerpt}</p> : null}
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-slate-400">
                 {post.author.name}
                 {post.publishedAt ? ` · ${post.publishedAt.toLocaleDateString()}` : ""}
               </p>

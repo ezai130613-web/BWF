@@ -10,6 +10,7 @@ const createRecipientSchema = z.object({
   email: z.email("Enter a valid email address"),
   scope: z.enum(["MASTER", "CHAPTER"]),
   chapterId: z.string().optional().transform((v) => v || undefined),
+  includeExtraColumns: z.string().optional(),
 });
 
 export async function addReportRecipient(_prevState: { error?: string } | undefined, formData: FormData) {
@@ -26,6 +27,7 @@ export async function addReportRecipient(_prevState: { error?: string } | undefi
       email: parsed.data.email.toLowerCase(),
       scope: parsed.data.scope,
       chapterId: parsed.data.scope === "CHAPTER" ? parsed.data.chapterId : undefined,
+      includeExtraColumns: parsed.data.includeExtraColumns === "on",
     },
   });
 
@@ -64,6 +66,25 @@ export async function toggleReportRecipientActive(recipientId: string) {
   await logActivity({
     userId: session.user.id,
     action: "weekly_report_recipient.toggled",
+    entity: "WeeklyReportRecipient",
+    entityId: recipientId,
+  });
+
+  revalidatePath("/admin/reports");
+}
+
+export async function toggleReportRecipientColumns(recipientId: string) {
+  const session = await requirePermission("reports:manage");
+
+  const recipient = await db.weeklyReportRecipient.findUniqueOrThrow({ where: { id: recipientId } });
+  await db.weeklyReportRecipient.update({
+    where: { id: recipientId },
+    data: { includeExtraColumns: !recipient.includeExtraColumns },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "weekly_report_recipient.columns_toggled",
     entity: "WeeklyReportRecipient",
     entityId: recipientId,
   });

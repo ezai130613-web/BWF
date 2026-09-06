@@ -58,7 +58,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     <div className="py-24">
       <JsonLd data={personJsonLd} />
       <JsonLd data={crumbs} />
-      <Container className="max-w-3xl">
+      <Container>
         <SectionLabel>Author</SectionLabel>
         <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{author.name}</h1>
         {author.bio ? <p className="mt-4 max-w-xl text-slate-400">{author.bio}</p> : null}

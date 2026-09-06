@@ -41,6 +41,7 @@ export default async function AdminDashboardPage() {
           <Tile label="Upcoming meetings" value={metrics.upcomingMeetings} />
           <Tile label="Upcoming events" value={metrics.upcomingEvents} />
           <Tile label="Open category slots" value={metrics.openCategorySlots} hint="Active categories not yet held by an active member here" />
+          <Tile label="New leads" value={metrics.newLeads} />
         </div>
       ) : (
         <>
@@ -60,7 +61,7 @@ export default async function AdminDashboardPage() {
               value={metrics.publishedBlogCount}
               hint={metrics.latestPublishedBlog ? `Latest: "${metrics.latestPublishedBlog.title}"` : "No posts published yet"}
             />
-            <Tile label="New chatbot leads" value={metrics.newChatbotLeads} hint="Ask BWF — not yet contacted" />
+            <Tile label="New leads" value={metrics.newLeads} hint="Across every source — brief §35" />
           </div>
 
           {permissions.has("audit_log:view") ? (

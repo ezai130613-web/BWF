@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
-import { MediaPlaceholder } from "@/components/ui/media-placeholder";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 import { VisitorRegisterForm } from "@/components/marketing/visitor-register-form";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -99,8 +99,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       <JsonLd data={eventJsonLd} />
       <JsonLd data={crumbs} />
       <div className="relative">
-        <MediaPlaceholder brief={`${event.title} — event photo`} className="h-[45vh]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/50 to-navy-950/10" />
+        <PhotoSlot src={event.imageUrl} alt={event.title} brief={`${event.title} — event photo`} className="h-[45vh]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/50 to-emerald-950/10" />
         <Container className="absolute inset-x-0 bottom-0 pb-12">
           <SectionLabel>{EVENT_TYPE_LABELS[event.eventType]}</SectionLabel>
           <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{event.title}</h1>
@@ -120,18 +120,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           ) : null}
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm text-slate-500">Chapter</dt>
+              <dt className="text-sm text-slate-400">Chapter</dt>
               <dd className="text-ivory-100">{event.chapter?.name ?? "All chapters"}</dd>
             </div>
             {event.venue ? (
               <div>
-                <dt className="text-sm text-slate-500">Venue</dt>
+                <dt className="text-sm text-slate-400">Venue</dt>
                 <dd className="text-ivory-100">{event.venue}</dd>
               </div>
             ) : null}
             {event.capacity ? (
               <div>
-                <dt className="text-sm text-slate-500">Capacity</dt>
+                <dt className="text-sm text-slate-400">Capacity</dt>
                 <dd className="text-ivory-100">
                   {registeredCount} / {event.capacity} registered
                 </dd>
@@ -139,14 +139,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             ) : null}
             {event.registrationDeadline ? (
               <div>
-                <dt className="text-sm text-slate-500">Registration deadline</dt>
+                <dt className="text-sm text-slate-400">Registration deadline</dt>
                 <dd className="text-ivory-100">{event.registrationDeadline.toLocaleDateString()}</dd>
               </div>
             ) : null}
           </dl>
         </div>
 
-        <aside className="rounded-sm border border-navy-700 p-6">
+        <aside className="rounded-sm border border-emerald-700 p-6">
           <SectionLabel>Register to attend</SectionLabel>
           <div className="mt-6">
             {closed ? (
