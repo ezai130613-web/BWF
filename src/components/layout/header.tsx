@@ -40,7 +40,7 @@ export function Header() {
           <Link href="/member" className="text-sm font-medium text-slate-400 hover:text-gold-400">
             Member Login
           </Link>
-          <Button href="/chapters" variant="secondary" className="px-5 py-2.5 text-xs">
+          <Button href="/visit" variant="secondary" className="px-5 py-2.5 text-xs">
             Visit BWF
           </Button>
           <Button
@@ -96,7 +96,7 @@ export function Header() {
               Member Login
             </Link>
             <div className="mt-3 flex flex-col gap-3">
-              <Button href="/chapters" variant="secondary" onClick={() => setOpen(false)}>
+              <Button href="/visit" variant="secondary" onClick={() => setOpen(false)}>
                 Visit BWF
               </Button>
               <Button

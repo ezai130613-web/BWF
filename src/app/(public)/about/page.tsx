@@ -3,6 +3,15 @@ import { getContent } from "@/lib/content";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { PhotoSlot } from "@/components/ui/photo-slot";
+import { InteractiveBubbles } from "@/components/about/interactive-bubbles";
+import { WhoCanVisit } from "@/components/about/who-can-visit";
+
+/** §13 — new fifth bubble, not admin-editable (structural, spec-given copy,
+ * same treatment as the Chapters page's terminology/attendance content). */
+const WHO_CAN_VISIT_BUBBLE = {
+  heading: "Who Can Visit BWF?",
+  text: "Prospective members exploring BWF, end consumers with a construction requirement, and Chief Guests looking for construction partners can all visit a BWF chapter meeting — see who below.",
+};
 
 export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
 
@@ -57,6 +66,8 @@ export default async function AboutPage() {
     { heading: "Who Should Join BWF?", text: who },
   ].filter((p): p is { heading: string; text: string } => Boolean(p.text));
 
+  const bubbles = [...pillars, WHO_CAN_VISIT_BUBBLE];
+
   const founders = [
     {
       name: content["founder1.name"],
@@ -92,16 +103,11 @@ export default async function AboutPage() {
           </p>
         )}
 
-        {pillars.length > 0 ? (
-          <section className="mt-20 grid gap-x-12 gap-y-12 border-t border-emerald-700/60 pt-16 sm:grid-cols-2">
-            {pillars.map((pillar, i) => (
-              <div key={i}>
-                <h2 className="font-display text-2xl text-ivory-100">{pillar.heading}</h2>
-                <Paragraphs text={pillar.text} />
-              </div>
-            ))}
-          </section>
-        ) : null}
+        <section className="mt-20 border-t border-emerald-700/60 pt-16">
+          <InteractiveBubbles bubbles={bubbles} />
+        </section>
+
+        <WhoCanVisit />
 
         {differentiators.length > 0 ? (
           <section className="mt-16 border-t border-emerald-700/60 pt-16">

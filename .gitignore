@@ -46,3 +46,7 @@ next-env.d.ts
 # Raw/unprocessed source photography — the real, served copies live in
 # /public (tracked). This is 40MB of originals never referenced by the app.
 /Images/
+
+# Raw source QR codes — the served copies live in /public/images/payment
+# (tracked). Not referenced by the app directly from here.
+/QR Codes/

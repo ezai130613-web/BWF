@@ -32,7 +32,7 @@ export function MemberSearchForm({
 }) {
   return (
     <form
-      className="mt-10 flex flex-wrap gap-4"
+      className="mt-10 grid gap-4 sm:flex sm:flex-wrap"
       action="/members"
       onSubmit={(e) => {
         const form = e.currentTarget;
@@ -49,13 +49,13 @@ export function MemberSearchForm({
         aria-label="Search by name, company, or service"
         defaultValue={defaultQuery}
         placeholder="Search by name, company, or service…"
-        className="min-w-[240px] flex-1 rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 placeholder:text-slate-500 focus:border-gold-500 focus:outline-none"
+        className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 placeholder:text-slate-500 focus:border-gold-500 focus:outline-none sm:min-w-[240px] sm:flex-1"
       />
       <select
         name="chapter"
         aria-label="Filter by chapter"
         defaultValue={defaultChapterSlug ?? ""}
-        className="rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+        className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none sm:w-auto"
       >
         <option value="">All chapters</option>
         {chapters.map((c) => (
@@ -68,7 +68,7 @@ export function MemberSearchForm({
         name="category"
         aria-label="Filter by category"
         defaultValue={defaultCategorySlug ?? ""}
-        className="rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+        className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-4 py-2.5 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none sm:w-auto"
       >
         <option value="">All categories</option>
         {categories.map((c) => (
@@ -79,7 +79,7 @@ export function MemberSearchForm({
       </select>
       <button
         type="submit"
-        className="rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400"
+        className="w-full rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 sm:w-auto"
       >
         Search
       </button>

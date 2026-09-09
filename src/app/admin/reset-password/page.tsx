@@ -1,6 +1,8 @@
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { isEmailProviderConfigured } from "@/lib/email";
 
 export default function AdminResetPasswordPage() {
+  const usingRealEmail = isEmailProviderConfigured();
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
@@ -13,6 +15,7 @@ export default function AdminResetPasswordPage() {
             requestUrl="/api/admin/auth/request-password-reset"
             resetUrl="/api/admin/auth/reset-password"
             loginUrl="/admin/login"
+            usingRealEmail={usingRealEmail}
           />
         </div>
       </div>

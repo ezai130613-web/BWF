@@ -29,6 +29,7 @@ export async function TestimonialsSection() {
             content: t.content,
             name: t.name,
             meta: [t.role, t.company, t.chapter?.name].filter(Boolean).join(" · "),
+            imageUrl: t.imageUrl,
           }))}
         />
       </Container>

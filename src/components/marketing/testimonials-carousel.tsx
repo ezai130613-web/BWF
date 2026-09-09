@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PhotoSlot } from "@/components/ui/photo-slot";
 
 type Slide = {
   id: string;
   content: string;
   name: string;
   meta: string;
+  imageUrl: string | null;
 };
 
 const AUTO_ADVANCE_MS = 6000;
@@ -27,12 +29,20 @@ export function TestimonialsCarousel({ testimonials }: { testimonials: Slide[] }
 
   return (
     <div className="mt-10">
-      <div className="min-h-[220px] rounded-sm border border-emerald-700 p-8 sm:p-10">
-        <p className="font-display text-2xl leading-snug text-ivory-100 sm:text-3xl">
-          &ldquo;{current.content}&rdquo;
-        </p>
-        <p className="mt-6 text-ivory-100">{current.name}</p>
-        {current.meta ? <p className="text-sm text-slate-400">{current.meta}</p> : null}
+      <div className="min-h-[220px] overflow-hidden rounded-sm border border-emerald-700 sm:flex">
+        <PhotoSlot
+          src={current.imageUrl}
+          alt={current.name}
+          brief={`${current.name} — member portrait`}
+          className="aspect-[4/5] w-full sm:aspect-auto sm:w-64 sm:flex-shrink-0"
+        />
+        <div className="p-8 sm:p-10">
+          <p className="font-display text-2xl leading-snug text-ivory-100 sm:text-3xl">
+            &ldquo;{current.content}&rdquo;
+          </p>
+          <p className="mt-6 text-ivory-100">{current.name}</p>
+          {current.meta ? <p className="text-sm text-slate-400">{current.meta}</p> : null}
+        </div>
       </div>
 
       {testimonials.length > 1 ? (

@@ -3,8 +3,13 @@
 import { useActionState, useEffect } from "react";
 import { registerVisitor } from "@/app/(public)/visit/actions";
 import { trackEvent } from "@/lib/analytics";
+import { TrackedAnchor } from "@/components/analytics/tracked-anchor";
+import { Button } from "@/components/ui/button";
+import { BankPaymentDetails } from "@/components/marketing/bank-payment-details";
 
 const initialState: { error?: string; success?: boolean } = {};
+
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
 type Option = { id: string; name: string };
 
@@ -15,6 +20,14 @@ export function VisitorRegisterForm({
   meetingId,
   eventId,
   fixedChapter,
+  qrCodeUrl,
+  visitorMeetingOnlyFee,
+  visitorMeetingBreakfastFee,
+  bankAccountName,
+  bankAccountNumber,
+  bankIfsc,
+  upiId,
+  bankName,
 }: {
   categories: Option[];
   chapters?: Option[];
@@ -22,15 +35,22 @@ export function VisitorRegisterForm({
   meetingId?: string;
   eventId?: string;
   fixedChapter?: Option;
+  qrCodeUrl?: string | null;
+  visitorMeetingOnlyFee?: string | null;
+  visitorMeetingBreakfastFee?: string | null;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankIfsc?: string | null;
+  upiId?: string | null;
+  bankName?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(registerVisitor, initialState);
+  // §39-41 — the meeting-visit fields (purpose/pricing/payment) are specific
+  // to visiting a chapter meeting; an event can have its own separate
+  // charges (spec §17.1's "event, conference and exhibition charges may be
+  // separate"), so this whole block is skipped when registering via eventId.
+  const showMeetingVisitDetails = !eventId;
 
-  // Brief §50 — "Visitor registration" / "Event registrations" as distinct
-  // tracked events, both produced by this one shared form: which fires
-  // depends on whether this instance is registering for an event or a plain
-  // chapter meeting. Fired from an effect (not inline in the render) so it
-  // runs exactly once when `state.success` actually flips true, not on
-  // every re-render while it stays true.
   useEffect(() => {
     if (state?.success) {
       trackEvent(eventId ? "event_registration" : "visitor_registration", { meetingId, eventId });
@@ -38,9 +58,37 @@ export function VisitorRegisterForm({
   }, [state?.success, meetingId, eventId]);
 
   if (state?.success) {
+    if (!showMeetingVisitDetails) {
+      return (
+        <div className="rounded-sm border border-gold-500/40 p-8 text-center">
+          <p className="text-ivory-100">Thank you — we&rsquo;ve received your registration. See you there!</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-sm border border-gold-500/40 p-8 text-center">
-        <p className="text-ivory-100">Thank you — we&rsquo;ve received your registration. See you there!</p>
+        <p className="font-display text-2xl text-ivory-100">Your BWF Visit Request Has Been Received.</p>
+        <p className="mt-3 text-sm text-slate-400">
+          Thank you for registering to visit Builders World Forum. Our team will verify your
+          registration and payment and share your chapter meeting details with you.
+        </p>
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          {WHATSAPP_NUMBER ? (
+            <TrackedAnchor
+              eventName="whatsapp_click"
+              eventParams={{ location: "visit_confirmation" }}
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 px-6 py-3 text-sm font-medium text-ivory-100 hover:border-gold-400 hover:text-gold-300"
+            >
+              Message BWF on WhatsApp
+            </TrackedAnchor>
+          ) : null}
+          <Button href="/chapters" variant="primary">
+            Explore BWF Chapters
+          </Button>
+        </div>
       </div>
     );
   }
@@ -53,43 +101,50 @@ export function VisitorRegisterForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-          Name
+          Full Name
           <input
             name="name"
             required
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-          Phone
+          Mobile Number
           <input
             name="phone"
             required
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
-          Email
+          Email Address
           <input
             name="email"
             type="email"
             required
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-          Company (optional)
+          Company Name (optional)
           <input
             name="company"
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-          Business category
+          Designation (optional)
+          <input
+            name="designation"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
+          Business Category
           <select
             name="categoryId"
             required
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           >
             <option value="">Select…</option>
             {categories.map((c) => (
@@ -109,11 +164,11 @@ export function VisitorRegisterForm({
           </div>
         ) : (
           <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-            Chapter
+            Which chapter would you like to visit?
             <select
               name="chapterId"
               required
-              className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+              className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
             >
               <option value="">Select…</option>
               {chapters?.map((c) => (
@@ -125,11 +180,55 @@ export function VisitorRegisterForm({
           </label>
         )}
 
+        {showMeetingVisitDetails ? (
+          <>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
+              Purpose of Visit
+              <select
+                name="purposeOfVisit"
+                required
+                defaultValue=""
+                className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                <option value="PROSPECTIVE_MEMBER">I am exploring BWF Membership</option>
+                <option value="END_CONSUMER">I am an End Consumer / Have a Construction Requirement</option>
+                <option value="CHIEF_GUEST">I would like to visit as a Chief Guest / Business Connect</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
+              Meeting Option (prebooking rate)
+              <select
+                name="meetingOption"
+                required
+                defaultValue=""
+                className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                <option value="MEETING_ONLY">
+                  Meeting Only — {visitorMeetingOnlyFee ?? "TBC"}
+                </option>
+                <option value="MEETING_BREAKFAST">
+                  Meeting + Networking Breakfast — {visitorMeetingBreakfastFee ?? "TBC"}
+                </option>
+              </select>
+              <span className="text-xs font-normal text-slate-500">
+                Walk-in (onspot) pricing is higher — see Meeting Charges on the Chapters page.
+              </span>
+            </label>
+          </>
+        ) : null}
+
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
           Referred by a member? (optional)
           <select
             name="referringMemberId"
-            className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
+            className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           >
             <option value="">None</option>
             {members.map((m) => (
@@ -141,6 +240,18 @@ export function VisitorRegisterForm({
         </label>
       </div>
 
+      {showMeetingVisitDetails ? (
+        <BankPaymentDetails
+          qrCodeUrl={qrCodeUrl ?? null}
+          accountName={bankAccountName ?? null}
+          accountNumber={bankAccountNumber ?? null}
+          ifsc={bankIfsc ?? null}
+          upiId={upiId ?? null}
+          bankName={bankName ?? null}
+          screenshotFieldName="paymentScreenshotUrl"
+        />
+      ) : null}
+
       {state?.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
 
       <button
@@ -148,7 +259,7 @@ export function VisitorRegisterForm({
         disabled={pending}
         className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
       >
-        {pending ? "Registering…" : "Register to visit"}
+        {pending ? "Registering…" : showMeetingVisitDetails ? "Register My Visit" : "Register to visit"}
       </button>
     </form>
   );

@@ -27,7 +27,18 @@ export default async function ApplyPage() {
     await Promise.all(categories.map(async (c) => [c.id, await getChapterAvailability(c.id)] as const)),
   );
 
-  const content = await getContent(["apply.intro", "apply.steps", "apply.category_not_available"]);
+  const content = await getContent([
+    "apply.intro",
+    "apply.steps",
+    "apply.category_not_available",
+    "payment.membershipQrCodeUrl",
+    "payment.membershipBankAccountName",
+    "payment.membershipBankAccountNumber",
+    "payment.membershipBankIfsc",
+    "payment.membershipSwiftCode",
+    "payment.membershipUpiId",
+    "payment.membershipBankName",
+  ]);
   const steps = content["apply.steps"]?.split("\n").filter(Boolean) ?? [];
 
   return (
@@ -76,7 +87,17 @@ export default async function ApplyPage() {
             <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Start your application</SectionLabel>
               <div className="mt-6">
-                <ApplyWizard categories={categories} availabilityByCategory={availabilityByCategory} />
+                <ApplyWizard
+                  categories={categories}
+                  availabilityByCategory={availabilityByCategory}
+                  qrCodeUrl={content["payment.membershipQrCodeUrl"]}
+                  bankAccountName={content["payment.membershipBankAccountName"]}
+                  bankAccountNumber={content["payment.membershipBankAccountNumber"]}
+                  bankIfsc={content["payment.membershipBankIfsc"]}
+                  swiftCode={content["payment.membershipSwiftCode"]}
+                  upiId={content["payment.membershipUpiId"]}
+                  bankName={content["payment.membershipBankName"]}
+                />
               </div>
             </div>
           </aside>

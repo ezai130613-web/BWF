@@ -66,6 +66,20 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             </dl>
           </div>
 
+          {application.paymentScreenshotUrl ? (
+            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+              <h2 className="text-sm font-semibold text-neutral-900">Payment screenshot</h2>
+              <a href={application.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
+                <img
+                  src={application.paymentScreenshotUrl}
+                  alt="Payment screenshot"
+                  className="max-h-64 rounded-md border border-neutral-200 object-contain"
+                />
+              </a>
+            </div>
+          ) : null}
+
           <div className="rounded-lg border border-neutral-200 bg-white p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Notes</h2>
             <div className="mt-3">

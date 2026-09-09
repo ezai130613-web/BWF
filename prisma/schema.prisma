@@ -172,6 +172,14 @@ enum ChapterStatus {
   /// yet — brief §16: "Upcoming chapters may exist internally... without
   /// being publicly displayed."
   DRAFT
+  /// User request (2026-09-09) — publicly visible and browsable (chapters
+  /// listing, homepage grid, its own detail page), but not yet accepting
+  /// members/visitors/applications: shown as "Launching Soon" rather than
+  /// hidden like DRAFT. Deliberately excluded from every functional
+  /// chapter-selection context (Visit/Apply/Members-filter/Feedback
+  /// dropdowns) — only the two public browsing listings + its own detail
+  /// page opt into showing it.
+  COMING_SOON
   ACTIVE
   ARCHIVED
 }
@@ -203,6 +211,7 @@ model Chapter {
   visitors         Visitor[]
   reportRecipients WeeklyReportRecipient[]
   leads            Lead[]
+  chiefGuests      ChiefGuest[]
 
   @@map("chapters")
 }
@@ -341,6 +350,19 @@ model Member {
   leads             Lead[]
   submittedArticles Blog[]
   testimonials      Testimonial[]
+
+  // BWF App in-house build (2026-09-09) — see docs comment above the
+  // Referral/ThankYouSlip models below for the full picture.
+  referralsGiven        Referral[]     @relation("ReferralGiven")
+  referralsReceived     Referral[]     @relation("ReferralReceived")
+  thankYouSlipsGiven    ThankYouSlip[] @relation("ThankYouSlipGiven")
+  thankYouSlipsReceived ThankYouSlip[] @relation("ThankYouSlipReceived")
+  oneToOnesRecorded     OneToOne[]     @relation("OneToOneRecordedBy")
+  oneToOnesWith         OneToOne[]     @relation("OneToOneWith")
+  powerDatesHosted      PowerDate[]    @relation("PowerDateHost")
+  powerDatesJoined      PowerDate[]    @relation("PowerDateParticipant")
+  conclavesOrganized    Conclave[]              @relation("ConclaveOrganizer")
+  conclaveParticipation ConclaveParticipant[]   @relation("ConclaveParticipation")
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -696,6 +718,11 @@ model MembershipApplication {
   companyInfo     String?
   status          ApplicationStatus @default(NEW)
 
+  /// User request (2026-09-09) — membership payment proof, same optional
+  /// "verify after, don't hard-gate submission" pattern as Visitor's own
+  /// paymentScreenshotUrl.
+  paymentScreenshotUrl String?
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
@@ -882,13 +909,36 @@ enum VisitorStatus {
   NOT_INTERESTED
 }
 
+enum VisitorPurpose {
+  PROSPECTIVE_MEMBER
+  END_CONSUMER
+  CHIEF_GUEST
+}
+
+enum VisitorMeetingOption {
+  MEETING_ONLY
+  MEETING_BREAKFAST
+}
+
 model Visitor {
-  id      String        @id @default(cuid())
-  name    String
-  phone   String
-  email   String
-  company String?
-  status  VisitorStatus @default(REGISTERED)
+  id          String        @id @default(cuid())
+  name        String
+  phone       String
+  email       String
+  company     String?
+  designation String?
+  status      VisitorStatus @default(REGISTERED)
+
+  /// Client correction spec (2026-09-09) §40 — null for event registrations
+  /// (VisitorRegisterForm hides this whole block when `eventId` is set,
+  /// since visitor pricing/purpose is specifically about chapter meetings,
+  /// not events, which the spec says "may be separate").
+  purposeOfVisit  VisitorPurpose?
+  meetingOption   VisitorMeetingOption?
+  /// R2 URL of the visitor's uploaded payment screenshot — optional (§41's
+  /// confirmation copy says "our team will verify your registration and
+  /// payment", i.e. verification happens after, not a hard submit gate).
+  paymentScreenshotUrl String?
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -1095,4 +1145,254 @@ model Lead {
   @@index([chapterId])
   @@index([source])
   @@map("leads")
+}
+
+// ---------------------------------------------------------------------------
+// Client correction spec (2026-09-09) — "ADDITIONAL REQUIREMENT — CHIEF
+// GUESTS" + backlog #21 ("give Leads-style Chief Guest DB an actual home").
+// No fixed limit on how many can be added (spec is explicit about this) —
+// plain unbounded table + pagination-free carousel query is enough at any
+// realistic scale for a chapter-based community.
+// ---------------------------------------------------------------------------
+
+model ChiefGuest {
+  id           String  @id @default(cuid())
+  name         String
+  photoUrl     String?
+  company      String?
+  designation  String?
+  description  String?
+
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  visitedAt DateTime?
+
+  isPublished Boolean @default(true)
+
+  /// Explicit admin-set position (spec: "Display Order — Admin configurable").
+  /// Null means "let recency decide" — see the homepage carousel's query:
+  /// `orderBy: [{ displayOrder: "asc" }, { visitedAt: "desc" }, { createdAt: "desc" }]`.
+  /// Rows with a real number sort first (Prisma puts NULLs last in `asc`
+  /// order by default), everything else falls back to "most recently
+  /// visited first" per the spec's own default-order rule, with no extra
+  /// code needed to keep newly-added guests floating to the top.
+  displayOrder Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chapterId])
+  @@index([isPublished])
+  @@map("chief_guests")
+}
+
+// ---------------------------------------------------------------------------
+// BWF App in-house build (2026-09-09, greenlit after the client corrections
+// pass — see memory note [[bwf-app-inhouse]]). Foundation piece: Referral +
+// Thank You Slip, the two activity types every later piece (points, weekly/
+// periodic reports, detailed reports) aggregates over. Terminology and
+// meaning must stay exactly what's already live on /chapters (client
+// correction spec's own BWF Terminology section) — do not invent different
+// definitions here.
+//
+// Both models are member-self-reported activity logs, written directly by
+// the recording member — deliberately NOT routed through an admin-approval
+// queue the way MemberProfileRevision/Blog submissions are. A referral or
+// Thank You Slip is a private business record between two members, not
+// public-facing content a moderator needs to gate.
+// ---------------------------------------------------------------------------
+
+enum ReferralType {
+  /// You connect another BWF member with someone from your own network.
+  OUTSIDE
+  /// You personally buy the other member's product/service.
+  SELF
+}
+
+model Referral {
+  id          String       @id @default(cuid())
+  type        ReferralType
+  description String?
+
+  /// The member who gave/passed the referral.
+  fromMemberId String
+  fromMember   Member @relation("ReferralGiven", fields: [fromMemberId], references: [id], onDelete: Restrict)
+
+  /// The member the referral/opportunity was passed to.
+  toMemberId String
+  toMember   Member @relation("ReferralReceived", fields: [toMemberId], references: [id], onDelete: Restrict)
+
+  thankYouSlips ThankYouSlip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fromMemberId])
+  @@index([toMemberId])
+  @@map("referrals")
+}
+
+/// Records business successfully generated from a referral (brief's own
+/// example: Member A refers Member B to HR Groups; HR Groups places a real
+/// order with Member B; Member B — the one who actually received the
+/// business — records a Thank You Slip TO Member A, the referral's giver).
+model ThankYouSlip {
+  id          String  @id @default(cuid())
+  /// Plain rupee integer, same "store the real number, format at render
+  /// time" convention as WebsiteContent's stats.businessGeneratedInr.
+  amountInr   Int
+  description String?
+
+  /// The member recording this — who received the business and is thanking
+  /// the referral's giver.
+  fromMemberId String
+  fromMember   Member @relation("ThankYouSlipGiven", fields: [fromMemberId], references: [id], onDelete: Restrict)
+
+  /// The member being thanked — who gave the original referral.
+  toMemberId String
+  toMember   Member @relation("ThankYouSlipReceived", fields: [toMemberId], references: [id], onDelete: Restrict)
+
+  /// Optional link back to the Referral this business came from — not
+  /// required, since a member might record a Thank You Slip for older
+  /// activity that predates this system.
+  referralId String?
+  referral   Referral? @relation(fields: [referralId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fromMemberId])
+  @@index([toMemberId])
+  @@index([referralId])
+  @@map("thank_you_slips")
+}
+
+// ---------------------------------------------------------------------------
+// BWF App in-house build, continued — One-to-One, Power Date, Conclave.
+// Same member-self-reported (no admin-approval queue), same terminology as
+// what's already live on /chapters — do not redefine these.
+// ---------------------------------------------------------------------------
+
+/// Two BWF members meeting to understand each other deeply — symmetric (no
+/// direction, unlike Referral/ThankYouSlip), so `memberId` is just whoever
+/// recorded it and `withMemberId` the other person, not a "from/to" of value.
+model OneToOne {
+  id    String  @id @default(cuid())
+  notes String?
+  metAt DateTime @default(now())
+
+  memberId String
+  member   Member @relation("OneToOneRecordedBy", fields: [memberId], references: [id], onDelete: Restrict)
+
+  withMemberId String
+  withMember   Member @relation("OneToOneWith", fields: [withMemberId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([withMemberId])
+  @@map("one_to_ones")
+}
+
+/// A BWF member (the host) takes one fellow member to meet the host's own
+/// external connection. "One or more fellow members" per the brief — taking
+/// several companions to the same external meeting is recorded as one
+/// PowerDate row per companion, same simplification tradeoff as Member vs
+/// MemberProfile (no join table for what's realistically almost always 1).
+model PowerDate {
+  id                       String  @id @default(cuid())
+  externalContactName     String
+  externalContactCompany  String?
+  notes                    String?
+  metAt                    DateTime @default(now())
+
+  hostMemberId String
+  hostMember   Member @relation("PowerDateHost", fields: [hostMemberId], references: [id], onDelete: Restrict)
+
+  participantMemberId String
+  participantMember   Member @relation("PowerDateParticipant", fields: [participantMemberId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hostMemberId])
+  @@index([participantMemberId])
+  @@map("power_dates")
+}
+
+/// 3+ BWF members meeting together — genuinely needs a real participant
+/// list (unlike PowerDate's near-always-one companion), so this gets an
+/// actual join table rather than a JSON array: points/reports later need to
+/// query "every Conclave a given member was part of" relationally, which a
+/// JSON array of ids can't do cleanly (no Prisma include/filter on it).
+model Conclave {
+  id       String  @id @default(cuid())
+  location String?
+  notes    String?
+  metAt    DateTime @default(now())
+
+  organizedByMemberId String
+  organizedByMember   Member @relation("ConclaveOrganizer", fields: [organizedByMemberId], references: [id], onDelete: Restrict)
+
+  participants ConclaveParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizedByMemberId])
+  @@map("conclaves")
+}
+
+model ConclaveParticipant {
+  id String @id @default(cuid())
+
+  conclaveId String
+  conclave   Conclave @relation(fields: [conclaveId], references: [id], onDelete: Cascade)
+
+  memberId String
+  member   Member @relation("ConclaveParticipation", fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([conclaveId, memberId])
+  @@index([memberId])
+  @@map("conclave_participants")
+}
+
+// ---------------------------------------------------------------------------
+// BWF App in-house build, continued — Points/Scoring (client correction
+// spec's "Screenshot 4"). Spec is explicit: "the points allocated to each
+// activity must be admin-configurable... do not hard-code the scoring
+// values." One row per activity type, seeded at 0 (not fabricated point
+// values) — admin sets real numbers via /admin/points-config.
+//
+// Covers every activity type this app can currently compute for real:
+// the 5 self-reported models above, plus VISITOR/CONSUMER/CHIEF_GUEST/
+// INDUCTION — all derived from the *existing* public Visitor model
+// (referringMemberId + purposeOfVisit + status=CONVERTED), not a new model.
+// Spec's remaining list items ("Meeting participation", "Members referred")
+// have no underlying data model yet (no attendance-tracking system exists)
+// — deliberately left out rather than computed from nothing.
+// ---------------------------------------------------------------------------
+
+enum ActivityType {
+  REFERRAL
+  THANK_YOU_SLIP
+  ONE_TO_ONE
+  POWER_DATE
+  CONCLAVE
+  VISITOR
+  CONSUMER
+  CHIEF_GUEST
+  INDUCTION
+}
+
+model PointsConfig {
+  id           String       @id @default(cuid())
+  activityType ActivityType @unique
+  points       Int          @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("points_config")
 }

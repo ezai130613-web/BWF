@@ -16,6 +16,20 @@ export function Introduction() {
             introductions inside BWF are never a conversation with a competitor. It is a
             structure built for trust, not just networking.
           </p>
+
+          <p className="mt-10 font-display text-xl text-ivory-100">
+            One Category. One Member. One Powerful Network.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {["One Category", "One Member", "One Network"].map((label, i, arr) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="rounded-full border border-gold-500/60 px-5 py-2.5 text-sm font-medium text-gold-300">
+                  {label}
+                </span>
+                {i < arr.length - 1 ? <span className="text-gold-500">→</span> : null}
+              </div>
+            ))}
+          </div>
         </div>
       </Container>
     </section>

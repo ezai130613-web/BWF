@@ -15,11 +15,13 @@ export function OtpLoginForm({
   providerId,
   defaultRedirectTo,
   forgotPasswordUrl,
+  usingRealEmail,
 }: {
   requestOtpUrl: string;
   providerId: string;
   defaultRedirectTo: string;
   forgotPasswordUrl: string;
+  usingRealEmail: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,7 +94,7 @@ export function OtpLoginForm({
         <div>
           <p className="text-sm text-neutral-600">
             We sent a 6-digit code to <span className="font-medium text-neutral-900">{email}</span>.
-            {process.env.NODE_ENV !== "production" && (
+            {!usingRealEmail && (
               <span className="mt-1 block text-xs text-amber-700">
                 Dev mode: check the server console for the code instead of your inbox.
               </span>

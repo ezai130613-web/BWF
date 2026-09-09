@@ -1,9 +1,11 @@
 import { Hero } from "@/components/marketing/hero";
+import { BusinessGeneratedSection } from "@/components/marketing/business-generated-section";
 import { Introduction } from "@/components/marketing/introduction";
 import { WhyBwf } from "@/components/marketing/why-bwf";
 import { Chapters } from "@/components/marketing/chapters";
 import { FindProfessional } from "@/components/marketing/find-professional";
 import { InsideBwf } from "@/components/marketing/inside-bwf";
+import { ChiefGuestsSection } from "@/components/marketing/chief-guests-section";
 import { StatementBanner } from "@/components/marketing/statement-banner";
 import { LatestInsights } from "@/components/marketing/latest-insights";
 import { TestimonialsSection } from "@/components/marketing/testimonials-section";
@@ -19,12 +21,14 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <BusinessGeneratedSection />
       <Introduction />
       <WhyBwf />
       <Chapters />
       <FindProfessional />
       <InsideBwf />
-      <StatementBanner lines={["Business built", "through relationships."]} />
+      <ChiefGuestsSection />
+      <StatementBanner lines={["Business Built Through Relationships."]} />
       <TestimonialsSection />
       <LatestInsights />
       <MembershipCta />

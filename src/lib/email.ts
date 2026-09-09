@@ -70,3 +70,8 @@ export async function sendEmail(input: SendEmailInput) {
 
   sendViaConsole(input);
 }
+
+/** Whether sendEmail() will actually deliver, vs. fall back to console logging. */
+export function isEmailProviderConfigured() {
+  return process.env.EMAIL_PROVIDER === "resend" && !!process.env.EMAIL_API_KEY;
+}

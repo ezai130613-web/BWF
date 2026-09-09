@@ -1,0 +1,101 @@
+"use client";
+
+import { useActionState, useEffect, useRef } from "react";
+import { recordThankYouSlip } from "@/app/member/(portal)/thank-you-slips/actions";
+
+const initialState: { error?: string; success?: boolean } = {};
+
+type Option = { id: string; name: string };
+type ReferralOption = { id: string; fromMemberName: string; createdAt: Date };
+
+export function RecordThankYouSlipForm({
+  members,
+  receivedReferrals,
+}: {
+  members: Option[];
+  receivedReferrals: ReferralOption[];
+}) {
+  const [state, formAction, pending] = useActionState(recordThankYouSlip, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state?.success) formRef.current?.reset();
+  }, [state?.success]);
+
+  return (
+    <form ref={formRef} action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Record a Thank You Slip</h2>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+        Thanking
+        <select
+          name="toMemberId"
+          required
+          defaultValue=""
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        >
+          <option value="" disabled>
+            Select a member…
+          </option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+        Business value (₹)
+        <input
+          name="amountInr"
+          type="number"
+          min="1"
+          required
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        />
+      </label>
+
+      {receivedReferrals.length > 0 ? (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+          Link to a referral you received (optional)
+          <select
+            name="referralId"
+            defaultValue=""
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          >
+            <option value="">None</option>
+            {receivedReferrals.map((r) => (
+              <option key={r.id} value={r.id}>
+                From {r.fromMemberName} — {r.createdAt.toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+        Description (optional)
+        <textarea
+          name="description"
+          rows={2}
+          placeholder="What was the business — e.g. order details"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        />
+      </label>
+
+      {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}
+      {state?.success ? <p className="text-sm text-emerald-700 sm:col-span-2">Thank You Slip recorded.</p> : null}
+
+      <div className="sm:col-span-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        >
+          {pending ? "Recording…" : "Record Thank You Slip"}
+        </button>
+      </div>
+    </form>
+  );
+}

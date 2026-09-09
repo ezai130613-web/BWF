@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { OtpLoginForm } from "@/components/auth/otp-login-form";
+import { isEmailProviderConfigured } from "@/lib/email";
 
 export default function AdminLoginPage() {
+  const usingRealEmail = isEmailProviderConfigured();
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
@@ -16,6 +18,7 @@ export default function AdminLoginPage() {
               providerId="admin-otp"
               defaultRedirectTo="/admin"
               forgotPasswordUrl="/admin/reset-password"
+              usingRealEmail={usingRealEmail}
             />
           </Suspense>
         </div>

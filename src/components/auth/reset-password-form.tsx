@@ -13,10 +13,12 @@ export function ResetPasswordForm({
   requestUrl,
   resetUrl,
   loginUrl,
+  usingRealEmail,
 }: {
   requestUrl: string;
   resetUrl: string;
   loginUrl: string;
+  usingRealEmail: boolean;
 }) {
   const router = useRouter();
 
@@ -86,7 +88,7 @@ export function ResetPasswordForm({
         <p className="text-sm text-neutral-600">
           If <span className="font-medium text-neutral-900">{email}</span> is a registered account,
           we&rsquo;ve sent a reset code.
-          {process.env.NODE_ENV !== "production" && (
+          {!usingRealEmail && (
             <span className="mt-1 block text-xs text-amber-700">
               Dev mode: check the server console for the code instead of your inbox.
             </span>

@@ -43,8 +43,24 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
                 <dd className="text-neutral-900">{visitor.company ?? "—"}</dd>
               </div>
               <div>
+                <dt className="text-neutral-500">Designation</dt>
+                <dd className="text-neutral-900">{visitor.designation ?? "—"}</dd>
+              </div>
+              <div>
                 <dt className="text-neutral-500">Registered for</dt>
                 <dd className="text-neutral-900">{visitor.meeting?.title ?? visitor.event?.title ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Purpose of visit</dt>
+                <dd className="text-neutral-900">
+                  {visitor.purposeOfVisit ? visitor.purposeOfVisit.replace(/_/g, " ") : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Meeting option</dt>
+                <dd className="text-neutral-900">
+                  {visitor.meetingOption ? visitor.meetingOption.replace(/_/g, " ") : "—"}
+                </dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Referred by</dt>
@@ -64,6 +80,20 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
               </div>
             </dl>
           </div>
+
+          {visitor.paymentScreenshotUrl ? (
+            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+              <h2 className="text-sm font-semibold text-neutral-900">Payment screenshot</h2>
+              <a href={visitor.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
+                <img
+                  src={visitor.paymentScreenshotUrl}
+                  alt="Payment screenshot"
+                  className="max-h-64 rounded-md border border-neutral-200 object-contain"
+                />
+              </a>
+            </div>
+          ) : null}
 
           <div className="rounded-lg border border-neutral-200 bg-white p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Notes</h2>

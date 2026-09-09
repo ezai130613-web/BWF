@@ -92,11 +92,15 @@ const registerSchema = z.object({
   phone: z.string().min(1, "Phone is required"),
   email: z.email(),
   company: optionalText(),
+  designation: optionalText(),
   categoryId: z.string().min(1, "Select a category"),
   chapterId: z.string().min(1, "Select a chapter"),
   meetingId: optionalText(),
   eventId: optionalText(),
   referringMemberId: optionalText(),
+  purposeOfVisit: z.enum(["PROSPECTIVE_MEMBER", "END_CONSUMER", "CHIEF_GUEST"]).optional(),
+  meetingOption: z.enum(["MEETING_ONLY", "MEETING_BREAKFAST"]).optional(),
+  paymentScreenshotUrl: optionalText(),
 });
 
 /**

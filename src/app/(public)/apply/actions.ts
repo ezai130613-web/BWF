@@ -17,6 +17,7 @@ const submitSchema = z.object({
   yearsInBusiness: z.coerce.number().int().min(0).optional().or(z.literal("")),
   referralSource: z.string().optional(),
   companyInfo: z.string().optional(),
+  paymentScreenshotUrl: z.string().optional(),
   categoryId: z.string().min(1, "Select a category"),
   chapterId: z.string().optional(), // absent/empty => waiting list
   consent: z.literal("on", { error: "Please confirm you agree to be contacted about your application." }),

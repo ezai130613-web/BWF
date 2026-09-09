@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { submitApplication } from "@/app/(public)/apply/actions";
 import type { ChapterAvailability } from "@/lib/applications/availability";
 import { trackEvent } from "@/lib/analytics";
+import { BankPaymentDetails } from "@/components/marketing/bank-payment-details";
 
 const initialState: { error?: string; success?: boolean } = {};
 
@@ -12,9 +13,23 @@ type Category = { id: string; name: string };
 export function ApplyWizard({
   categories,
   availabilityByCategory,
+  qrCodeUrl,
+  bankAccountName,
+  bankAccountNumber,
+  bankIfsc,
+  swiftCode,
+  upiId,
+  bankName,
 }: {
   categories: Category[];
   availabilityByCategory: Record<string, ChapterAvailability[]>;
+  qrCodeUrl?: string | null;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankIfsc?: string | null;
+  swiftCode?: string | null;
+  upiId?: string | null;
+  bankName?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(submitApplication, initialState);
   const [categoryId, setCategoryId] = useState<string>("");
@@ -164,6 +179,21 @@ export function ApplyWizard({
               <textarea name="companyInfo" rows={3} className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
             </label>
           </div>
+
+          <p className="text-xs text-slate-500">
+            If you&rsquo;d like to pay your membership fee now, you can use the details below —
+            it&rsquo;s optional at this stage and doesn&rsquo;t affect your application review.
+          </p>
+          <BankPaymentDetails
+            qrCodeUrl={qrCodeUrl ?? null}
+            accountName={bankAccountName ?? null}
+            accountNumber={bankAccountNumber ?? null}
+            ifsc={bankIfsc ?? null}
+            swiftCode={swiftCode ?? null}
+            upiId={upiId ?? null}
+            bankName={bankName ?? null}
+            screenshotFieldName="paymentScreenshotUrl"
+          />
 
           <label className="flex items-start gap-2 text-sm text-slate-400">
             <input type="checkbox" name="consent" className="mt-1 h-4 w-4" />

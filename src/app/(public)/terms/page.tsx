@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getContent } from "@/lib/content";
+import { formatInr } from "@/lib/format";
 import { LegalPageShell, Placeholder } from "@/components/legal/legal-page-shell";
 
 export const metadata: Metadata = {
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default async function TermsPage() {
-  const content = await getContent(["contact.email", "contact.phone", "contact.address"]);
+  const content = await getContent(["contact.email", "contact.phone", "contact.address", "fees.annualMembership"]);
+  const annualFee = formatInr(content["fees.annualMembership"]) ?? "the current BWF-confirmed amount";
 
   return (
     <LegalPageShell
@@ -45,10 +47,10 @@ export default async function TermsPage() {
 
       <h2>4. Membership fees</h2>
       <p>
-        The annual membership fee is ₹20,000, payable each year. Membership fees are
-        non-refundable. Fee collection is currently handled outside this website. If online
-        payment is enabled on this website in future, a separate payment terms section will apply
-        to those transactions.
+        The annual membership fee is {annualFee}, payable each year, plus a monthly meeting
+        charge covering chapter meeting arrangements. Membership fees are non-refundable. Fee
+        collection is currently handled outside this website. If online payment is enabled on
+        this website in future, a separate payment terms section will apply to those transactions.
       </p>
 
       <h2>5. Your member directory profile</h2>

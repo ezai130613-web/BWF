@@ -12,6 +12,10 @@ import { JsonLd } from "@/components/seo/json-ld";
 
 export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage's comment
 
+function getChapterStub(slug: string) {
+  return db.chapter.findFirst({ where: { slug, status: { in: ["ACTIVE", "COMING_SOON"] } } });
+}
+
 async function getChapter(slug: string) {
   return db.chapter.findFirst({
     where: { slug, status: "ACTIVE" },
@@ -34,13 +38,59 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const chapter = await getChapter(slug);
+  const chapter = await getChapterStub(slug);
   if (!chapter) return {};
   return { title: chapter.name };
 }
 
 export default async function ChapterDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const stub = await getChapterStub(slug);
+  if (!stub) notFound();
+
+  if (stub.status === "COMING_SOON") {
+    return (
+      <div className="flex min-h-[70vh] flex-col justify-center py-24">
+        <Container>
+          <SectionLabel>Chapter</SectionLabel>
+          <span className="mt-4 inline-block w-fit rounded-full border border-gold-500/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-gold-400">
+            Launching Soon
+          </span>
+          <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{stub.name}</h1>
+          <p className="mt-2 text-slate-400">{stub.location ?? "Chennai"}</p>
+          {stub.meetingSchedule ? (
+            <p className="mt-6 max-w-lg text-slate-300">
+              This chapter will meet <span className="text-ivory-100">{stub.meetingSchedule}</span>
+              {stub.meetingVenue ? (
+                <>
+                  {" "}
+                  at <span className="text-ivory-100">{stub.meetingVenue}</span>
+                  {stub.meetingAddress ? `, ${stub.meetingAddress}` : ""}
+                </>
+              ) : null}
+              .
+            </p>
+          ) : null}
+          <p className="mt-4 max-w-lg text-slate-400">
+            This chapter hasn&rsquo;t launched yet. Explore our active chapters, or apply for
+            membership and we&rsquo;ll be in touch as it opens up.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <TrackedButton href="/apply" variant="primary" eventName="become_member_click" eventParams={{ location: "chapter_coming_soon_page", chapterSlug: stub.slug }}>
+              Apply for Membership
+            </TrackedButton>
+            <Link
+              href="/chapters"
+              className="inline-flex items-center justify-center rounded-full border border-gold-500/60 px-6 py-3 text-sm font-medium text-ivory-100 hover:border-gold-400 hover:text-gold-300"
+            >
+              Explore Other Chapters
+            </Link>
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
   const chapter = await getChapter(slug);
   if (!chapter) notFound();
 
