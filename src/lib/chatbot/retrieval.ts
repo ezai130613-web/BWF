@@ -70,25 +70,61 @@ export async function getBaselineChatbotContext(): Promise<string> {
   return sections.join("\n\n");
 }
 
+/**
+ * Common English filler words plus a few site-specific ones ("bwf",
+ * "member(s)") that appear in almost every visitor question and would
+ * otherwise match nothing usefully — stripping them turns a full sentence
+ * like "Bath fittings member?" into meaningful search terms ("bath",
+ * "fittings") instead of one literal phrase that has to appear verbatim in
+ * a member/category field to match.
+ */
+const STOPWORDS = new Set([
+  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+  "am", "i", "you", "he", "she", "it", "we", "they", "me", "him", "her",
+  "us", "them", "my", "your", "his", "its", "our", "their",
+  "this", "that", "these", "those",
+  "and", "or", "but", "if", "then", "so", "because", "as", "of", "at",
+  "by", "for", "with", "about", "against", "between", "into", "through",
+  "during", "before", "after", "above", "below", "to", "from", "up",
+  "down", "in", "out", "on", "off", "over", "under", "again", "further",
+  "once", "here", "there", "when", "where", "why", "how", "all", "any",
+  "both", "each", "few", "more", "most", "other", "some", "such", "no",
+  "nor", "not", "only", "own", "same", "than", "too", "very",
+  "can", "will", "just", "don", "should", "now", "do", "does", "did",
+  "have", "has", "had", "having", "what", "which", "who", "whom",
+  "please", "hi", "hello", "hey", "thanks", "thank", "want", "need",
+  "looking", "know", "tell", "give", "get", "find", "member", "members",
+  "bwf",
+]);
+
+function extractKeywords(query: string): string[] {
+  const words = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length >= 3 && !STOPWORDS.has(word));
+  return Array.from(new Set(words));
+}
+
 export async function getKeywordMatchedChatbotContext(query: string): Promise<string> {
-  const trimmedQuery = query.trim();
-  if (!trimmedQuery) return "";
+  const keywords = extractKeywords(query);
+  if (keywords.length === 0) return "";
 
   const [members, blogs] = await Promise.all([
     db.member.findMany({
       where: {
         status: "ACTIVE",
         chapter: { status: "ACTIVE" },
-        OR: [
-          { name: { contains: trimmedQuery, mode: "insensitive" } },
-          { company: { name: { contains: trimmedQuery, mode: "insensitive" } } },
-          { services: { contains: trimmedQuery, mode: "insensitive" } },
-          { specialisations: { contains: trimmedQuery, mode: "insensitive" } },
-          { usp: { contains: trimmedQuery, mode: "insensitive" } },
-          { areasServed: { contains: trimmedQuery, mode: "insensitive" } },
-          { certifications: { contains: trimmedQuery, mode: "insensitive" } },
-          { category: { name: { contains: trimmedQuery, mode: "insensitive" } } },
-        ],
+        OR: keywords.flatMap((keyword) => [
+          { name: { contains: keyword, mode: "insensitive" as const } },
+          { company: { name: { contains: keyword, mode: "insensitive" as const } } },
+          { services: { contains: keyword, mode: "insensitive" as const } },
+          { specialisations: { contains: keyword, mode: "insensitive" as const } },
+          { usp: { contains: keyword, mode: "insensitive" as const } },
+          { areasServed: { contains: keyword, mode: "insensitive" as const } },
+          { certifications: { contains: keyword, mode: "insensitive" as const } },
+          { category: { name: { contains: keyword, mode: "insensitive" as const } } },
+        ]),
       },
       select: {
         name: true,
@@ -107,10 +143,10 @@ export async function getKeywordMatchedChatbotContext(query: string): Promise<st
     db.blog.findMany({
       where: {
         ...publiclyVisibleBlogWhere,
-        OR: [
-          { title: { contains: trimmedQuery, mode: "insensitive" } },
-          { excerpt: { contains: trimmedQuery, mode: "insensitive" } },
-        ],
+        OR: keywords.flatMap((keyword) => [
+          { title: { contains: keyword, mode: "insensitive" as const } },
+          { excerpt: { contains: keyword, mode: "insensitive" as const } },
+        ]),
       },
       select: { title: true, slug: true, excerpt: true },
       take: 3,
@@ -124,7 +160,7 @@ export async function getKeywordMatchedChatbotContext(query: string): Promise<st
       `## Matching Members\n${members
         .map(
           (m) =>
-            `- ${m.name} (${m.category.name}, ${m.chapter.name}) — ${m.company.name}${m.designation ? `, ${m.designation}` : ""}${m.services ? `. Services: ${m.services}` : ""}${m.specialisations ? `. Specialisations: ${m.specialisations}` : ""}${m.usp ? `. ${m.usp}` : ""} [profile: /members/${m.slug}]`,
+            `- ${m.name} (${m.category.name}, ${m.chapter.name}) — ${m.company.name}${m.designation ? `, ${m.designation}` : ""}${m.services ? `. Services: ${m.services}` : ""}${m.specialisations ? `. Specialisations: ${m.specialisations}` : ""}${m.usp ? `. ${m.usp}` : ""} [View ${m.name}'s profile](/members/${m.slug})`,
         )
         .join("\n")}`,
     );
@@ -132,7 +168,7 @@ export async function getKeywordMatchedChatbotContext(query: string): Promise<st
 
   if (blogs.length > 0) {
     sections.push(
-      `## Related Insights\n${blogs.map((b) => `- ${b.title}${b.excerpt ? `: ${b.excerpt}` : ""} [/insights/${b.slug}]`).join("\n")}`,
+      `## Related Insights\n${blogs.map((b) => `- ${b.title}${b.excerpt ? `: ${b.excerpt}` : ""} [Read more](/insights/${b.slug})`).join("\n")}`,
     );
   }
 

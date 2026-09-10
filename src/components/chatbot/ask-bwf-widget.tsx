@@ -1,9 +1,37 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { captureChatbotLead } from "@/app/(public)/ask-bwf/actions";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+
+// Matches the markdown links the chatbot is instructed to copy verbatim from
+// its context (member profiles, insight articles) — see src/lib/chatbot/
+// retrieval.ts and prompt.ts. Only internal, root-relative paths are linked;
+// anything else renders as plain text.
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\((\/[^\s)]+)\)/g;
+
+function renderMessageContent(content: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+
+  MARKDOWN_LINK_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = MARKDOWN_LINK_PATTERN.exec(content)) !== null) {
+    if (match.index > lastIndex) nodes.push(content.slice(lastIndex, match.index));
+    nodes.push(
+      <Link key={key++} href={match[2]} className="underline text-gold-400 hover:text-gold-300">
+        {match[1]}
+      </Link>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < content.length) nodes.push(content.slice(lastIndex));
+
+  return nodes;
+}
 
 function getSessionId(): string {
   try {
@@ -201,7 +229,7 @@ export function AskBwfWidget({ onClose }: { onClose: () => void }) {
                     : "self-start rounded-sm border border-emerald-700 px-3 py-2 text-sm text-ivory-100"
                 }
               >
-                {m.content || (pending && i === messages.length - 1 ? "…" : "")}
+                {m.content ? renderMessageContent(m.content) : pending && i === messages.length - 1 ? "…" : ""}
               </div>
             ))}
             {error ? <p className="text-xs text-red-400">{error}</p> : null}
