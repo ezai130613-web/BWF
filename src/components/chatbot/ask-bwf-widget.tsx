@@ -8,9 +8,12 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 // Matches the markdown links the chatbot is instructed to copy verbatim from
 // its context (member profiles, insight articles) — see src/lib/chatbot/
-// retrieval.ts and prompt.ts. Only internal, root-relative paths are linked;
-// anything else renders as plain text.
-const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\((\/[^\s)]+)\)/g;
+// retrieval.ts and prompt.ts. The model doesn't reliably keep the leading
+// "/" when it paraphrases a sentence around the link, so the leading slash
+// is optional here and always re-added when rendering. Restricted to the
+// two path prefixes the context ever actually hands out (members/,
+// insights/) so a hallucinated or malformed path never becomes a link.
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(\/?((?:members|insights)\/[^\s)]+)\)/g;
 
 function renderMessageContent(content: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -22,7 +25,7 @@ function renderMessageContent(content: string): React.ReactNode[] {
   while ((match = MARKDOWN_LINK_PATTERN.exec(content)) !== null) {
     if (match.index > lastIndex) nodes.push(content.slice(lastIndex, match.index));
     nodes.push(
-      <Link key={key++} href={match[2]} className="underline text-gold-400 hover:text-gold-300">
+      <Link key={key++} href={`/${match[2]}`} className="underline text-gold-400 hover:text-gold-300">
         {match[1]}
       </Link>,
     );
