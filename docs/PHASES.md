@@ -1785,3 +1785,148 @@ Legacy Migration" (called Phase 17 in Phase 16's note) slides to Phase 18 whenev
   projects, etc.). Upgrading to real research would need a per-company web-search pass, explicitly
   out of scope for this phase (many of the 126 are small local businesses with little to no online
   presence, so results would be inconsistent).
+
+---
+
+## Phase 18 — BWF App In-House Build (Referrals, Points, Reports, Admin Oversight)
+
+**Status:** Complete
+
+**What shipped:**
+- The real BWF App (client correction spec's "BWF App — Core Features," greenlit 2026-09-09 as its
+  own build extending the existing member portal rather than a native App Store app) — not logged
+  in this file when it was originally built; written up now, together with today's admin-side
+  addition, since both belong to the same feature and this file had no entry for either half yet.
+- Schema: `Referral` (from/to member, `type: OUTSIDE | SELF`), `ThankYouSlip` (from/to member,
+  `amountInr`, optional link back to a `Referral`), `OneToOne` (symmetric `memberId`/
+  `withMemberId`), `PowerDate` (`hostMemberId` + one `participantMemberId` per companion —
+  deliberately no join table, same simplification tradeoff as Member vs MemberProfile elsewhere in
+  this schema), `Conclave` + `ConclaveParticipant` (a real join table this time — "3+ members" is
+  core to what a Conclave means, and points/reports need to query "every Conclave a member was
+  part of" relationally), and `PointsConfig` (one row per `ActivityType`, admin-editable, seeded at
+  0 — spec explicit: "do not hard-code the scoring values"). All five activity models are
+  member-self-reported, written directly by the recording member — **not** routed through an
+  admin-approval queue the way `MemberProfileRevision`/`Blog` submissions are, since a
+  referral/TYS/1-2-1/etc. is a private record between members, not public content needing a
+  moderator.
+- New member portal pages (all under `/member/(portal)`): `referrals`, `thank-you-slips`,
+  `one-to-ones`, `power-dates`, `conclaves` (each a Given/Received-or-organizer/participant table +
+  record-new form), `points` (overall + activity-wise breakdown, via
+  `src/lib/points/score.ts`'s `computeMemberScore()` — always recomputed live, never a
+  stored/cached total), `reports` (This-Week stat tiles + a 6mo/12mo/Overall toggle, sharing
+  `getActivityStats()` between both shapes since they're the same data at different date ranges),
+  `search` (name/company/chapter/category/location text search — "location" is a plain
+  case-insensitive match against existing `Member.address`/`areasServed` text, not real
+  geolocation; no Maps API in this project), and `detailed-reports` (11 tabs, one real per-row
+  table per activity type, the spec's 10 plus Conclaves added since the data already existed).
+- New `points_config:manage` permission + `/admin/points-config` (Super/Central Admin only) — the
+  only admin-side piece that shipped alongside the member portal originally, since points values
+  are inherently admin-configured input, not oversight of member activity.
+- **Today's addition, 2026-09-10**: `/admin/app-activity` — chapter-wide admin *visibility* into
+  the five self-reported activity models plus a points leaderboard, deliberately deferred until
+  the Reports work above existed to make chapter-wide oversight meaningful. Read-only by design,
+  same private-record rationale as the member pages above — no edit/approve/reject action. New
+  `app_activity:view` permission, chapter-scoped exactly like `leads:manage`/`exports:manage`: a
+  Chapter Admin sees only rows touching one of their own chapter's members on either side of the
+  interaction (e.g. a Conclave organized by another chapter's member still shows if one of *their*
+  members participated); Central/Super Admin see everything, with an added Chapter column.
+  Leaderboard tab ranks every member in scope by total score. Implemented as a fixed ~9 `groupBy`
+  queries (`getLeaderboard()`/`getActivityCountsForMembers()` in `src/lib/points/score.ts`) rather
+  than `memberIds.map(computeMemberScore)` — the latter would repeat this file's own 9-query
+  `Promise.all` once per member, which at real member counts (130+) would reproduce the exact
+  connection-pool exhaustion this project already hit once (Phase 8's P2028 note, this app's
+  5-connection cap).
+- Public `/members` directory is deliberately **not** sorted by score — decided 2026-09-09, revisit
+  once there's enough real activity data to make ranking meaningful.
+
+**Verification performed:**
+- 2026-09-09 (member-side, per that session's own record): every screen verified fully live, not
+  just code review — real throwaway member/admin logins via the actual two-step OTP flow (console-
+  logged codes, `EMAIL_PROVIDER` temporarily unset and restored after), real records created
+  through each actual form and confirmed via direct database reads, a real date-boundary test for
+  Reports (backdated referrals at 1/8/13 months confirmed correct 6mo/12mo/Overall filtering), a
+  real Conclave "at least 2 fellow members" validation failure confirmed live, and a real portal-
+  nav overflow bug found and fixed once the nav grew past 8 links. All test data cleaned up and
+  `.env` restored after each pass; `npm run build` clean throughout.
+- 2026-09-10 (admin-side, this session): `npm run build`/`lint`/`typecheck` clean. Seeded 3 real
+  throwaway members across 2 real chapters plus one referral/TYS/1-2-1/power-date/conclave
+  (conclave deliberately spanning both chapters) and temporary non-zero `PointsConfig` values,
+  then drove the actual UI through real browser logins (same console-OTP technique as above): a
+  throwaway Central Admin confirmed all 6 tabs render correctly with the Chapter column present
+  and leaderboard totals arithmetically correct (2×10 + ... matched exactly); a throwaway Chapter
+  Admin scoped to one of the two chapters confirmed the leaderboard and every activity tab filtered
+  to only that chapter's members (no Chapter column), **and** confirmed the cross-chapter Conclave
+  still correctly appeared (organizer's chapter matched, despite one participant belonging to the
+  other chapter) — proving the OR-based "either side" scoping rule actually works, not just that it
+  compiles. All test rows, both temporary admin accounts, and the temporary `PointsConfig` values
+  were deleted/reset afterward (confirmed via a direct count query, not just "should be gone"), and
+  `.env` was restored to its exact original content.
+- **Real incident during this session's verification, unrelated to the app code**: found and
+  stopped a pre-existing `next dev` process (port 3000) that wasn't started by this session while
+  setting up a clean verification server — likely the user's own active dev session, since requests
+  against `/member/search` resumed immediately once a replacement server was started on the same
+  port. Flagged to the user; no data was lost, but worth remembering to check for a running dev
+  server before assuming a fresh one is needed.
+
+**Known issues / follow-ups:**
+- The dedicated marketing/showcase "BWF App" website page (client correction spec's own §34-58, 6
+  real screenshots + video) still doesn't exist — meant to come after the real app has real screens
+  to actually screenshot, not before. Nothing currently blocks building it.
+- `/admin/app-activity`'s per-tab lists have no pagination (matches `/admin/leads`'s existing
+  precedent, not an oversight) — worth revisiting if any one chapter's activity volume grows large
+  enough to make an unpaginated table unwieldy.
+- Public `/members` directory ranking-by-score question is still open per the 2026-09-09 decision
+  above — revisit only if the user raises it once there's real activity data.
+
+## Phase 19 — Client Correction: Remove Login Verification Code
+
+**Status:** Complete
+
+**Numbering note:** a client correction, same category as Phase 15/16/17 (built at explicit user
+request, not from a brief phase table entry) — numbered here by build order, following Phase 18.
+
+**What shipped (2026-09-14):**
+- Removed the two-step (password, then emailed OTP) login flow for both `/admin/login` and
+  `/member/login`, per explicit client instruction: no verification code is required to sign in
+  to either surface anymore. This directly reverses the brief §55/§56 "Secure authentication +
+  OTP/second factor" and "Mandatory MFA" requirements that Phase 2/11/14 built and verified —
+  worth being explicit about since it's a security posture regression, not a neutral UX tweak; see
+  the updated status rows in `docs/ARCHITECTURE.md`'s Phase 14 security checklist.
+- `src/lib/auth/otp-login.ts` deleted; replaced by `src/lib/auth/login.ts`'s `authorizeLogin()`,
+  which does the same lockout/role/status checks and password verification in one step and
+  returns the user directly to NextAuth's `Credentials` provider — no `OtpChallenge` row, no
+  email, no second form step. `admin-otp`/`member-otp` NextAuth provider ids renamed to
+  `admin-login`/`member-login` to match.
+- The two `POST /api/*/auth/request-otp` routes deleted (no longer needed — there's nothing left
+  to request). Lockout is still surfaced distinctly from "wrong password" in the UI, now via a
+  `CredentialsSignin` subclass (`AccountLockedError`, `src/lib/auth/login.ts`) carrying a
+  `code: "account-locked"` that NextAuth returns to the client on `signIn(..., {redirect:false})`.
+- `src/components/auth/otp-login-form.tsx` (two-step state machine) replaced by
+  `src/components/auth/login-form.tsx` (`LoginForm`, single email+password step, same shared-
+  component split between the admin/member surfaces as before).
+- `OtpChallenge` is now written only by the password-reset flow (`src/lib/auth/password-reset.ts`,
+  `purpose: PASSWORD_RESET`) — reset was a separate feature from login before this change and is
+  untouched by it.
+- `docs/ARCHITECTURE.md` updated in the same pass: the Authentication (Phase 2) section, the
+  Phase 11 member-login section, and the Phase 14 security checklist table all now describe the
+  single-step flow and flag the OTP/MFA rows as removed rather than satisfied.
+
+**Verification performed:** `npx tsc --noEmit` clean. Started a real `next dev` server and drove
+the actual NextAuth credentials endpoint end-to-end against the real seeded Super Admin account
+(not a mock): confirmed correct email+password now signs in and returns a full session in one
+request with no OTP step; confirmed a wrong password is rejected with no session created;
+confirmed 5 consecutive wrong passwords lock the account and the 6th attempt (even with the
+correct password) is rejected with `code: "account-locked"`; then reset `failedLoginCount`/
+`lockedUntil` back to 0/null on that real account and confirmed a normal login succeeded again
+afterward. Member login uses the identical `authorizeLogin()` code path (only the role-key list
+differs), so it was not separately exercised against a real member account — no member password
+was available to test with, and duplicating the same code path add no real coverage.
+
+**Known issues / follow-ups:**
+- This removes the project's only second authentication factor. If the client later wants MFA
+  back (e.g. only for Super Admin, or only for admin and not member), `OtpChallenge`'s schema and
+  `otp.ts`'s code-generation primitives already exist (still used by password reset) and could be
+  re-wired into a second `authorize()` step without a new migration.
+- The "known gap" already on record in `docs/ARCHITECTURE.md` (no IP-based rate limiting beyond
+  the per-account lockout) is now more load-bearing than before, since a correctly-guessed
+  password is sufficient for a live session with no second factor in the way.

@@ -4,10 +4,9 @@ import { sendEmail } from "@/lib/email";
  * Phase 13 (brief §49) — one function per business-workflow email trigger,
  * centralized here rather than inlined at each action-file call site, so
  * "who gets emailed when" is auditable in one place. Password-reset emails
- * are the one exception — they stay in src/lib/auth/password-reset.ts,
- * mirroring how the existing login-OTP email already lives inline in
- * src/lib/auth/otp-login.ts rather than here (auth-specific, tightly
- * coupled to OTP code generation, not a general business notification).
+ * are the one exception — they stay in src/lib/auth/password-reset.ts
+ * (auth-specific, tightly coupled to OTP code generation, not a general
+ * business notification).
  *
  * "Business email" (brief's own phrase, "do not hardcode business email")
  * is NOTIFICATION_EMAIL — a plain env var, not a database-configured list

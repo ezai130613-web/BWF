@@ -131,14 +131,17 @@ deliberately **not used** — it's built for OAuth account linking and database 
 of which apply here (Credentials-only, JWT sessions); using it anyway would have added
 complexity without benefit.
 
-**Flow**: two-step (password, then OTP), not NextAuth's Credentials provider doing both at
-once — `POST /api/admin/auth/request-otp` verifies email+password, rate-limits/locks the
-account after 5 failures (`User.failedLoginCount`/`lockedUntil`), and creates an `OtpChallenge`
-row (hashed code, 10-minute expiry, 5 attempts) if the account is ACTIVE and holds an admin
-role. The code is emailed via `sendEmail()` (`src/lib/email.ts`). The NextAuth `Credentials`
-provider (`id: "admin-otp"`) then only ever receives `{ challengeId, code }` — it never sees a
-password. All login-flow error messages are deliberately generic ("Invalid email or password")
-to avoid leaking account existence.
+**Flow — single-step, NextAuth `Credentials` provider (`id: "admin-login"`) doing
+email+password verification directly** (`src/lib/auth/login.ts`'s `authorizeLogin()`).
+**Corrected 2026-09-14 (client request): the earlier two-step password-then-OTP flow was
+removed** — no verification code is emailed or required to sign in to either the admin panel
+or the member portal. Lockout behavior is unchanged: 5 failed attempts locks the account for 15
+minutes (`User.failedLoginCount`/`lockedUntil`), surfaced to the client via NextAuth's
+`CredentialsSignin` subclass mechanism (`AccountLockedError`, `code: "account-locked"`) rather
+than a separate pre-check API route. All login-flow error messages are otherwise deliberately
+generic ("Invalid email or password") to avoid leaking account existence. `OtpChallenge` is now
+used exclusively for password-reset codes (`purpose: PASSWORD_RESET`) — see
+`src/lib/auth/password-reset.ts` — not for login.
 
 **Sessions are JWT** (a Credentials-provider requirement, not a preference), but with real
 server-side revocation despite that: `User.sessionVersion` is bumped on suspend, and the `jwt`
@@ -150,9 +153,9 @@ sign-in within the last 15 minutes before high-risk actions (suspending a user, 
 permissions) — brief §56's "recent-authentication requirement for high-risk actions."
 
 **Password hashing**: Argon2id via `@node-rs/argon2` (OWASP's current recommendation over
-bcrypt), OWASP baseline parameters. OTP codes use a fast SHA-256 hash instead — deliberately
-different tradeoff, since OTP security comes from short expiry + attempt-limiting, not hash
-cost, and there's no reason to pay Argon2's CPU cost on every 6-digit code check.
+bcrypt), OWASP baseline parameters. Password-reset OTP codes use a fast SHA-256 hash instead —
+deliberately different tradeoff, since OTP security comes from short expiry + attempt-limiting,
+not hash cost, and there's no reason to pay Argon2's CPU cost on every 6-digit code check.
 
 **RBAC**: `Role`/`Permission`/`RolePermission`/`UserRole` tables (not a hardcoded enum) so
 Central Admin's permission set is actually editable by Super Admin at runtime (brief §9
@@ -196,12 +199,11 @@ explicitly warn that a proxy matcher change can silently stop protecting a route
 authorization boundary; `proxy.ts` is a fast-path UX redirect on top of that, not the only
 guard.
 
-**Known gap, honestly**: `/api/admin/auth/request-otp` isn't behind NextAuth's own CSRF
-mechanism (that only covers NextAuth's own endpoints) and doesn't have IP-based rate limiting
-beyond the per-account lockout — acceptable for now given its blast radius (worst case, an
-attacker triggers OTP emails to an account they don't control; they still can't complete
-login), but a real IP/device rate limiter (Upstash Redis or similar) is worth adding before
-this handles real member-facing traffic at scale, not just a handful of admins.
+**Known gap, honestly**: login itself has no IP-based rate limiting beyond the per-account
+lockout (5 failures/15 minutes) — a real IP/device rate limiter (Upstash Redis or similar) is
+worth adding before this handles real member-facing traffic at scale, not just a handful of
+admins. This gap is more load-bearing than it was before the 2026-09-14 OTP removal: there is no
+longer a second factor standing between a correctly-guessed password and a live session.
 
 ### Business data & RBAC scoping (Phase 3)
 **Category exclusivity (brief §15, CRITICAL)** is enforced by `Member.activeSlotKey`, a
@@ -677,16 +679,16 @@ for `metadataBase`, the sitemap, and every absolute URL inside JSON-LD. Defaults
 decision tracked in the table below (needed by Phase 14–15), not a new one.
 
 ### Member login & profile edit approval (Phase 11)
-**Members reuse the admin auth stack — same User/Role/OtpChallenge tables, same two-step
-password-then-OTP flow — rather than a separate mechanism.** `Role.MEMBER` was seeded back in
-Phase 2 specifically anticipating this. The only real difference between the two login surfaces
-is which role key is accepted (`ADMIN_ROLE_KEYS` vs `MEMBER_ROLE_KEYS`, both in
-`src/lib/auth/constants.ts`) and where a successful login lands — everything else (lockout,
-generic error messages, OTP verification, the login form's state machine) is one shared
-implementation (`src/lib/auth/otp-login.ts`, `OtpLoginForm`), not two copies. This was a
-deliberate DRY call, not the project's usual "three similar lines is fine" default — duplicating
-~60 lines of lockout/verification logic across two login surfaces would have meant a future
-security fix applied to one copy and silently not the other.
+**Members reuse the admin auth stack — same User/Role tables, same login mechanism — rather
+than a separate one.** `Role.MEMBER` was seeded back in Phase 2 specifically anticipating this.
+The only real difference between the two login surfaces is which role key is accepted
+(`ADMIN_ROLE_KEYS` vs `MEMBER_ROLE_KEYS`, both in `src/lib/auth/constants.ts`) and where a
+successful login lands — everything else (lockout, generic error messages, the login form) is
+one shared implementation (`src/lib/auth/login.ts`, `LoginForm` — originally
+`otp-login.ts`/`OtpLoginForm` before the 2026-09-14 OTP-removal correction), not two copies.
+This was a deliberate DRY call, not the project's usual "three similar lines is fine" default —
+duplicating ~60 lines of lockout/verification logic across two login surfaces would have meant a
+future security fix applied to one copy and silently not the other.
 
 **This surfaced a real, previously-latent gap: `requireAdminSession()` never actually checked for
 an admin role, only that some session existed.** Harmless through Phase 10 because the only
@@ -831,10 +833,11 @@ through the console fallback, never a real inbox.
 **Templates centralized in one file (`src/lib/notifications.ts`), password-reset emails
 deliberately kept out of it.** Five business-workflow triggers share one file so "who gets
 emailed when" is auditable in one place rather than spread across 5 action files. Password reset
-is the one exception — it lives in `src/lib/auth/password-reset.ts` instead, mirroring how the
-existing login-OTP email has always lived inline in `src/lib/auth/otp-login.ts`: auth emails are
+is the one exception — it lives in `src/lib/auth/password-reset.ts` instead: auth emails are
 tightly coupled to OTP code generation and the non-enumeration response shape, a different
-concern from a business-workflow notification.
+concern from a business-workflow notification. (At the time this was written, the login flow
+also sent an OTP email inline in what was then `src/lib/auth/otp-login.ts` — that step was
+removed 2026-09-14; password reset is now the only surviving OTP email.)
 
 **"Business email" (brief's own phrase, §49: "do not hardcode business email") is a plain env var
 (`NOTIFICATION_EMAIL`), not a database-configured recipient list.** `WeeklyReportRecipient`
@@ -845,9 +848,11 @@ silently when unset, same no-dead-feature rule as `NEXT_PUBLIC_WHATSAPP_NUMBER`.
 **Password reset reuses `OtpChallenge` with a `purpose` discriminator, not a parallel token
 table.** The schema comment on `OtpChallenge.purpose` has said "room for PASSWORD_RESET etc.
 later" since Phase 2 — this phase is that later. Kept as sibling functions
-(`requestPasswordReset`/`resetPassword` in `password-reset.ts`) alongside `requestOtp`/
-`authorizeOtpLogin` rather than extending the login functions themselves, because a reset
-challenge and a login challenge now need to behave differently at the point they're consumed.
+(`requestPasswordReset`/`resetPassword` in `password-reset.ts`) alongside the login functions
+(then `requestOtp`/`authorizeOtpLogin`, now `authorizeLogin` in `src/lib/auth/login.ts` since
+the 2026-09-14 OTP-removal correction) rather than extending them directly, because a reset
+challenge and a login credential check behave differently at the point they're consumed —
+`OtpChallenge` is now written only by the reset path.
 
 **Building this surfaced a real pre-existing gap, not introduced by this phase but exposed by
 it**: `authorizeOtpLogin()` had never checked `OtpChallenge.purpose` at all — harmless while every
@@ -894,7 +899,7 @@ itself, and what it found *already* satisfied, is worth recording as much as the
 | Requirement | Status | Where |
 |---|---|---|
 | Strong password hashing | ✅ | Argon2id, `src/lib/auth/password.ts` (Phase 0) |
-| Secure authentication + OTP/second factor | ✅ | NextAuth JWT + `otp-login.ts` (Phase 2) |
+| Secure authentication + OTP/second factor | ⚠️ Partial — second factor removed 2026-09-14 | NextAuth JWT + `login.ts` (Phase 2; OTP step dropped per explicit client correction — see Phase 19 in `docs/PHASES.md`) |
 | Extra Super Admin protection | ✅ | `requireRecentAuth()` step-up for high-risk actions (Phase 2/11) |
 | RBAC enforced server-side | ✅ | `requirePermission`/`requireChapterAccess`, tested every phase since 3 |
 | Input validation | ✅ | Zod on every Server Action/route body |
@@ -909,7 +914,7 @@ itself, and what it found *already* satisfied, is worth recording as much as the
 | Backups | ✅ (documented, Phase 14) | See below — a managed-provider feature, not application code |
 | No secrets in frontend code | ✅ | Only `NEXT_PUBLIC_*` vars reach the client bundle; none of them are secrets (grepped to confirm) |
 | No sensitive error info exposed publicly | ✅ | Every API/action error response is a hand-written string (grepped every `NextResponse.json({error...` call); Next's production build already suppresses stack traces |
-| Mandatory MFA (Super Admin) | ✅ (all admins) | OTP-as-second-factor applies to every admin role, not just Super Admin — brief's example, not a distinct unmet requirement |
+| Mandatory MFA (Super Admin) | ❌ Removed 2026-09-14 | OTP-as-second-factor used to apply to every admin role; removed for both admin and member login per explicit client correction, not re-scoped to Super Admin only |
 | Shorter privileged-session expiration | Deliberately not built | Phase 11 already reasoned `requireRecentAuth()`'s step-up check is the intended mechanism instead of a shorter blanket session — revisited this phase, same conclusion holds |
 | Permanent deletion / role-change confirmation | N/A | No hard-delete of sensitive records exists anywhere (suspend, not delete); `requireRecentAuth()` already gates role changes |
 | Sensitive activity alerts | Brief says "later" | Not built, matching the brief's own framing |

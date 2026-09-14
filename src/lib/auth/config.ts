@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
-import { authorizeOtpLogin } from "@/lib/auth/otp-login";
+import { authorizeLogin } from "@/lib/auth/login";
 import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS } from "@/lib/auth/constants";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -19,25 +19,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers: [
     Credentials({
-      id: "admin-otp",
-      name: "Admin OTP",
+      id: "admin-login",
+      name: "Admin login",
       credentials: {
-        challengeId: { label: "Challenge", type: "text" },
-        code: { label: "Code", type: "text" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        return authorizeOtpLogin(credentials?.challengeId, credentials?.code, ADMIN_ROLE_KEYS);
+        return authorizeLogin(credentials?.email, credentials?.password, ADMIN_ROLE_KEYS);
       },
     }),
     Credentials({
-      id: "member-otp",
-      name: "Member OTP",
+      id: "member-login",
+      name: "Member login",
       credentials: {
-        challengeId: { label: "Challenge", type: "text" },
-        code: { label: "Code", type: "text" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        return authorizeOtpLogin(credentials?.challengeId, credentials?.code, MEMBER_ROLE_KEYS);
+        return authorizeLogin(credentials?.email, credentials?.password, MEMBER_ROLE_KEYS);
       },
     }),
   ],

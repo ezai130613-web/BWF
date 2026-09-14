@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage" },
   { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage" },
   { href: "/admin/points-config", label: "App Points & Scoring", permission: "points_config:manage" },
+  { href: "/admin/app-activity", label: "BWF App Activity", permission: "app_activity:view" },
   { href: "/admin/content", label: "Website Content", permission: "content:manage" },
   { href: "/admin/faqs", label: "FAQs", permission: "content:manage" },
   { href: "/admin/feedback", label: "Feedback", permission: "feedback:view" },
@@ -58,6 +59,7 @@ export function Sidebar({
       "visitors:manage",
       "exports:manage",
       "leads:manage",
+      "app_activity:view",
     ];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;

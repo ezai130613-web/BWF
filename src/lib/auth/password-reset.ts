@@ -7,18 +7,16 @@ import { logActivity } from "@/lib/audit";
 
 /**
  * Phase 13 (brief §49) — self-service password reset, shared by admin and
- * member login (mirrors src/lib/auth/otp-login.ts's split: one purpose-
- * agnostic implementation, callers only differ by which role keys they
- * allow). Reuses OtpChallenge's generate/hash/expiry primitives from
- * src/lib/auth/otp.ts rather than a parallel token mechanism — the schema
- * comment on OtpChallenge.purpose has said "room for PASSWORD_RESET etc.
- * later" since Phase 2.
+ * member login: one purpose-agnostic implementation, callers only differ by
+ * which role keys they allow. Reuses OtpChallenge's generate/hash/expiry
+ * primitives from src/lib/auth/otp.ts rather than a parallel token
+ * mechanism — the schema comment on OtpChallenge.purpose has said "room for
+ * PASSWORD_RESET etc. later" since Phase 2.
  *
- * Kept as sibling functions to requestOtp()/authorizeOtpLogin() rather than
- * extending them — a reset challenge and a login challenge now differ by
- * `purpose`, and authorizeOtpLogin() enforces LOGIN-only (see its own
- * comment) precisely so a leaked reset code can never double as a login
- * credential.
+ * Sign-in itself no longer uses OtpChallenge (Sept 2026 client correction
+ * removed the login verification-code step — see src/lib/auth/login.ts);
+ * this table is now exclusively for password-reset codes, kept scoped by
+ * `purpose: PASSWORD_RESET` in case that ever changes again.
  */
 
 const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;

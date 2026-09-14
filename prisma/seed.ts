@@ -37,6 +37,7 @@ const PERMISSIONS = [
   { key: "analytics:view", label: "View Admin Analytics (brief §51)" },
   { key: "chief_guests:manage", label: "Manage the Chief Guests homepage carousel" },
   { key: "points_config:manage", label: "Manage BWF App points/scoring values" },
+  { key: "app_activity:view", label: "View BWF App activity (referrals, TYS, 1-2-1s, Power Dates, Conclaves, points)" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -66,6 +67,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "analytics:view",
     "chief_guests:manage",
     "points_config:manage",
+    "app_activity:view",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
@@ -83,6 +85,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // analytics:view is NOT chapter-scoped at all — brief §51's "Admin
   // Analytics" reads as a site-wide funnel/conversion view (Central/Super
   // Admin only), not a per-chapter breakdown like Members/Visitors/Leads.
+  // app_activity:view is scoped the same way as leads:manage/exports:manage
+  // — a Chapter Admin sees only Referral/ThankYouSlip/OneToOne/PowerDate/
+  // Conclave rows and leaderboard entries touching their own chapter's
+  // members (either side of the interaction), via getChapterScope() in
+  // src/app/admin/(dashboard)/app-activity/page.tsx. Read-only by design —
+  // this data is a private record between members, not admin-moderated
+  // content like Blog/Testimonial submissions.
   CHAPTER_ADMIN: [],
   MEMBER: [],
 };

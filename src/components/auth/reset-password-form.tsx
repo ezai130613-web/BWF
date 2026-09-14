@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 
 /**
  * Two-step (request code, then set new password) reset UI shared by both
- * /admin/reset-password and /member/reset-password — same split as
- * OtpLoginForm (state machine + markup identical between surfaces, only the
- * request/reset endpoints and login destination differ).
+ * /admin/reset-password and /member/reset-password — state machine and
+ * markup identical between surfaces, only the request/reset endpoints and
+ * login destination differ.
  */
 export function ResetPasswordForm({
   requestUrl,
