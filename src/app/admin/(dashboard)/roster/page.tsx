@@ -26,11 +26,11 @@ export default async function RosterPage({
       <div>
         <h1 className="text-xl font-semibold text-neutral-900">Roster Sheets</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Generate a chapter&rsquo;s printable meeting Roster Sheet PDF — cover, meeting roles,
-          full member table, and an invitation flyer for an upcoming meeting. Meeting Roles are
-          managed on each chapter&rsquo;s own page; the role catalog itself lives at{" "}
-          <Link href="/admin/roster-roles" className="text-neutral-900 underline">
-            Roster Roles
+          Generate a chapter&rsquo;s printable meeting Roster Sheet PDF — cover, coordinators,
+          full member table, and an invitation flyer for an upcoming meeting. Coordinators are
+          managed on each chapter&rsquo;s own page, at{" "}
+          <Link href="/admin/chapters" className="text-neutral-900 underline">
+            Chapters
           </Link>
           .
         </p>

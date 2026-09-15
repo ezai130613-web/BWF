@@ -11,7 +11,13 @@ function toLocalInputValue(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function EditMeetingForm({ meeting }: { meeting: Meeting }) {
+export function EditMeetingForm({
+  meeting,
+  chiefGuests,
+}: {
+  meeting: Meeting;
+  chiefGuests: { id: string; name: string }[];
+}) {
   const [state, formAction, pending] = useActionState(updateMeeting, initialState);
 
   return (
@@ -75,12 +81,28 @@ export function EditMeetingForm({ meeting }: { meeting: Meeting }) {
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Speaker
-        <input
-          name="speaker"
-          defaultValue={meeting.speaker ?? ""}
+        Chief Guest
+        <select
+          name="chiefGuestId"
+          defaultValue={meeting.chiefGuestId ?? ""}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        />
+        >
+          <option value="">None</option>
+          {chiefGuests.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+        {chiefGuests.length === 0 ? (
+          <span className="text-xs text-neutral-500">
+            No Chief Guests for this chapter yet — add one at{" "}
+            <a href="/admin/chief-guests" target="_blank" rel="noopener noreferrer" className="underline">
+              Chief Guests
+            </a>
+            .
+          </span>
+        ) : null}
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Agenda

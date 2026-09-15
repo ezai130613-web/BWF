@@ -13,13 +13,18 @@ export default async function MeetingsPage() {
   const scope = await getChapterScope("meetings:manage");
   const chapterFilter = scope === "ALL" ? {} : { chapterId: scope };
 
-  const [meetings, chapters] = await Promise.all([
+  const [meetings, chapters, chiefGuests] = await Promise.all([
     db.meeting.findMany({
       where: chapterFilter,
       include: { chapter: true, _count: { select: { visitors: true } } },
       orderBy: { startsAt: "desc" },
     }),
     db.chapter.findMany({ where: scope === "ALL" ? {} : { id: scope }, orderBy: { name: "asc" } }),
+    db.chiefGuest.findMany({
+      where: scope === "ALL" ? {} : { chapterId: scope },
+      select: { id: true, name: true, chapterId: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
@@ -73,7 +78,7 @@ export default async function MeetingsPage() {
         </table>
       </div>
 
-      <CreateMeetingForm chapters={chapters} />
+      <CreateMeetingForm chapters={chapters} chiefGuests={chiefGuests} />
     </div>
   );
 }

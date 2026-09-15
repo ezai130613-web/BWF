@@ -11,11 +11,18 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
 
   await requireChapterAccess(meeting.chapterId, "meetings:manage");
 
-  const visitors = await db.visitor.findMany({
-    where: { meetingId: id },
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [visitors, chiefGuests] = await Promise.all([
+    db.visitor.findMany({
+      where: { meetingId: id },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.chiefGuest.findMany({
+      where: { chapterId: meeting.chapterId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -24,7 +31,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
         <p className="mt-1 text-sm text-neutral-600">{meeting.chapter.name}</p>
       </div>
 
-      <EditMeetingForm meeting={meeting} />
+      <EditMeetingForm meeting={meeting} chiefGuests={chiefGuests} />
 
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
         <div className="border-b border-neutral-200 px-6 py-4">

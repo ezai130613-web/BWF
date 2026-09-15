@@ -19,13 +19,6 @@ const NAV_ITEMS = [
   { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage", workspace: "website" },
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
   { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
-  // Roster Roles is the global role-type catalog (affects every chapter),
-  // same "chapter admin doesn't manage chapter-level config" reasoning as
-  // Leadership Roles below — gated by chapters:manage, not the chapter-
-  // scoped roster:manage, and stays under Website Admin (config-level,
-  // same bucket as Leadership Roles) even though Roster Sheets itself
-  // moved to Performance.
-  { href: "/admin/roster-roles", label: "Roster Roles", permission: "chapters:manage", workspace: "website" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
   { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage", workspace: "website" },

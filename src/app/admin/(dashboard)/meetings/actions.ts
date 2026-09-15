@@ -16,7 +16,7 @@ const createSchema = z.object({
   address: optionalText(),
   googleMapsUrl: optionalText(),
   agenda: optionalText(),
-  speaker: optionalText(),
+  chiefGuestId: optionalText(),
   description: optionalText(),
 });
 
@@ -26,6 +26,13 @@ export async function createMeeting(_prevState: { error?: string } | undefined, 
 
   const { chapterId, startsAt, ...rest } = parsed.data;
   await requireChapterAccess(chapterId, "meetings:manage");
+
+  if (rest.chiefGuestId) {
+    const chiefGuest = await db.chiefGuest.findUniqueOrThrow({ where: { id: rest.chiefGuestId } });
+    if (chiefGuest.chapterId && chiefGuest.chapterId !== chapterId) {
+      return { error: "That Chief Guest belongs to a different chapter." };
+    }
+  }
 
   const meeting = await db.meeting.create({
     data: { ...rest, chapterId, startsAt: new Date(startsAt) },
@@ -52,7 +59,7 @@ const updateSchema = z.object({
   address: optionalText(),
   googleMapsUrl: optionalText(),
   agenda: optionalText(),
-  speaker: optionalText(),
+  chiefGuestId: optionalText(),
   description: optionalText(),
   status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]),
   visitorRegistrationEnabled: z.string().optional(),
@@ -65,6 +72,13 @@ export async function updateMeeting(_prevState: { error?: string } | undefined, 
   const { meetingId, startsAt, visitorRegistrationEnabled, ...rest } = parsed.data;
   const meeting = await db.meeting.findUniqueOrThrow({ where: { id: meetingId } });
   await requireChapterAccess(meeting.chapterId, "meetings:manage");
+
+  if (rest.chiefGuestId) {
+    const chiefGuest = await db.chiefGuest.findUniqueOrThrow({ where: { id: rest.chiefGuestId } });
+    if (chiefGuest.chapterId && chiefGuest.chapterId !== meeting.chapterId) {
+      return { error: "That Chief Guest belongs to a different chapter." };
+    }
+  }
 
   await db.meeting.update({
     where: { id: meetingId },

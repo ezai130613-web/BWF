@@ -791,8 +791,14 @@ model Meeting {
   address       String?
   googleMapsUrl String?
   agenda        String?
-  speaker       String?
   description   String?
+
+  /// Replaces the old free-text "speaker" field (client correction,
+  /// 2026-09-15) — points at the same Chief Guest catalog already used for
+  /// the homepage carousel and Roster Sheet PDFs, instead of a plain name
+  /// with no photo/company/designation.
+  chiefGuestId String?
+  chiefGuest   ChiefGuest? @relation(fields: [chiefGuestId], references: [id], onDelete: SetNull)
 
   visitorRegistrationEnabled Boolean       @default(true)
   status                     MeetingStatus @default(SCHEDULED)
@@ -922,6 +928,8 @@ model ChiefGuest {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  meetings Meeting[]
 
   @@index([chapterId])
   @@index([isPublished])

@@ -6,7 +6,7 @@ import PDFDocument from "pdfkit";
  * Phase 20 Batch 3 — Roster Sheet PDF generator. Layout follows the 3 real
  * reference roster PDFs (docs/reference/roster-sheets/) collapsed into one
  * consistent template (per the client's "one template, not each chapter's
- * own historical layout" decision) across 5 sections: cover, meeting roles,
+ * own historical layout" decision) across 5 sections: cover, coordinators,
  * member table, final page (self-intro/open categories/pledge), and an
  * invitation flyer (previously only Chapter 3's reference had one — now on
  * every roster).
@@ -242,11 +242,11 @@ async function renderMeetingRoles(doc: PDFKit.PDFDocument, data: RosterData) {
   const width = doc.page.width - PAGE_MARGIN * 2;
   let y = PAGE_MARGIN;
 
-  y = sectionHeading(doc, "Meeting Roles", PAGE_MARGIN, y, width);
+  y = sectionHeading(doc, "Coordinators", PAGE_MARGIN, y, width);
   y += 16;
 
   if (data.roleAssignments.length === 0) {
-    doc.fontSize(10).fillColor(MUTED).text("No meeting roles have been assigned for this chapter yet.", PAGE_MARGIN, y);
+    doc.fontSize(10).fillColor(MUTED).text("No coordinators have been assigned for this chapter yet.", PAGE_MARGIN, y);
     return;
   }
 
@@ -387,7 +387,7 @@ function renderSelfIntroAndCategories(doc: PDFKit.PDFDocument, data: RosterData)
   // row per available slot, not one row per profession — a chapter can
   // easily have 100+ open slots) — paginated explicitly rather than assumed
   // to fit one page, same "check the real bottom, don't guess" discipline
-  // the member table above and the Meeting Roles grid already use.
+  // the member table above and the Coordinators grid already use.
   const cols = 3;
   const colWidth = width / cols;
   const pageBottom = doc.page.height - PAGE_MARGIN;

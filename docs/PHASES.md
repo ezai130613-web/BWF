@@ -2472,3 +2472,170 @@ was uninstalled afterward; `package.json`/`package-lock.json` show no diff.
 - The Roster Sheet PDF generator (`src/lib/roster/generate.ts`, Phase 20 Batch 3) already degrades
   gracefully to an initials placeholder when `photoUrl` is null, so no code change was needed there
   for this batch to take effect — regenerating a roster now simply picks up the real photos.
+
+### Batch 8 — Founding Members split + "Meeting Roles" renamed to "Coordinators" (2026-09-15)
+
+**What shipped:** two small client corrections to the chapter detail admin page
+(`/admin/chapters/[id]`).
+
+1. **Founding Members split out from Leadership.** The Leadership table previously mixed
+   Founder/Co-Founder in with Director/President/Secretary/Treasurer, all equally editable. Now
+   a separate "Founding Members" table sits above Leadership, always Founder then Co-Founder
+   (`FOUNDING_ROLE_ORDER` in `chapters/[id]/page.tsx`, matching the exact key-ordering pattern
+   `src/lib/roster/generate.ts`'s PDF generator already used for its own Founder/Co-Founder band —
+   no schema change needed, just the same "filter by `ChapterLeadershipRole.key`" approach). No
+   Remove button on those two rows, and their role options are excluded from the Leadership
+   assign-form dropdown. Enforced server-side too, not just hidden in the UI: `assignChapterLeadership`
+   rejects a `FOUNDER`/`CO_FOUNDER` `roleId` and `removeChapterLeadership` no-ops on those two
+   roles (`chapters/actions.ts`), since both are directly-postable server actions.
+2. **"Meeting Roles" renamed to "Coordinators"**, and all 16 `RosterRole` labels changed from
+   "X Host" to "X Coordinator" (e.g. "Visitor Host" → "Visitor Coordinator") per the client's
+   correction — these are coordinator duties, not hosting duties. `RosterRole.key` values were
+   left unchanged (`VISITOR_HOST`, etc.) — only the admin/public-facing `label` changed — so no
+   migration was needed and every existing `RosterAssignment` row stayed intact. Renamed
+   consistently everywhere the label/heading surfaces: the chapter detail page's section heading
+   and copy, `/admin/roster-roles` (heading, copy, empty state, "Add role" placeholder), the
+   `/admin/roster` generation page's link text, the sidebar nav item, and the generated Roster
+   Sheet PDF's own section heading (`src/lib/roster/generate.ts`). `prisma/seed.ts`'s
+   `ROSTER_ROLES` upsert was also fixed to actually apply `update` (previously `update: {}`, so a
+   reseed never synced label changes to existing rows) — the live database's 16 existing rows were
+   updated directly via a one-off script to match, since reseeding wasn't otherwise part of this
+   change.
+
+**Verification performed:** live, not just code review — a temporary Super Admin test account was
+created directly in the DB, driven through the actual UI with Playwright (same pattern as prior
+batches), and deleted afterward. Confirmed on Chapter 01's real page: Founding Members shows
+Founder (Arasu Alagappan) then Co-Founder (Abi Ramanathan K) with no Remove buttons; Leadership
+shows only Director/President/Secretary/Treasurer, each with Remove; the Leadership role dropdown
+has no Founder/Co-Founder option; the bottom section reads "Coordinators" with labels like "Chief
+Guest Coordinator"; `/admin/roster-roles` shows the same renamed list; the sidebar nav item reads
+"Coordinators". `npx tsc --noEmit` and `npx eslint src prisma --max-warnings=0` both clean.
+
+**Known issues / follow-ups:**
+- Chapter 01 has zero `RosterAssignment` rows today (none of the 16 coordinator duties are
+  assigned yet for any chapter) — the client said they'll fill these in themselves from the admin
+  UI, not something to seed.
+
+### Batch 9 — Chapter/Category filters on the Members admin table (2026-09-15)
+
+**What shipped:** `/admin/members` had no way to narrow the (127-row) table by chapter or
+category — client flagged this as important after seeing the live page. Added a plain GET-form
+filter bar above the table (`chapterId`/`categoryId` query params, same "no client JS" convention
+as `/admin/roster`'s chapter picker and the public Member Directory's search form), with a "Clear
+filters" link that appears once a filter is active. The Chapter dropdown only renders for
+Super/Central Admin (`scope === "ALL"`) — a Chapter Admin is already locked to one chapter, so
+showing a single-option dropdown would be pointless; the category filter still applies for them.
+A spoofed `?chapterId=` for another chapter is ignored server-side regardless (the existing
+`getChapterScope()` result always wins over the query param — the same defensive pattern
+`assignChapterLeadership` uses for `FOUNDING_ROLE_KEYS` in Batch 8 above).
+
+**One real gotcha caught by testing, not code review**: the page also passes a `members` list into
+`CreateMemberForm` for its "referred by" picker (brief §13/decision #6's manual induction picker).
+The first draft filtered that from the same query as the table, which would have silently shrunk
+the referral dropdown to match whatever chapter/category filter was active — wrong, since who can
+be picked as a referrer has nothing to do with what the admin is currently browsing. Fixed by
+fetching a second, separate `referralCandidates` query that's scope-limited (Chapter Admin) but
+never filter-limited.
+
+**Verification performed:** live, not just code review — same temporary-admin-account-via-
+Playwright pattern as Batch 8 (one Super Admin, one Chapter Admin, both deleted after). Confirmed:
+unfiltered table shows all 127 members; selecting Chapter 03 narrows to only Chapter 03 rows;
+adding a category on top narrows further (1 row for a real chapter+category combo); "Clear
+filters" returns to the unfiltered 127; a Chapter Admin never sees the Chapter dropdown and stays
+locked to their own chapter's members even with a spoofed `chapterId` query param. `npx tsc
+--noEmit` and `npx eslint src --max-warnings=0` both clean.
+
+### Batch 10 — Chief Guest on Meetings, Coordinators fold-in, FAQ edit/delete, user role changes (2026-09-15)
+
+**What shipped:** five more client corrections from a screenshot-driven review of live admin
+pages. Feedback removal (the client's 5th flagged item) was explicitly deferred — see decision
+below, not built this batch.
+
+1. **Meetings: "Speaker" → "Chief Guest"**. The old `Meeting.speaker` was a plain free-text field,
+   never rendered anywhere public — only ever an admin-form input. Replaced with `Meeting.
+   chiefGuestId` (nullable FK to the existing `ChiefGuest` catalog already used for the homepage
+   carousel and Roster Sheet PDFs — client confirmed reusing that catalog over a second, duplicate
+   free-text entry point). Migration `20260915120000_meeting_chief_guest` — written by hand and
+   applied via `prisma migrate deploy` rather than `prisma migrate dev`, which refuses to run at
+   all in a non-interactive shell (even `--create-only`, since it still needs to prompt past the
+   "1 non-null value will be dropped" warning); same Neon pooler-stripped `DATABASE_URL` workaround
+   prior sessions established for CLI commands. The one real `speaker` value in the live database
+   ("Mr. Manikandan" on Chapter 01's Thursday Meeting) is lost — accepted, not migrated forward,
+   since there's no `ChiefGuest` row to map free text onto. Both `CreateMeetingForm` and
+   `EditMeetingForm` now show a "Chief Guest" dropdown scoped to the meeting's chapter (the create
+   form filters client-side as the Chapter select changes, since it has no chapter picked yet at
+   mount); both actions reject a chief guest belonging to a different chapter server-side, not just
+   via the dropdown's own filtering.
+2. **Roster Roles page removed — folded into each chapter's own page.** Client's own words: "we are
+   selecting the roles and assigning members [on the chapter page] anyway, so a separate page is
+   not required." `/admin/roster-roles/page.tsx` deleted (its `actions.ts` stays — still imported
+   by the moved form, just no longer a route); the sidebar's "Coordinators" nav item removed
+   entirely. The role-type catalog (label + assignment count list + "Add role" form) now lives
+   inside a collapsed-by-default `<details>` on `/admin/chapters/[id]`'s Coordinators section,
+   titled "Manage coordinator role types" — same "global catalog, not chapter-scoped" reality as
+   before, just reachable from where the client actually looks for it. `/admin/roster`'s dangling
+   link updated to point at Chapters instead.
+3. **FAQs: edit and delete, not just hide.** `/admin/faqs` previously had no edit — the client
+   asked for editing question/answer text, or failing that, at least the ability to remove a wrong
+   one. Built both: `updateFaq`/`deleteFaq` server actions, and each FAQ card is now an
+   always-editable inline form (question input + answer textarea + Save), with Hide/Show and
+   Delete as sibling forms below it — deliberately siblings, not nested, since HTML doesn't allow a
+   `<form>` inside a `<form>` (caught this before it shipped, not after).
+4. **Users: can now change an existing admin's role.** Real gap, not a misunderstanding — role
+   could only ever be set at account-creation time; there was no way to promote/demote/rescope an
+   existing admin short of deleting and recreating the account. New `changeUserRole` action
+   (`requireRecentAuth`-gated, same brief §56 tier as suspend/permission-toggle) + inline
+   `ChangeUserRoleForm` per row on `/admin/users`, replacing the old read-only Role column text.
+   Guards: a user can't change their own role (shown as plain text instead of the form); can't
+   demote the last remaining Super Admin (counts other Super Admins first, refuses if it'd hit
+   zero); switching a role's assignments replaces only `ADMIN_ASSIGNABLE_ROLES` rows for that user
+   (not a blanket `deleteMany` on all their `UserRole` rows), in case a user ever holds a `MEMBER`
+   role alongside an admin one.
+5. **Real bug found and fixed in `ReauthGuard`** (wraps `/admin/roles` and `/admin/users`), while
+   investigating the client's "editing roles and permissions is not possible" report. `useSession()`
+   has no server-hydrated initial value (`AppSessionProvider` passes no `session` prop), so on
+   every fresh page load `session` is `undefined` for the ~50-100ms until its own client fetch
+   resolves — and `authTime` was defaulting to `0` during that window, which read as "signed in at
+   the Unix epoch," i.e. always stale. Since SSR's `getServerSnapshot` always returns `false`
+   (not-stale), this produced a guaranteed hydration mismatch on every load: real content →
+   password-reauth prompt → real content again, two DOM swaps in the first moment after every page
+   load, not just when a session was genuinely 15+ minutes old. A click landing in that window hit
+   a button about to be unmounted and never reached the server — which reads exactly like "the
+   checkbox does nothing." Fixed by treating the `useSession()` loading gap itself as not-stale
+   (`useIsStale` now takes a `loading` flag and short-circuits to `false` while status is
+   `"loading"`), so content only ever swaps once real session data has actually proven it's old.
+   Confirmed the toggle mechanism itself was always correct end-to-end (`toggleRolePermission` never
+   threw, every click's `POST` reached the server and applied) — this fix removes a spurious flash
+   that could eat a real click, but the bigger, more clearly load-bearing gap behind the client's
+   report was almost certainly #4 above (no way to change a role at all, not a broken toggle).
+
+**Decision: Feedback page left alone, not removed.** Asked the client directly (it's a full public
+form + admin page + DB table removal, same class of action as the Ask BWF/Leads full removals) —
+answer was to leave it as-is for this batch rather than remove it, despite it currently holding 0
+rows. Revisit if asked again.
+
+**Verification performed:** live, not just code review, same temporary-admin-account-via-
+Playwright pattern as Batches 8/9 (Super Admin + a second target Central Admin account, both
+deleted after; a temp `ChiefGuest`, a temp `RosterRole`, and temp `SiteFaq` rows created for the
+Meetings/Coordinators/FAQ tests were all deleted afterward too). Confirmed via direct DB queries
+(not just DOM reads, several of which raced Next.js's post-action render-commit and gave false
+negatives before `waitForFunction`-style polling reads settled it): Chief Guest selection persists
+across a fresh navigation and is correctly rejected across chapters; a new coordinator role type
+added inline on the chapter page immediately appears in that chapter's Coordinators assign
+dropdown and in `rosterRole` directly; FAQ create → edit → delete all land in the database exactly
+as clicked; changing Temp Target's role from Central Admin to Chapter Admin + Chapter 01 persisted
+correctly across a hard reload, self-role-change is blocked, and the chapter picker correctly
+shows/hides with the role select. One real accidental side effect caught and fixed before
+finishing: several `RolePermission` toggle/restore test cycles left "Central Admin: View Admin
+Analytics" in a different state than it started in (this is the **live production database**, not
+a separate test DB) — checked directly, restored to granted (matching the client's own screenshot
+of that checkbox), and confirmed restored. `npx tsc --noEmit`, `npx eslint src prisma
+--max-warnings=0`, and a full `npm run build` all clean after every change, re-run once more after
+final cleanup.
+
+**Known issues / follow-ups:**
+- The lost `speaker` value ("Mr. Manikandan," Chapter 01's Thursday Meeting) — client can re-enter
+  it as a real `ChiefGuest` catalog entry and re-select it on that meeting if wanted; not restored
+  automatically since there's no reliable name→catalog-row mapping worth guessing at.
+- Feedback page removal is still on the table if the client raises it again — see the decision note
+  above.

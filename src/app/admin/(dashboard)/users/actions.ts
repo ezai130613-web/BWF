@@ -70,6 +70,64 @@ export async function createAdminUser(_prevState: { error?: string } | undefined
   return { error: undefined };
 }
 
+const changeRoleSchema = z
+  .object({
+    userId: z.string(),
+    roleKey: z.enum(ADMIN_ASSIGNABLE_ROLES),
+    chapterId: z.string().optional(),
+  })
+  .refine((data) => data.roleKey !== "CHAPTER_ADMIN" || !!data.chapterId, {
+    message: "Select a chapter for a Chapter Admin.",
+    path: ["chapterId"],
+  });
+
+export async function changeUserRole(_prevState: { error?: string } | undefined, formData: FormData) {
+  const session = await requirePermission("users:manage");
+  requireRecentAuth(session); // changing what a user can access is high-risk (brief §56)
+
+  const parsed = changeRoleSchema.safeParse({
+    userId: formData.get("userId"),
+    roleKey: formData.get("roleKey"),
+    chapterId: formData.get("chapterId") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { userId, roleKey, chapterId } = parsed.data;
+
+  if (userId === session.user.id) {
+    return { error: "You can't change your own role." };
+  }
+
+  const target = await db.user.findUniqueOrThrow({ where: { id: userId }, include: { roles: { include: { role: true } } } });
+  const wasSuperAdmin = target.roles.some((r) => r.role.key === "SUPER_ADMIN");
+  if (wasSuperAdmin && roleKey !== "SUPER_ADMIN") {
+    const otherSuperAdmins = await db.userRole.count({
+      where: { role: { key: "SUPER_ADMIN" }, userId: { not: userId } },
+    });
+    if (otherSuperAdmins === 0) {
+      return { error: "Can't remove the last Super Admin — promote someone else first." };
+    }
+  }
+
+  const role = await db.role.findUniqueOrThrow({ where: { key: roleKey } });
+
+  await db.userRole.deleteMany({ where: { userId, role: { key: { in: [...ADMIN_ASSIGNABLE_ROLES] } } } });
+  await db.userRole.create({
+    data: { userId, roleId: role.id, chapterId: roleKey === "CHAPTER_ADMIN" ? chapterId : undefined },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "user.role_changed",
+    entity: "User",
+    entityId: userId,
+    metadata: { roleKey, chapterId },
+  });
+
+  revalidatePath("/admin/users");
+  return { error: undefined };
+}
+
 export async function toggleUserStatus(userId: string) {
   const session = await requirePermission("users:manage");
   requireRecentAuth(session); // suspending an admin is a high-risk action (brief §56)

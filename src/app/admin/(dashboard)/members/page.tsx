@@ -10,15 +10,36 @@ const STATUS_STYLES: Record<string, string> = {
   SUSPENDED: "bg-red-50 text-red-700",
 };
 
-export default async function MembersPage() {
+export default async function MembersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ chapterId?: string; categoryId?: string }>;
+}) {
   const scope = await getChapterScope("members:manage");
-  const chapterFilter = scope === "ALL" ? {} : { chapterId: scope };
+  const { chapterId: requestedChapterId, categoryId } = await searchParams;
 
-  const [members, chapters, categories, companies] = await Promise.all([
+  // A Chapter Admin's scope always wins over the query param — a spoofed
+  // ?chapterId= for another chapter must never widen what they see.
+  const chapterId = scope === "ALL" ? requestedChapterId || undefined : scope;
+  const where = {
+    ...(chapterId ? { chapterId } : {}),
+    ...(categoryId ? { categoryId } : {}),
+  };
+
+  const [members, referralCandidates, chapters, categories, companies] = await Promise.all([
     db.member.findMany({
-      where: chapterFilter,
+      where,
       include: { company: true, chapter: true, category: true },
       orderBy: { createdAt: "desc" },
+    }),
+    // For the "referred by" picker below — scoped like the table (Chapter
+    // Admin only sees their own chapter's members), but deliberately NOT
+    // narrowed by the chapter/category filter above; that filter is for
+    // browsing the table, not for who can be picked as a referrer.
+    db.member.findMany({
+      where: scope === "ALL" ? { status: "ACTIVE" } : { chapterId: scope, status: "ACTIVE" },
+      select: { id: true, name: true, chapter: { select: { name: true } } },
+      orderBy: { name: "asc" },
     }),
     db.chapter.findMany({
       where: scope === "ALL" ? {} : { id: scope },
@@ -44,6 +65,52 @@ export default async function MembersPage() {
           bypassed even by a direct API call.
         </p>
       </div>
+
+      <form className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-white p-4" method="GET">
+        {scope === "ALL" ? (
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+            Chapter
+            <select
+              name="chapterId"
+              defaultValue={chapterId ?? ""}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            >
+              <option value="">All chapters</option>
+              {chapters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+          Category
+          <select
+            name="categoryId"
+            defaultValue={categoryId ?? ""}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          Filter
+        </button>
+        {chapterId || categoryId ? (
+          <Link href="/admin/members" className="text-sm text-neutral-500 hover:text-neutral-900">
+            Clear filters
+          </Link>
+        ) : null}
+      </form>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
         <table className="w-full text-left text-sm">
@@ -98,7 +165,7 @@ export default async function MembersPage() {
             {members.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
-                  No members yet.
+                  {chapterId || categoryId ? "No members match these filters." : "No members yet."}
                 </td>
               </tr>
             ) : null}
@@ -113,7 +180,7 @@ export default async function MembersPage() {
           chapters={chapters}
           categories={categories}
           companies={companies}
-          members={members.filter((m) => m.status === "ACTIVE").map((m) => ({ id: m.id, name: m.name, chapterName: m.chapter.name }))}
+          members={referralCandidates.map((m) => ({ id: m.id, name: m.name, chapterName: m.chapter.name }))}
         />
       )}
     </div>

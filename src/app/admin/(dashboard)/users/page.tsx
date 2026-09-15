@@ -2,11 +2,12 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 import { db } from "@/lib/db";
 import { CreateUserForm } from "@/components/admin/create-user-form";
+import { ChangeUserRoleForm } from "@/components/admin/change-user-role-form";
 import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { toggleUserStatus } from "./actions";
 
 export default async function UsersPage() {
-  await requirePermission("users:manage");
+  const session = await requirePermission("users:manage");
 
   const [users, chapters] = await Promise.all([
     db.user.findMany({
@@ -40,14 +41,23 @@ export default async function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {users.map((user) => (
+              {users.map((user) => {
+                const primaryRole = user.roles.find((r) => ADMIN_ROLE_KEYS.includes(r.role.key)) ?? user.roles[0];
+                return (
                 <tr key={user.id}>
                   <td className="px-4 py-3 text-neutral-900">{user.name}</td>
                   <td className="px-4 py-3 text-neutral-600">{user.email}</td>
                   <td className="px-4 py-3 text-neutral-600">
-                    {user.roles
-                      .map((r) => (r.chapter ? `${r.role.label} — ${r.chapter.name}` : r.role.label))
-                      .join(", ") || "—"}
+                    {user.id === session.user.id ? (
+                      primaryRole?.role.label ?? "—"
+                    ) : (
+                      <ChangeUserRoleForm
+                        userId={user.id}
+                        currentRoleKey={primaryRole?.role.key ?? "CENTRAL_ADMIN"}
+                        currentChapterId={primaryRole?.chapter?.id ?? null}
+                        chapters={chapters}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -71,7 +81,8 @@ export default async function UsersPage() {
                     </form>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

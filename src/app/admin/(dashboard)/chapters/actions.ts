@@ -80,6 +80,12 @@ export async function updateChapter(_prevState: { error?: string } | undefined, 
   return { error: undefined };
 }
 
+// Founder/Co-Founder are fixed — see the same list's comment on the chapter
+// detail page (src/app/admin/(dashboard)/chapters/[id]/page.tsx). Enforced
+// here too, not just by hiding the UI, since this is a directly-postable
+// server action.
+const FOUNDING_ROLE_KEYS = ["FOUNDER", "CO_FOUNDER"];
+
 const assignLeadershipSchema = z.object({
   chapterId: z.string(),
   memberId: z.string().min(1, "Select a member"),
@@ -97,6 +103,11 @@ export async function assignChapterLeadership(_prevState: { error?: string } | u
   const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
   if (member.chapterId !== chapterId) {
     return { error: "That member does not belong to this chapter." };
+  }
+
+  const role = await db.chapterLeadershipRole.findUniqueOrThrow({ where: { id: roleId } });
+  if (FOUNDING_ROLE_KEYS.includes(role.key)) {
+    return { error: "Founder and Co-Founder are fixed and can't be reassigned here." };
   }
 
   await db.chapterLeadership.upsert({
@@ -123,6 +134,14 @@ export async function assignChapterLeadership(_prevState: { error?: string } | u
 export async function removeChapterLeadership(chapterId: string, leadershipId: string) {
   const session = await requirePermission("chapters:manage");
 
+  const entry = await db.chapterLeadership.findUniqueOrThrow({
+    where: { id: leadershipId },
+    include: { role: true },
+  });
+  if (FOUNDING_ROLE_KEYS.includes(entry.role.key)) {
+    return; // Founder/Co-Founder are fixed — see FOUNDING_ROLE_KEYS above.
+  }
+
   await db.chapterLeadership.delete({ where: { id: leadershipId } });
 
   await logActivity({
@@ -139,11 +158,11 @@ export async function removeChapterLeadership(chapterId: string, leadershipId: s
 }
 
 // ---------------------------------------------------------------------------
-// Phase 20 Batch 3 — Roster Sheet "Meeting Roles" (Power Date Host, Visitor
-// Host, etc.). Deliberately NOT ChapterLeadership — see RosterAssignment's
-// schema comment for why — but managed from the same chapter detail page,
-// under the same chapters:manage gate, as a direct sibling of the Leadership
-// section above.
+// Phase 20 Batch 3 — Roster Sheet "Coordinators" (Power Date Coordinator,
+// Visitor Coordinator, etc. — renamed from "Host" 2026-09-15). Deliberately
+// NOT ChapterLeadership — see RosterAssignment's schema comment for why —
+// but managed from the same chapter detail page, under the same
+// chapters:manage gate, as a direct sibling of the Leadership section above.
 // ---------------------------------------------------------------------------
 
 const assignRosterRoleSchema = z.object({

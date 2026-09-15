@@ -1,12 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { createMeeting } from "@/app/admin/(dashboard)/meetings/actions";
 
 const initialState: { error?: string } = {};
 
-export function CreateMeetingForm({ chapters }: { chapters: { id: string; name: string }[] }) {
+export function CreateMeetingForm({
+  chapters,
+  chiefGuests,
+}: {
+  chapters: { id: string; name: string }[];
+  chiefGuests: { id: string; name: string; chapterId: string | null }[];
+}) {
   const [state, formAction, pending] = useActionState(createMeeting, initialState);
+  const [chapterId, setChapterId] = useState("");
+
+  const availableChiefGuests = chiefGuests.filter((g) => !chapterId || g.chapterId === null || g.chapterId === chapterId);
 
   return (
     <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
@@ -23,6 +33,8 @@ export function CreateMeetingForm({ chapters }: { chapters: { id: string; name: 
         <select
           name="chapterId"
           required
+          value={chapterId}
+          onChange={(e) => setChapterId(e.target.value)}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         >
           <option value="">Select…</option>
@@ -65,11 +77,28 @@ export function CreateMeetingForm({ chapters }: { chapters: { id: string; name: 
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Speaker
-        <input
-          name="speaker"
+        Chief Guest
+        <select
+          name="chiefGuestId"
+          defaultValue=""
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        />
+        >
+          <option value="">None</option>
+          {availableChiefGuests.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+        {chapterId && availableChiefGuests.length === 0 ? (
+          <span className="text-xs text-neutral-500">
+            No Chief Guests for this chapter yet — add one at{" "}
+            <a href="/admin/chief-guests" target="_blank" rel="noopener noreferrer" className="underline">
+              Chief Guests
+            </a>
+            .
+          </span>
+        ) : null}
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Agenda

@@ -10,7 +10,7 @@ const createSchema = z.object({
   label: z.string().min(1, "Name is required"),
 });
 
-/** "Digital Host" -> "DIGITAL_HOST", matching the seeded roles' own key style. */
+/** "Digital Coordinator" -> "DIGITAL_COORDINATOR", matching the seeded roles' own key style. */
 function roleKeyFromLabel(label: string) {
   return label
     .trim()
@@ -20,7 +20,7 @@ function roleKeyFromLabel(label: string) {
 }
 
 /**
- * Roster Sheet's "Meeting Roles" catalog — same admin-extensible pattern as
+ * Roster Sheet's "Coordinators" catalog — same admin-extensible pattern as
  * createLeadershipRole, and same chapters:manage gate (this is global
  * chapter-config, not the chapter-scoped roster:manage generation flow).
  */
@@ -48,6 +48,8 @@ export async function createRosterRole(_prevState: { error?: string } | undefine
     entityId: role.id,
   });
 
-  revalidatePath("/admin/roster-roles");
+  // No standalone /admin/roster-roles page anymore — the catalog is managed
+  // inline on every chapter's own detail page (2026-09-15 client correction).
+  revalidatePath("/admin/chapters/[id]", "page");
   return { error: undefined };
 }

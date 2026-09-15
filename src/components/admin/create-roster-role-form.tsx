@@ -15,7 +15,7 @@ export function CreateRosterRoleForm() {
         <input
           name="label"
           required
-          placeholder="e.g. Ranking Host"
+          placeholder="e.g. Ranking Coordinator"
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>

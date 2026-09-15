@@ -118,29 +118,33 @@ const CHAPTER_LEADERSHIP_ROLES = [
   { key: "CO_FOUNDER", label: "Co-Founder" },
 ] as const;
 
-// Phase 20 Batch 3 — Roster Sheet module's "Meeting Roles" catalog.
+// Phase 20 Batch 3 — Roster Sheet module's "Coordinators" catalog (originally
+// "Meeting Roles"/"Host" wording, renamed 2026-09-15 per client correction —
+// these are coordinator duties, not hosting duties).
 // Consolidates the 3 reference roster PDFs' slightly different wording for
 // the same duty across chapters (e.g. "Digital Host" / "Digital Marketing
 // Coordinator" both become DIGITAL_HOST) into one canonical, admin-
 // extensible list — same "don't hardcode roles" pattern as
 // CHAPTER_LEADERSHIP_ROLES, managed going forward via /admin/roster-roles.
+// Keys are left as *_HOST for continuity with existing data/PDF code that
+// matches on key — only the admin/public-facing label changed.
 const ROSTER_ROLES = [
-  { key: "CHIEF_GUEST_HOST", label: "Chief Guest Host", order: 1 },
-  { key: "VISITOR_HOST", label: "Visitor Host", order: 2 },
-  { key: "MEETING_HOST", label: "Meeting Host", order: 3 },
-  { key: "ATTENDANCE_HOST", label: "Attendance Host", order: 4 },
-  { key: "HOT_SEAT_HOST", label: "Hot Seat Host", order: 5 },
-  { key: "MENTOR_HOST", label: "Mentor Host", order: 6 },
-  { key: "GIVE_AND_ASK_HOST", label: "Give and Ask Host", order: 7 },
-  { key: "ONE_TO_ONE_HOST", label: "One-to-One Host", order: 8 },
-  { key: "SOCIAL_COORDINATOR", label: "Social Co-Ordinator", order: 9 },
-  { key: "POWER_DATE_HOST", label: "Power Date Host", order: 10 },
-  { key: "DIGITAL_HOST", label: "Digital Host", order: 11 },
-  { key: "WHATSAPP_HOST", label: "Whatsapp Host", order: 12 },
-  { key: "THANKS_NOTE_HOST", label: "Thanks Note Host", order: 13 },
-  { key: "TIME_MANAGEMENT_HOST", label: "Time Management", order: 14 },
-  { key: "CONCLAVE_HOST", label: "Conclave Host", order: 15 },
-  { key: "RANKING_HOST", label: "Ranking Host", order: 16 },
+  { key: "CHIEF_GUEST_HOST", label: "Chief Guest Coordinator", order: 1 },
+  { key: "VISITOR_HOST", label: "Visitor Coordinator", order: 2 },
+  { key: "MEETING_HOST", label: "Meeting Coordinator", order: 3 },
+  { key: "ATTENDANCE_HOST", label: "Attendance Coordinator", order: 4 },
+  { key: "HOT_SEAT_HOST", label: "Hot Seat Coordinator", order: 5 },
+  { key: "MENTOR_HOST", label: "Mentor Coordinator", order: 6 },
+  { key: "GIVE_AND_ASK_HOST", label: "Give and Ask Coordinator", order: 7 },
+  { key: "ONE_TO_ONE_HOST", label: "One-to-One Coordinator", order: 8 },
+  { key: "SOCIAL_COORDINATOR", label: "Social Coordinator", order: 9 },
+  { key: "POWER_DATE_HOST", label: "Power Date Coordinator", order: 10 },
+  { key: "DIGITAL_HOST", label: "Digital Coordinator", order: 11 },
+  { key: "WHATSAPP_HOST", label: "WhatsApp Coordinator", order: 12 },
+  { key: "THANKS_NOTE_HOST", label: "Thanks Note Coordinator", order: 13 },
+  { key: "TIME_MANAGEMENT_HOST", label: "Time Management Coordinator", order: 14 },
+  { key: "CONCLAVE_HOST", label: "Conclave Coordinator", order: 15 },
+  { key: "RANKING_HOST", label: "Ranking Coordinator", order: 16 },
 ] as const;
 
 // Brief §30's suggested initial list — admin can add/edit via /admin/blog-categories.
@@ -198,7 +202,11 @@ async function main() {
   }
 
   for (const role of ROSTER_ROLES) {
-    await db.rosterRole.upsert({ where: { key: role.key }, update: {}, create: role });
+    await db.rosterRole.upsert({
+      where: { key: role.key },
+      update: { label: role.label, order: role.order },
+      create: role,
+    });
   }
 
   for (const name of BLOG_CATEGORIES) {
