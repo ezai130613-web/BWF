@@ -2639,3 +2639,37 @@ final cleanup.
   automatically since there's no reliable name→catalog-row mapping worth guessing at.
 - Feedback page removal is still on the table if the client raises it again — see the decision note
   above.
+
+### Batch 11 — Quick-add a Chief Guest right from the Meetings page (2026-09-15, same day)
+
+**What shipped:** Batch 10's new Chief Guest dropdown on `/admin/meetings` only let an admin pick
+from Chief Guests that already existed in the catalog — client immediately flagged there was no
+way to add a new one without leaving the page. Added an inline "+ Add a new Chief Guest" reveal
+(name/company/designation — the minimum viable subset of the full `/admin/chief-guests` form,
+which still has photo/description/display-order for filling in later) directly under the Chief
+Guest select on both `CreateMeetingForm` and `EditMeetingForm`. New `createChiefGuestQuick` action
+in `chief-guests/actions.ts`, same `chief_guests:manage` gate as the full form — only rendered for
+Super/Central Admin (checked via `getUserPermissionKeys()`), since that permission is deliberately
+not chapter-scoped; a Chapter Admin instead sees a plain "no Chief Guests yet" note. The new guest
+is auto-selected once created — both meeting forms watch their `chiefGuests` prop for an id they
+haven't seen before (a `useRef` of previously-seen ids) and select it, relying on Next's own
+"any Server Action completing refreshes the page's server data" behavior to get the fresh list
+rather than plumbing a callback between the two forms.
+
+**Real bug caught by testing, not code review — the exact one already documented in FAQ's own
+Batch 10 note, in a new place**: the first version nested `QuickAddChiefGuestForm`'s own `<form>`
+inside the meeting form's `<form>`. The browser silently reparents/breaks nested forms (`<form>
+cannot contain a nested <form>`, logged to the console but not surfaced anywhere an admin would
+see it) — the quick-add's Save button submitted nothing. Fixed by moving it to a sibling `<form>`
+outside the main one, in both components — verified this specific failure mode live (console
+error visible, DB row never created) before and the fix confirmed after (DB row created, meeting's
+`chiefGuestId` correctly saved, survives a completely fresh page navigation, not just the same
+tab).
+
+**Verification performed:** live — temporary Super Admin account, quick-add flow driven through
+the real UI end to end (create a Chief Guest inline on a real meeting's edit page → confirm
+auto-select → Save the meeting → confirm via direct DB query that `chiefGuestId` persisted →
+confirm again via a *fresh* browser navigation, not a reload of the same page, to rule out
+client-side state masking a real gap). Test data (the temp Chief Guest, the temp admin account)
+cleaned up afterward. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and a full
+`npm run build` all clean.

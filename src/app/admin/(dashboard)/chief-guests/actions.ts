@@ -75,6 +75,38 @@ export async function updateChiefGuest(_prevState: { error?: string } | undefine
   return { error: undefined };
 }
 
+const quickCreateSchema = z.object({
+  chapterId: z.string().min(1),
+  name: z.string().min(1, "Name is required"),
+  company: z.string().min(1, "Company / organisation is required"),
+  designation: optionalText(),
+});
+
+/**
+ * Lightweight create used from the Meetings admin page's Chief Guest picker
+ * (client correction, 2026-09-15) — name/company/designation only, no
+ * photo/description/display-order. Same `chief_guests:manage` gate as the
+ * full form; a Chief Guest added here can still be filled out further at
+ * /admin/chief-guests afterward.
+ */
+export async function createChiefGuestQuick(
+  _prevState: { error?: string; chiefGuest?: { id: string; name: string } } | undefined,
+  formData: FormData,
+) {
+  await requirePermission("chief_guests:manage");
+
+  const parsed = quickCreateSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const guest = await db.chiefGuest.create({ data: parsed.data });
+
+  await logActivity({ action: "chief_guest.created", entity: "ChiefGuest", entityId: guest.id });
+  revalidateChiefGuests();
+  revalidatePath("/admin/meetings");
+  revalidatePath("/admin/meetings/[id]", "page");
+  return { error: undefined, chiefGuest: { id: guest.id, name: guest.name } };
+}
+
 export async function deleteChiefGuest(guestId: string) {
   await requirePermission("chief_guests:manage");
   await db.chiefGuest.delete({ where: { id: guestId } });

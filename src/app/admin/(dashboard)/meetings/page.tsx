@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getChapterScope } from "@/lib/auth/rbac";
+import { getChapterScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateMeetingForm } from "@/components/admin/create-meeting-form";
 
@@ -12,6 +12,10 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function MeetingsPage() {
   const scope = await getChapterScope("meetings:manage");
   const chapterFilter = scope === "ALL" ? {} : { chapterId: scope };
+
+  const session = await requireAdminSession();
+  const permissions = await getUserPermissionKeys(session.user.id);
+  const canManageChiefGuests = permissions.has("chief_guests:manage");
 
   const [meetings, chapters, chiefGuests] = await Promise.all([
     db.meeting.findMany({
@@ -78,7 +82,7 @@ export default async function MeetingsPage() {
         </table>
       </div>
 
-      <CreateMeetingForm chapters={chapters} chiefGuests={chiefGuests} />
+      <CreateMeetingForm chapters={chapters} chiefGuests={chiefGuests} canManageChiefGuests={canManageChiefGuests} />
     </div>
   );
 }

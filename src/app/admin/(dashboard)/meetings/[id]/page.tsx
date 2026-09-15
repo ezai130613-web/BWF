@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireChapterAccess } from "@/lib/auth/rbac";
+import { getUserPermissionKeys, requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { EditMeetingForm } from "@/components/admin/edit-meeting-form";
 
@@ -10,6 +10,10 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   if (!meeting) notFound();
 
   await requireChapterAccess(meeting.chapterId, "meetings:manage");
+
+  const session = await requireAdminSession();
+  const permissions = await getUserPermissionKeys(session.user.id);
+  const canManageChiefGuests = permissions.has("chief_guests:manage");
 
   const [visitors, chiefGuests] = await Promise.all([
     db.visitor.findMany({
@@ -31,7 +35,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
         <p className="mt-1 text-sm text-neutral-600">{meeting.chapter.name}</p>
       </div>
 
-      <EditMeetingForm meeting={meeting} chiefGuests={chiefGuests} />
+      <EditMeetingForm meeting={meeting} chiefGuests={chiefGuests} canManageChiefGuests={canManageChiefGuests} />
 
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
         <div className="border-b border-neutral-200 px-6 py-4">
