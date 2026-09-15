@@ -139,8 +139,16 @@ export function CreateMeetingForm({
       </form>
 
       {/* Deliberately its own <form>, outside the one above — HTML doesn't
-          allow a nested <form>. Only makes sense once a chapter is picked. */}
-      {canManageChiefGuests && chapterId ? <QuickAddChiefGuestForm chapterId={chapterId} /> : null}
+          allow a nested <form>. A Chief Guest belongs to one chapter, so this
+          only makes sense once a chapter is picked — shown either way so the
+          option isn't invisible before then. */}
+      {canManageChiefGuests ? (
+        chapterId ? (
+          <QuickAddChiefGuestForm chapterId={chapterId} />
+        ) : (
+          <p className="text-xs text-neutral-500">Select a chapter above to add a new Chief Guest here.</p>
+        )
+      ) : null}
     </div>
   );
 }
