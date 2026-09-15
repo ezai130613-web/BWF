@@ -109,7 +109,12 @@ export default async function MembersPage() {
       {companies.length === 0 ? (
         <p className="text-sm text-neutral-500">Add a company first (Companies page) before adding members.</p>
       ) : (
-        <CreateMemberForm chapters={chapters} categories={categories} companies={companies} />
+        <CreateMemberForm
+          chapters={chapters}
+          categories={categories}
+          companies={companies}
+          members={members.filter((m) => m.status === "ACTIVE").map((m) => ({ id: m.id, name: m.name, chapterName: m.chapter.name }))}
+        />
       )}
     </div>
   );

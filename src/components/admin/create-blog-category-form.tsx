@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createBlogCategory } from "@/app/admin/(dashboard)/blog-categories/actions";
+import { createBlogCategory } from "@/app/admin/(dashboard)/blogs/actions";
 
 const initialState: { error?: string } = {};
 

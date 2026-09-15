@@ -12,9 +12,14 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function TestimonialsPage() {
   await requirePermission("testimonials:manage");
 
-  const [testimonials, chapters] = await Promise.all([
+  const [testimonials, chapters, members] = await Promise.all([
     db.testimonial.findMany({ include: { chapter: true }, orderBy: { createdAt: "desc" } }),
     db.chapter.findMany({ orderBy: { name: "asc" } }),
+    db.member.findMany({
+      where: { status: "ACTIVE" },
+      include: { company: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const pending = testimonials.filter((t) => t.status === "PENDING");
@@ -101,7 +106,7 @@ export default async function TestimonialsPage() {
         </table>
       </div>
 
-      <CreateTestimonialForm chapters={chapters} />
+      <CreateTestimonialForm chapters={chapters} members={members} />
     </div>
   );
 }

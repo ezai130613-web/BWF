@@ -1,22 +1,68 @@
 "use client";
 
+import { useRef } from "react";
 import { useActionState } from "react";
 import { createTestimonialDirect } from "@/app/admin/(dashboard)/testimonials/actions";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
 
 const initialState: { error?: string } = {};
 
-export function CreateTestimonialForm({ chapters }: { chapters: { id: string; name: string }[] }) {
+type MemberOption = {
+  id: string;
+  name: string;
+  designation: string | null;
+  company: { name: string } | null;
+};
+
+export function CreateTestimonialForm({
+  chapters,
+  members,
+}: {
+  chapters: { id: string; name: string }[];
+  members: MemberOption[];
+}) {
   const [state, formAction, pending] = useActionState(createTestimonialDirect, initialState);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const companyRef = useRef<HTMLInputElement>(null);
+  const roleRef = useRef<HTMLInputElement>(null);
+
+  function handleMemberSelect(memberId: string) {
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    if (nameRef.current) nameRef.current.value = member.name;
+    if (companyRef.current) companyRef.current.value = member.company?.name ?? "";
+    if (roleRef.current) roleRef.current.value = member.designation ?? "";
+  }
 
   return (
     <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
       <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">
         Add testimonial directly (publishes immediately)
       </h2>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+        Member (optional — auto-fills name/company/role below)
+        <select
+          name="memberId"
+          defaultValue=""
+          onChange={(e) => handleMemberSelect(e.target.value)}
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        >
+          <option value="">None (not linked to a member)</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Name
-        <input name="name" required className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <input
+          ref={nameRef}
+          name="name"
+          required
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Type
@@ -30,11 +76,11 @@ export function CreateTestimonialForm({ chapters }: { chapters: { id: string; na
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Company (optional)
-        <input name="company" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <input ref={companyRef} name="company" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Role (optional)
-        <input name="role" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <input ref={roleRef} name="role" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Chapter (optional)

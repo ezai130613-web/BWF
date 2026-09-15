@@ -4,45 +4,52 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
+// Phase 20 Batch 4 — each item's `workspace` tag (Website Admin vs Member
+// Performance Admin, per the two-workspace split). Only applied to
+// Super/Central Admin — Chapter Admin's nav ignores this entirely (see the
+// filter below), since their access is scoped identically across both
+// workspaces already and splitting it would hide half of what they can do.
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", permission: null },
-  { href: "/admin/chapters", label: "Chapters", permission: "chapters:manage" },
-  { href: "/admin/leadership-roles", label: "Leadership Roles", permission: "chapters:manage" },
-  { href: "/admin/companies", label: "Companies", permission: "companies:manage" },
-  { href: "/admin/categories", label: "Categories", permission: "categories:manage" },
-  { href: "/admin/members", label: "Members", permission: "members:manage" },
-  { href: "/admin/applications", label: "Applications", permission: "applications:manage" },
-  { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage" },
-  { href: "/admin/events", label: "Events", permission: "events:manage" },
-  { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage" },
-  { href: "/admin/leads", label: "Leads", permission: "leads:manage" },
-  { href: "/admin/analytics", label: "Analytics", permission: "analytics:view" },
-  { href: "/admin/reports", label: "Reports", permission: "reports:manage" },
-  { href: "/admin/exports", label: "Exports", permission: "exports:manage" },
-  { href: "/admin/chatbot", label: "Ask BWF", permission: "chatbot:manage" },
-  { href: "/admin/blogs", label: "Blog", permission: "blogs:manage" },
-  { href: "/admin/blog-categories", label: "Blog Categories", permission: "blogs:manage" },
-  { href: "/admin/authors", label: "Authors", permission: "blogs:manage" },
-  { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage" },
-  { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage" },
-  { href: "/admin/points-config", label: "App Points & Scoring", permission: "points_config:manage" },
-  { href: "/admin/app-activity", label: "BWF App Activity", permission: "app_activity:view" },
-  { href: "/admin/content", label: "Website Content", permission: "content:manage" },
-  { href: "/admin/faqs", label: "FAQs", permission: "content:manage" },
-  { href: "/admin/feedback", label: "Feedback", permission: "feedback:view" },
-  { href: "/admin/users", label: "Users", permission: "users:manage" },
-  { href: "/admin/roles", label: "Roles & Permissions", permission: "roles:manage" },
-  { href: "/admin/activity", label: "Activity Log", permission: "audit_log:view" },
+  { href: "/admin", label: "Dashboard", permission: null, workspace: "website" },
+  { href: "/admin/chapters", label: "Chapters", permission: "chapters:manage", workspace: "website" },
+  { href: "/admin/companies", label: "Companies", permission: "companies:manage", workspace: "website" },
+  { href: "/admin/categories", label: "Categories", permission: "categories:manage", workspace: "website" },
+  { href: "/admin/members", label: "Members", permission: "members:manage", workspace: "website" },
+  { href: "/admin/applications", label: "Applications", permission: "applications:manage", workspace: "website" },
+  { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage", workspace: "website" },
+  { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
+  { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
+  // Roster Roles is the global role-type catalog (affects every chapter),
+  // same "chapter admin doesn't manage chapter-level config" reasoning as
+  // Leadership Roles below — gated by chapters:manage, not the chapter-
+  // scoped roster:manage, and stays under Website Admin (config-level,
+  // same bucket as Leadership Roles) even though Roster Sheets itself
+  // moved to Performance.
+  { href: "/admin/roster-roles", label: "Roster Roles", permission: "chapters:manage", workspace: "website" },
+  { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
+  { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
+  { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage", workspace: "website" },
+  { href: "/admin/points-config", label: "App Points & Scoring", permission: "points_config:manage", workspace: "performance" },
+  { href: "/admin/app-activity", label: "BWF App Activity", permission: "app_activity:view", workspace: "performance" },
+  { href: "/admin/content", label: "Website Content", permission: "content:manage", workspace: "website" },
+  { href: "/admin/faqs", label: "FAQs", permission: "content:manage", workspace: "website" },
+  { href: "/admin/feedback", label: "Feedback", permission: "feedback:view", workspace: "website" },
+  { href: "/admin/users", label: "Users", permission: "users:manage", workspace: "website" },
+  { href: "/admin/roles", label: "Roles & Permissions", permission: "roles:manage", workspace: "website" },
+  { href: "/admin/activity", label: "Activity Log", permission: "audit_log:view", workspace: "website" },
 ] as const;
 
 export function Sidebar({
   userName,
   permissions,
   isChapterAdmin,
+  workspace,
 }: {
   userName: string;
   permissions: Set<string>;
   isChapterAdmin: boolean;
+  /** null for Chapter Admin (workspace-agnostic) or before a Super/Central Admin has picked one yet. */
+  workspace: "website" | "performance" | null;
 }) {
   const pathname = usePathname();
 
@@ -50,19 +57,17 @@ export function Sidebar({
     if (item.permission === null) return true;
     if (permissions.has(item.permission)) return true;
     // Chapter Admin holds no global permissions but does get scoped access
-    // to Members/Meetings/Events/Visitors/Leads within their own chapter
-    // (see requireChapterAccess) — show those links for them.
-    const chapterScopedPermissions = [
-      "members:manage",
-      "meetings:manage",
-      "events:manage",
-      "visitors:manage",
-      "exports:manage",
-      "leads:manage",
-      "app_activity:view",
-    ];
+    // to Members/Meetings/Visitors within their own chapter (see
+    // requireChapterAccess) — show those links for them.
+    const chapterScopedPermissions = ["members:manage", "meetings:manage", "visitors:manage", "app_activity:view", "roster:manage"];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
+  }).filter((item) => {
+    // Chapter Admin's nav is unaffected by the workspace split (see the
+    // NAV_ITEMS comment above) — only Super/Central Admin get filtered to
+    // their chosen workspace.
+    if (isChapterAdmin || !workspace) return true;
+    return item.workspace === workspace;
   });
 
   return (
@@ -92,6 +97,14 @@ export function Sidebar({
 
       <div className="border-t border-emerald-700 px-6 py-4">
         <p className="truncate text-sm text-ivory-200">{userName}</p>
+        {!isChapterAdmin && workspace ? (
+          <p className="mt-1 text-xs text-slate-400">
+            {workspace === "website" ? "Website Admin" : "Member Performance Admin"} ·{" "}
+            <Link href="/admin/workspace" className="underline hover:text-ivory-100">
+              Switch workspace
+            </Link>
+          </p>
+        ) : null}
       </div>
     </aside>
   );

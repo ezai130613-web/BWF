@@ -24,20 +24,18 @@ export async function notifyVisitorRegistered(input: {
   visitorName: string;
   visitorEmail: string;
   chapterName: string;
-  kind: "meeting" | "event";
   title: string;
   startsAt: Date;
   venue: string | null;
 }) {
   const when = input.startsAt.toLocaleString("en-IN", { dateStyle: "full", timeStyle: "short" });
-  const label = input.kind === "event" ? "event" : "meeting";
 
   await sendEmail({
     to: input.visitorEmail,
     subject: `You're registered — ${input.title}`,
     text: `Hi ${input.visitorName},
 
-You're registered for the ${input.title} ${label} with Builders World Forum, ${input.chapterName}.
+You're registered for the ${input.title} meeting with Builders World Forum, ${input.chapterName}.
 
 When: ${when}${input.venue ? `\nWhere: ${input.venue}` : ""}
 

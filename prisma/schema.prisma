@@ -200,18 +200,16 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members          Member[]
-  leadership       ChapterLeadership[]
-  chapterAdmins    UserRole[]
-  testimonials     Testimonial[]
-  feedback         Feedback[]
-  applications     MembershipApplication[]
-  meetings         Meeting[]
-  events           Event[]
-  visitors         Visitor[]
-  reportRecipients WeeklyReportRecipient[]
-  leads            Lead[]
-  chiefGuests      ChiefGuest[]
+  members           Member[]
+  leadership        ChapterLeadership[]
+  chapterAdmins     UserRole[]
+  testimonials      Testimonial[]
+  feedback          Feedback[]
+  applications      MembershipApplication[]
+  meetings          Meeting[]
+  visitors          Visitor[]
+  chiefGuests       ChiefGuest[]
+  rosterAssignments RosterAssignment[]
 
   @@map("chapters")
 }
@@ -229,7 +227,6 @@ model Category {
   members      Member[]
   applications MembershipApplication[]
   visitors     Visitor[]
-  leads        Lead[]
 
   @@map("categories")
 }
@@ -338,6 +335,16 @@ model Member {
   /// column pattern is the standard workaround.
   activeSlotKey String? @unique
 
+  /// Phase 20 Batch 5 — decision #6's manual induction picker: an admin
+  /// explicitly picks who invited this member at creation time (also
+  /// editable later, to fix a mistake), rather than the induction score
+  /// being auto-derived from Visitor-conversion matching (explicitly
+  /// rejected — see Consumer/MemberChiefGuest's own header comment for the
+  /// full reasoning). Null = no inductor recorded.
+  referredByMemberId String?
+  referredBy         Member?  @relation("MemberInductions", fields: [referredByMemberId], references: [id], onDelete: SetNull)
+  inducted           Member[] @relation("MemberInductions")
+
   joinedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -347,22 +354,24 @@ model Member {
   fromApplication   MembershipApplication?
   referredVisitors  Visitor[]               @relation("VisitorReferrals")
   profileRevisions  MemberProfileRevision[]
-  leads             Lead[]
   submittedArticles Blog[]
   testimonials      Testimonial[]
 
   // BWF App in-house build (2026-09-09) — see docs comment above the
   // Referral/ThankYouSlip models below for the full picture.
-  referralsGiven        Referral[]     @relation("ReferralGiven")
-  referralsReceived     Referral[]     @relation("ReferralReceived")
-  thankYouSlipsGiven    ThankYouSlip[] @relation("ThankYouSlipGiven")
-  thankYouSlipsReceived ThankYouSlip[] @relation("ThankYouSlipReceived")
-  oneToOnesRecorded     OneToOne[]     @relation("OneToOneRecordedBy")
-  oneToOnesWith         OneToOne[]     @relation("OneToOneWith")
-  powerDatesHosted      PowerDate[]    @relation("PowerDateHost")
-  powerDatesJoined      PowerDate[]    @relation("PowerDateParticipant")
-  conclavesOrganized    Conclave[]              @relation("ConclaveOrganizer")
-  conclaveParticipation ConclaveParticipant[]   @relation("ConclaveParticipation")
+  referralsGiven        Referral[]            @relation("ReferralGiven")
+  referralsReceived     Referral[]            @relation("ReferralReceived")
+  thankYouSlipsGiven    ThankYouSlip[]        @relation("ThankYouSlipGiven")
+  thankYouSlipsReceived ThankYouSlip[]        @relation("ThankYouSlipReceived")
+  oneToOnesRecorded     OneToOne[]            @relation("OneToOneRecordedBy")
+  oneToOnesWith         OneToOne[]            @relation("OneToOneWith")
+  powerDatesHosted      PowerDate[]           @relation("PowerDateHost")
+  powerDatesJoined      PowerDate[]           @relation("PowerDateParticipant")
+  conclavesOrganized    Conclave[]            @relation("ConclaveOrganizer")
+  conclaveParticipation ConclaveParticipant[] @relation("ConclaveParticipation")
+  rosterAssignments     RosterAssignment[]
+  consumersBrought      Consumer[]
+  chiefGuestsBrought    MemberChiefGuest[]
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -797,108 +806,6 @@ model Meeting {
   @@map("meetings")
 }
 
-enum EventType {
-  CHAPTER_MEETING
-  NETWORKING_EVENT
-  SEMINAR
-  EXHIBITION
-  CHAPTER_LAUNCH
-  SPECIAL_EVENT
-}
-
-enum EventStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-}
-
-model Event {
-  id          String    @id @default(cuid())
-  title       String
-  slug        String    @unique
-  description String?
-  eventType   EventType @default(SPECIAL_EVENT)
-
-  /// Null = a site-wide/global event, not tied to one chapter (brief §26:
-  /// "Chapter or Global").
-  chapterId String?
-  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
-
-  startsAt             DateTime
-  venue                String?
-  imageUrl             String?
-  registrationEnabled  Boolean     @default(true)
-  capacity             Int?
-  registrationDeadline DateTime?
-  status               EventStatus @default(SCHEDULED)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  visitors Visitor[]
-
-  @@index([chapterId])
-  @@map("events")
-}
-
-// ---------------------------------------------------------------------------
-// Phase 9 — reporting, exports & weekly report configuration (brief §39,
-// §44-46). The export itself (Excel/CSV/PDF of the same Name/Category/Phone/
-// Membership-Status fields, on demand or "weekly") needs no schema of its
-// own — it's a read against Member. What DOES need storage is brief §46's
-// explicit "recipients should be configurable... do not hardcode recipients"
-// and "schedule should be configurable" — WeeklyReportRecipient/Settings
-// exist for exactly that. Actually emailing them out automatically is
-// deliberately NOT built this phase: every other transactional email this
-// project has needed (visitor confirmations in Phase 8, application
-// confirmations in Phase 7) was explicitly deferred to Phase 13 ("Email /
-// Notification Automation") even when, like this one, it was closely tied to
-// the phase that introduced the underlying data — see docs/PHASES.md. Weekly
-// Reports gets the same treatment: the config is real and admin-editable now,
-// Phase 13 wires the actual scheduled send on top of it.
-// ---------------------------------------------------------------------------
-
-enum WeeklyReportScope {
-  MASTER
-  CHAPTER
-}
-
-model WeeklyReportRecipient {
-  id    String            @id @default(cuid())
-  email String
-  scope WeeklyReportScope @default(MASTER)
-
-  /// Only meaningful when scope == CHAPTER.
-  chapterId String?
-  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-
-  isActive Boolean @default(true)
-
-  /// Backlog #26 — per-recipient column preference, mirroring the same
-  /// "include Chapter & Company" checkbox /admin/exports already offers for
-  /// an on-demand export (brief §44's "must not alter requested export
-  /// unless selected" applies the same way here: off by default).
-  includeExtraColumns Boolean @default(false)
-
-  createdAt DateTime @default(now())
-
-  @@map("weekly_report_recipients")
-}
-
-/// Singleton row (id is always "singleton") — the one configurable schedule
-/// brief §46 asks for. `isEnabled` stays false until Phase 13 actually wires
-/// a sender on top of this; flipping it true today would have no effect.
-model WeeklyReportSettings {
-  id        String  @id @default("singleton")
-  isEnabled Boolean @default(false)
-  /// 0 = Sunday .. 6 = Saturday.
-  dayOfWeek Int     @default(1)
-
-  updatedAt DateTime @updatedAt
-
-  @@map("weekly_report_settings")
-}
-
 enum VisitorStatus {
   REGISTERED
   ATTENDED
@@ -929,12 +836,10 @@ model Visitor {
   designation String?
   status      VisitorStatus @default(REGISTERED)
 
-  /// Client correction spec (2026-09-09) §40 — null for event registrations
-  /// (VisitorRegisterForm hides this whole block when `eventId` is set,
-  /// since visitor pricing/purpose is specifically about chapter meetings,
-  /// not events, which the spec says "may be separate").
-  purposeOfVisit  VisitorPurpose?
-  meetingOption   VisitorMeetingOption?
+  /// Client correction spec (2026-09-09) §40 — visitor pricing/purpose is
+  /// specifically about chapter meetings.
+  purposeOfVisit       VisitorPurpose?
+  meetingOption        VisitorMeetingOption?
   /// R2 URL of the visitor's uploaded payment screenshot — optional (§41's
   /// confirmation copy says "our team will verify your registration and
   /// payment", i.e. verification happens after, not a hard submit gate).
@@ -951,9 +856,6 @@ model Visitor {
   meetingId String?
   meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
 
-  eventId String?
-  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
-
   referringMemberId String?
   referringMember   Member? @relation("VisitorReferrals", fields: [referringMemberId], references: [id], onDelete: SetNull)
 
@@ -965,90 +867,6 @@ model Visitor {
   @@index([chapterId])
   @@index([categoryId])
   @@map("visitors")
-}
-
-// ---------------------------------------------------------------------------
-// Phase 12 — Ask BWF RAG chatbot (brief §36-38).
-//
-// Retrieval is plain structured Prisma queries against existing public
-// content (Chapter/Category/Member/Blog/SiteFaq/WebsiteContent) — not vector
-// embeddings — per the confirmed approach, so no new infra (pgvector, an
-// embedding pipeline) is needed. ChatbotLead is deliberately a narrow model
-// (name/phone/email/requirement only, brief's own "avoid unnecessarily large
-// forms" pattern) — it's one lead SOURCE, not the general Leads system (brief
-// §35), which still has no phase of its own; see docs/ARCHITECTURE.md.
-// ---------------------------------------------------------------------------
-
-enum ChatbotAccessMode {
-  PUBLIC
-  LOGIN_REQUIRED
-  LIMITED_FREE_QUESTIONS
-}
-
-/// Singleton row (id is always "singleton") — brief §37: "Admin should
-/// eventually be able to choose configuration." isEnabled defaults false,
-/// same safe-default-off pattern as WeeklyReportSettings — the widget stays
-/// entirely absent from the public site until an admin turns it on.
-model ChatbotSettings {
-  id                 String            @id @default("singleton")
-  isEnabled          Boolean           @default(false)
-  accessMode         ChatbotAccessMode @default(PUBLIC)
-  /// Only meaningful when accessMode == LIMITED_FREE_QUESTIONS.
-  freeQuestionsLimit Int               @default(5)
-
-  updatedAt DateTime @updatedAt
-
-  @@map("chatbot_settings")
-}
-
-/// One row per browser session (client-generated sessionId, not tied to a
-/// logged-in user). `messages` is a JSON array of {role, content, at} —
-/// mirrors the Blog.faq/MemberProfileRevision.changes precedent for small,
-/// short-lived structured data that doesn't earn its own table.
-model ChatbotConversation {
-  id        String  @id @default(cuid())
-  sessionId String  @unique
-  /// Set when the visitor was signed in (member or admin) at message time —
-  /// not a hard requirement, just recorded when known.
-  userId    String?
-  messages  Json
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  leads ChatbotLead[]
-
-  @@map("chatbot_conversations")
-}
-
-enum ChatbotLeadStatus {
-  NEW
-  CONTACTED
-  CONVERTED
-  DISCARDED
-}
-
-model ChatbotLead {
-  id             String               @id @default(cuid())
-  conversationId String?
-  conversation   ChatbotConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-
-  name        String
-  phone       String
-  email       String?
-  requirement String
-
-  status ChatbotLeadStatus @default(NEW)
-  /// Free-text follow-up notes — including, if relevant, which member/
-  /// chapter/category this lead was matched to. Deliberately not separate
-  /// FK columns (see the Phase 12 header comment above).
-  notes  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@map("chatbot_leads")
 }
 
 // ---------------------------------------------------------------------------
@@ -1071,83 +889,6 @@ model RateLimitHit {
 }
 
 // ---------------------------------------------------------------------------
-// Leads system (brief §35) — a rollup across every lead-generating touchpoint
-// on the site, given its own phase/home here (backlog item #17; the brief's
-// own Phase Structure table §70 never assigned it one). This does NOT
-// replace any existing specific record — MembershipApplication, Visitor, and
-// ChatbotLead each keep their own detailed model, admin page, and workflow
-// exactly as before. `Lead` is purely the cross-source summary brief §35's
-// field list and brief §39's dashboard "New leads" tile actually describe:
-// every one of those flows additionally writes one Lead row here (see
-// src/lib/leads/record.ts) alongside doing whatever it already did.
-//
-// Two of the brief's seven listed sources — "Member profile enquiry" and
-// "Contact form" — have no real capture point on the site yet (a member's
-// public contact block is a plain mailto/tel/WhatsApp link a visitor leaves
-// the site to use, not a form with data to record; no general Contact Us
-// page exists at all). Modeled as real LeadSource values so nothing about
-// the schema needs to change whenever those forms are eventually built, but
-// nothing populates them yet — see docs/ARCHITECTURE.md.
-// ---------------------------------------------------------------------------
-
-enum LeadSource {
-  MEMBER_PROFILE_ENQUIRY
-  CONTACT_FORM
-  CHATBOT
-  MEMBERSHIP_ENQUIRY
-  VISITOR_REGISTRATION
-  EVENT_REGISTRATION
-  CATEGORY_WAITLIST
-}
-
-/// Mirrors ChatbotLeadStatus's own 4-state lifecycle (brief §35's "Future
-/// system should track whether lead became business" is just CONVERTED —
-/// no separate boolean needed for the same fact).
-enum LeadStatus {
-  NEW
-  CONTACTED
-  CONVERTED
-  DISCARDED
-}
-
-model Lead {
-  id          String     @id @default(cuid())
-  source      LeadSource
-  name        String
-  phone       String
-  email       String?
-  requirement String?
-
-  /// The member a lead is "involved" with, per brief §35's field list — set
-  /// when known (e.g. who referred a visitor); most sources don't have one.
-  memberId String?
-  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
-
-  /// Null for sources with no chapter of their own (chatbot, a waitlisted
-  /// membership enquiry with no chapter assigned yet) — deliberately, not a
-  /// missing-data bug. A Chapter Admin's admin view (requireChapterAccess)
-  /// can only ever show leads with a real chapterId; a null-chapter lead is
-  /// visible only to Central/Super Admin via the blanket leads:manage
-  /// permission, same visibility rule ChatbotLead's own page already used.
-  chapterId String?
-  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
-
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  status LeadStatus @default(NEW)
-  notes  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([chapterId])
-  @@index([source])
-  @@map("leads")
-}
-
-// ---------------------------------------------------------------------------
 // Client correction spec (2026-09-09) — "ADDITIONAL REQUIREMENT — CHIEF
 // GUESTS" + backlog #21 ("give Leads-style Chief Guest DB an actual home").
 // No fixed limit on how many can be added (spec is explicit about this) —
@@ -1156,12 +897,12 @@ model Lead {
 // ---------------------------------------------------------------------------
 
 model ChiefGuest {
-  id           String  @id @default(cuid())
-  name         String
-  photoUrl     String?
-  company      String?
-  designation  String?
-  description  String?
+  id          String  @id @default(cuid())
+  name        String
+  photoUrl    String?
+  company     String?
+  designation String?
+  description String?
 
   chapterId String?
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
@@ -1278,7 +1019,7 @@ model ThankYouSlip {
 /// direction, unlike Referral/ThankYouSlip), so `memberId` is just whoever
 /// recorded it and `withMemberId` the other person, not a "from/to" of value.
 model OneToOne {
-  id    String  @id @default(cuid())
+  id    String   @id @default(cuid())
   notes String?
   metAt DateTime @default(now())
 
@@ -1302,11 +1043,11 @@ model OneToOne {
 /// PowerDate row per companion, same simplification tradeoff as Member vs
 /// MemberProfile (no join table for what's realistically almost always 1).
 model PowerDate {
-  id                       String  @id @default(cuid())
-  externalContactName     String
-  externalContactCompany  String?
-  notes                    String?
-  metAt                    DateTime @default(now())
+  id                     String   @id @default(cuid())
+  externalContactName    String
+  externalContactCompany String?
+  notes                  String?
+  metAt                  DateTime @default(now())
 
   hostMemberId String
   hostMember   Member @relation("PowerDateHost", fields: [hostMemberId], references: [id], onDelete: Restrict)
@@ -1322,13 +1063,71 @@ model PowerDate {
   @@map("power_dates")
 }
 
+// ---------------------------------------------------------------------------
+// Phase 20 Batch 5 — Consumer and MemberChiefGuest. ActivityType already had
+// CONSUMER/CHIEF_GUEST as distinct point-earning types, but both were
+// derived from the public Visitor model's `purposeOfVisit` — the same
+// "automatic matching" pattern the client explicitly rejected for induction
+// (decision #6: manual only, no auto-derivation from Visitor records). Both
+// become real member-self-reported logs instead, the same shape as
+// PowerDate's external-contact pattern above — the other party never needs
+// to have gone through the public /visit registration flow at all, which
+// stays completely untouched by this change (it serves a different concern:
+// a walk-in/prebooking visitor's own registration + pricing, not member
+// scoring). MemberChiefGuest is deliberately a different model from the
+// public ChiefGuest homepage-showcase model below — one is a member's
+// private activity record, the other curated public social proof.
+// ---------------------------------------------------------------------------
+
+/// A BWF member brought an end consumer (someone with a real construction
+/// requirement, not a prospective member) to a meeting.
+model Consumer {
+  id      String   @id @default(cuid())
+  name    String
+  company String?
+  phone   String?
+  notes   String?
+  metAt   DateTime @default(now())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@map("consumers")
+}
+
+/// A BWF member invited a Chief Guest (a business leader / decision-maker)
+/// to a meeting — the member's own activity credit for doing so, separate
+/// from the public ChiefGuest homepage carousel (which an admin curates
+/// independently, not necessarily 1:1 with these).
+model MemberChiefGuest {
+  id          String   @id @default(cuid())
+  name        String
+  company     String?
+  designation String?
+  notes       String?
+  metAt       DateTime @default(now())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@map("member_chief_guests")
+}
+
 /// 3+ BWF members meeting together — genuinely needs a real participant
 /// list (unlike PowerDate's near-always-one companion), so this gets an
 /// actual join table rather than a JSON array: points/reports later need to
 /// query "every Conclave a given member was part of" relationally, which a
 /// JSON array of ids can't do cleanly (no Prisma include/filter on it).
 model Conclave {
-  id       String  @id @default(cuid())
+  id       String   @id @default(cuid())
   location String?
   notes    String?
   metAt    DateTime @default(now())
@@ -1366,13 +1165,16 @@ model ConclaveParticipant {
 // values." One row per activity type, seeded at 0 (not fabricated point
 // values) — admin sets real numbers via /admin/points-config.
 //
-// Covers every activity type this app can currently compute for real:
-// the 5 self-reported models above, plus VISITOR/CONSUMER/CHIEF_GUEST/
-// INDUCTION — all derived from the *existing* public Visitor model
-// (referringMemberId + purposeOfVisit + status=CONVERTED), not a new model.
-// Spec's remaining list items ("Meeting participation", "Members referred")
-// have no underlying data model yet (no attendance-tracking system exists)
-// — deliberately left out rather than computed from nothing.
+// Covers every activity type this app can currently compute for real: the 5
+// self-reported models above, plus VISITOR (still derived from the public
+// Visitor model's referringMemberId — a prospective-member visitor
+// genuinely is that), and CONSUMER/CHIEF_GUEST/INDUCTION — as of Phase 20
+// Batch 5, these three are derived from Consumer/MemberChiefGuest
+// (self-reported, see their own header comment) and Member.referredByMemberId
+// (decision #6's manual picker), not from Visitor at all anymore. Spec's
+// remaining list items ("Meeting participation", "Members referred") have no
+// underlying data model yet (no attendance-tracking system exists) —
+// deliberately left out rather than computed from nothing.
 // ---------------------------------------------------------------------------
 
 enum ActivityType {
@@ -1395,4 +1197,52 @@ model PointsConfig {
   updatedAt DateTime @updatedAt
 
   @@map("points_config")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 20 Batch 3 — Roster Sheet PDF module. "Meeting Roles" (Power Date
+// Host, Visitor Host, Digital Host, etc.) are the reference roster PDFs'
+// per-meeting duty-rotation assignments — deliberately NOT modeled as
+// ChapterLeadership, which the public /chapters/[slug] page renders in full
+// under a "Leadership" heading (see prisma/seed-members.ts's own header
+// comment for why that would be wrong here: these are week-to-week
+// facilitation duties, not standing chapter offices). Kept as current
+// per-chapter state (like ChapterLeadership already is), not a historical
+// log per meeting — admin reassigns a duty whenever it rotates, and every
+// roster generated after that reflects the new assignment.
+// ---------------------------------------------------------------------------
+
+model RosterRole {
+  id    String @id @default(cuid())
+  /// Admin-extensible, same "do not hardcode roles" pattern as
+  /// ChapterLeadershipRole — seeded with a canonical catalog consolidating
+  /// the 3 reference chapters' slightly different wording for the same
+  /// duties (e.g. "Digital Host" / "Digital Marketing Coordinator").
+  key   String @unique
+  label String
+  order Int    @default(0)
+
+  assignments RosterAssignment[]
+
+  @@map("roster_roles")
+}
+
+model RosterAssignment {
+  id        String @id @default(cuid())
+  chapterId String
+  roleId    String
+  memberId  String
+
+  chapter Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  role    RosterRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  member  Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// A role can have more than one member (the reference PDFs show e.g. two
+  /// people both as "Power Date Host") — this only prevents the exact same
+  /// member being assigned to the exact same role twice.
+  @@unique([chapterId, roleId, memberId])
+  @@index([chapterId])
+  @@map("roster_assignments")
 }

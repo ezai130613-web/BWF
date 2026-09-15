@@ -4,7 +4,7 @@ import { MediaUploadField } from "@/components/ui/media-upload-field";
 import { updateWebsiteContent } from "./actions";
 
 /** Keys whose value is an image URL get the upload widget instead of a plain textarea. */
-const IMAGE_KEYS = new Set(["payment.qrCodeUrl", "payment.membershipQrCodeUrl"]);
+const IMAGE_KEYS = new Set(["payment.qrCodeUrl", "payment.membershipQrCodeUrl", "roster.visitorFeedbackQrUrl"]);
 
 export default async function ContentPage() {
   await requirePermission("content:manage");

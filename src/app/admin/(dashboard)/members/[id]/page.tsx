@@ -6,6 +6,7 @@ import { EditMemberForm } from "@/components/admin/edit-member-form";
 import { MemberPortalAccess } from "@/components/admin/member-portal-access";
 import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-revision-form";
 import { MemberTestimonials } from "@/components/admin/member-testimonials";
+import { MemberInductionForm } from "@/components/admin/member-induction-form";
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,6 +18,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   if (!member) notFound();
 
   await requireChapterAccess(member.chapterId, "members:manage");
+
+  const inductionCandidates = await db.member.findMany({
+    where: { chapterId: member.chapterId, status: "ACTIVE", id: { not: member.id } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   const pendingRevision = await db.memberProfileRevision.findFirst({
     where: { memberId: member.id, status: "PENDING" },
@@ -54,6 +61,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       ) : null}
 
       <EditMemberForm member={member} />
+
+      <MemberInductionForm
+        memberId={member.id}
+        currentReferredByMemberId={member.referredByMemberId}
+        candidates={inductionCandidates}
+      />
 
       <MemberTestimonials memberId={member.id} testimonials={testimonials} />
     </div>

@@ -28,16 +28,11 @@ const PERMISSIONS = [
   { key: "feedback:view", label: "View feedback" },
   { key: "applications:manage", label: "Manage membership applications" },
   { key: "meetings:manage", label: "Manage chapter meetings" },
-  { key: "events:manage", label: "Manage events" },
   { key: "visitors:manage", label: "Manage visitor registrations" },
-  { key: "exports:manage", label: "Export member data (Excel/CSV/PDF)" },
-  { key: "reports:manage", label: "Manage weekly report recipients & schedule" },
-  { key: "chatbot:manage", label: "Manage Ask BWF chatbot settings & leads" },
-  { key: "leads:manage", label: "Manage the general Leads system (brief §35)" },
-  { key: "analytics:view", label: "View Admin Analytics (brief §51)" },
   { key: "chief_guests:manage", label: "Manage the Chief Guests homepage carousel" },
   { key: "points_config:manage", label: "Manage BWF App points/scoring values" },
   { key: "app_activity:view", label: "View BWF App activity (referrals, TYS, 1-2-1s, Power Dates, Conclaves, points)" },
+  { key: "roster:manage", label: "Generate chapter Roster Sheet PDFs" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -58,34 +53,17 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "content:manage",
     "applications:manage",
     "meetings:manage",
-    "events:manage",
     "visitors:manage",
-    "exports:manage",
-    "reports:manage",
-    "chatbot:manage",
-    "leads:manage",
-    "analytics:view",
     "chief_guests:manage",
     "points_config:manage",
     "app_activity:view",
+    "roster:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
-  // meetings:manage/events:manage/visitors:manage below (mirrors
+  // meetings:manage/visitors:manage/roster:manage below (mirrors
   // members:manage — see requireChapterAccess in src/lib/auth/rbac.ts).
-  // exports:manage follows the same scoped pattern (brief §45: "Chapter
-  // Admin can export ONLY their chapter") — granted via chapter scoping, not
-  // a blanket row here. reports:manage (the weekly-report recipient/schedule
-  // config) is NOT scoped the same way — the brief never gives Chapter Admin
-  // a role in that configuration, only in exporting their own chapter's data.
-  // leads:manage is scoped the same way as exports:manage — a Chapter Admin
-  // sees/updates only leads with their own chapterId (src/lib/auth/rbac.ts's
-  // requireChapterAccess), never the chapterless ones (chatbot, unassigned
-  // waitlist enquiries), which stay Central/Super-Admin-only.
-  // analytics:view is NOT chapter-scoped at all — brief §51's "Admin
-  // Analytics" reads as a site-wide funnel/conversion view (Central/Super
-  // Admin only), not a per-chapter breakdown like Members/Visitors/Leads.
-  // app_activity:view is scoped the same way as leads:manage/exports:manage
+  // app_activity:view is scoped the same way
   // — a Chapter Admin sees only Referral/ThankYouSlip/OneToOne/PowerDate/
   // Conclave rows and leaderboard entries touching their own chapter's
   // members (either side of the interaction), via getChapterScope() in
@@ -140,6 +118,31 @@ const CHAPTER_LEADERSHIP_ROLES = [
   { key: "CO_FOUNDER", label: "Co-Founder" },
 ] as const;
 
+// Phase 20 Batch 3 — Roster Sheet module's "Meeting Roles" catalog.
+// Consolidates the 3 reference roster PDFs' slightly different wording for
+// the same duty across chapters (e.g. "Digital Host" / "Digital Marketing
+// Coordinator" both become DIGITAL_HOST) into one canonical, admin-
+// extensible list — same "don't hardcode roles" pattern as
+// CHAPTER_LEADERSHIP_ROLES, managed going forward via /admin/roster-roles.
+const ROSTER_ROLES = [
+  { key: "CHIEF_GUEST_HOST", label: "Chief Guest Host", order: 1 },
+  { key: "VISITOR_HOST", label: "Visitor Host", order: 2 },
+  { key: "MEETING_HOST", label: "Meeting Host", order: 3 },
+  { key: "ATTENDANCE_HOST", label: "Attendance Host", order: 4 },
+  { key: "HOT_SEAT_HOST", label: "Hot Seat Host", order: 5 },
+  { key: "MENTOR_HOST", label: "Mentor Host", order: 6 },
+  { key: "GIVE_AND_ASK_HOST", label: "Give and Ask Host", order: 7 },
+  { key: "ONE_TO_ONE_HOST", label: "One-to-One Host", order: 8 },
+  { key: "SOCIAL_COORDINATOR", label: "Social Co-Ordinator", order: 9 },
+  { key: "POWER_DATE_HOST", label: "Power Date Host", order: 10 },
+  { key: "DIGITAL_HOST", label: "Digital Host", order: 11 },
+  { key: "WHATSAPP_HOST", label: "Whatsapp Host", order: 12 },
+  { key: "THANKS_NOTE_HOST", label: "Thanks Note Host", order: 13 },
+  { key: "TIME_MANAGEMENT_HOST", label: "Time Management", order: 14 },
+  { key: "CONCLAVE_HOST", label: "Conclave Host", order: 15 },
+  { key: "RANKING_HOST", label: "Ranking Host", order: 16 },
+] as const;
+
 // Brief §30's suggested initial list — admin can add/edit via /admin/blog-categories.
 const BLOG_CATEGORIES = [
   "Construction Guides",
@@ -192,6 +195,10 @@ async function main() {
 
   for (const role of CHAPTER_LEADERSHIP_ROLES) {
     await db.chapterLeadershipRole.upsert({ where: { key: role.key }, update: {}, create: role });
+  }
+
+  for (const role of ROSTER_ROLES) {
+    await db.rosterRole.upsert({ where: { key: role.key }, update: {}, create: role });
   }
 
   for (const name of BLOG_CATEGORIES) {
@@ -306,6 +313,17 @@ async function main() {
       section: "Stats",
       value: null,
     },
+    // Phase 20 Batch 3 — the Roster Sheet's final page. Everything else on
+    // that page (tagline, self-intro block, pledge text) is fixed structural
+    // copy identical across all 3 reference chapters, same "structural spec
+    // copy" treatment as the Chapters page's terminology cards — this QR is
+    // the one genuinely per-deployment asset, same pattern as payment.qrCodeUrl.
+    {
+      key: "roster.visitorFeedbackQrUrl",
+      label: "Roster Sheet — visitor feedback QR code image",
+      section: "Roster",
+      value: null,
+    },
   ] as const;
 
   for (const content of WEBSITE_CONTENT) {
@@ -315,15 +333,6 @@ async function main() {
       create: content,
     });
   }
-
-  // Weekly report schedule (brief §46) — singleton row, disabled by default.
-  // No recipients seeded ("do not hardcode recipients") — added via
-  // /admin/reports whenever real inboxes exist to send to.
-  await db.weeklyReportSettings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton", isEnabled: false, dayOfWeek: 1 },
-  });
 
   // BWF App points/scoring (client correction spec) — one row per activity
   // type, seeded at 0 points. Spec is explicit: "do not hard-code the
@@ -343,15 +352,6 @@ async function main() {
   for (const activityType of ACTIVITY_TYPES) {
     await db.pointsConfig.upsert({ where: { activityType }, update: {}, create: { activityType, points: 0 } });
   }
-
-  // Ask BWF chatbot settings (brief §37) — singleton row, disabled by
-  // default until an admin turns it on at /admin/chatbot (and a real
-  // OPENAI_API_KEY exists — see src/lib/chatbot/client.ts).
-  await db.chatbotSettings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton", isEnabled: false, accessMode: "PUBLIC", freeQuestionsLimit: 5 },
-  });
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
   const seedPassword = process.env.SEED_SUPER_ADMIN_PASSWORD;

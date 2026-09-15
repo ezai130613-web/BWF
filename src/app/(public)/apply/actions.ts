@@ -6,7 +6,6 @@ import { db } from "@/lib/db";
 import { getChapterAvailability } from "@/lib/applications/availability";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
 import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
-import { recordLead } from "@/lib/leads/record";
 
 const submitSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -81,16 +80,6 @@ export async function submitApplication(
   } catch (error) {
     console.error("notifyApplicationSubmitted failed (application still submitted):", error);
   }
-
-  await recordLead({
-    source: status === "WAITLISTED" ? "CATEGORY_WAITLIST" : "MEMBERSHIP_ENQUIRY",
-    name: rest.name,
-    phone: rest.phone,
-    email: rest.email,
-    requirement: rest.companyInfo,
-    chapterId: finalChapterId,
-    categoryId: rest.categoryId,
-  });
 
   revalidatePath("/admin/applications");
   return { error: undefined, success: true };

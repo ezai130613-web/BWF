@@ -9,11 +9,14 @@ import { db } from "@/lib/db";
  * needs "your own" activity for scoring) because the spec's Reports screen
  * explicitly wants both directions shown separately.
  *
- * One-to-One/Power Date/Conclave are filtered on `metAt` (when the activity
- * happened) rather than `createdAt` (when it was recorded) — a member might
- * log something a few days after it happened, and the report should reflect
- * reality, not data-entry timing. Visitor/Referral/ThankYouSlip have no
- * separate "when it happened" field, so `createdAt` is the only option there.
+ * One-to-One/Power Date/Conclave/Consumer/MemberChiefGuest are filtered on
+ * `metAt` (when the activity happened) rather than `createdAt` (when it was
+ * recorded) — a member might log something a few days after it happened,
+ * and the report should reflect reality, not data-entry timing. Visitor/
+ * Referral/ThankYouSlip have no separate "when it happened" field, so
+ * `createdAt` is the only option there. Induction has no date field at all
+ * (`Member.referredByMemberId` is set once at member creation) — the
+ * `since` filter applies to the inducted member's own `createdAt` instead.
  */
 export type ActivityStats = {
   referralsGiven: number;
@@ -62,9 +65,9 @@ export async function getActivityStats(memberId: string, since?: Date): Promise<
         ...createdFilter,
       },
     }),
-    db.visitor.count({ where: { referringMemberId: memberId, purposeOfVisit: "END_CONSUMER", ...createdFilter } }),
-    db.visitor.count({ where: { referringMemberId: memberId, purposeOfVisit: "CHIEF_GUEST", ...createdFilter } }),
-    db.visitor.count({ where: { referringMemberId: memberId, status: "CONVERTED", ...createdFilter } }),
+    db.consumer.count({ where: { memberId, ...metFilter } }),
+    db.memberChiefGuest.count({ where: { memberId, ...metFilter } }),
+    db.member.count({ where: { referredByMemberId: memberId, ...createdFilter } }),
   ]);
 
   return {

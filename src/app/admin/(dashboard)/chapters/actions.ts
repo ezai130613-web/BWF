@@ -137,3 +137,63 @@ export async function removeChapterLeadership(chapterId: string, leadershipId: s
   revalidatePath("/chapters");
   revalidatePath("/chapters/[slug]", "page");
 }
+
+// ---------------------------------------------------------------------------
+// Phase 20 Batch 3 — Roster Sheet "Meeting Roles" (Power Date Host, Visitor
+// Host, etc.). Deliberately NOT ChapterLeadership — see RosterAssignment's
+// schema comment for why — but managed from the same chapter detail page,
+// under the same chapters:manage gate, as a direct sibling of the Leadership
+// section above.
+// ---------------------------------------------------------------------------
+
+const assignRosterRoleSchema = z.object({
+  chapterId: z.string(),
+  memberId: z.string().min(1, "Select a member"),
+  roleId: z.string().min(1, "Select a role"),
+});
+
+export async function assignRosterRole(_prevState: { error?: string } | undefined, formData: FormData) {
+  const session = await requirePermission("chapters:manage");
+
+  const parsed = assignRosterRoleSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { chapterId, memberId, roleId } = parsed.data;
+
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
+  if (member.chapterId !== chapterId) {
+    return { error: "That member does not belong to this chapter." };
+  }
+
+  await db.rosterAssignment.upsert({
+    where: { chapterId_roleId_memberId: { chapterId, roleId, memberId } },
+    update: {},
+    create: { chapterId, roleId, memberId },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "chapter.roster_role_assigned",
+    entity: "Chapter",
+    entityId: chapterId,
+    metadata: { memberId, roleId },
+  });
+
+  revalidatePath(`/admin/chapters/${chapterId}`);
+  return { error: undefined };
+}
+
+export async function removeRosterAssignment(chapterId: string, assignmentId: string) {
+  const session = await requirePermission("chapters:manage");
+
+  await db.rosterAssignment.delete({ where: { id: assignmentId } });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "chapter.roster_role_removed",
+    entity: "Chapter",
+    entityId: chapterId,
+  });
+
+  revalidatePath(`/admin/chapters/${chapterId}`);
+}

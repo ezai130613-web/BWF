@@ -10,7 +10,6 @@ const STATIC_ROUTES = [
   "/chapters",
   "/members",
   "/insights",
-  "/events",
   "/apply",
   "/testimonials",
   "/faqs",
@@ -31,7 +30,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const chapters = await db.chapter.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } });
   const members = await db.member.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } });
   const posts = await db.blog.findMany({ where: publiclyVisibleBlogWhere, select: { slug: true, updatedAt: true } });
-  const events = await db.event.findMany({ select: { slug: true, updatedAt: true } });
   const authors = await db.author.findMany({ select: { slug: true, updatedAt: true } });
   const landingPages = await listProgrammaticLandingPages();
 
@@ -40,7 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...chapters.map((c) => ({ url: `${SITE_URL}/chapters/${c.slug}`, lastModified: c.updatedAt })),
     ...members.map((m) => ({ url: `${SITE_URL}/members/${m.slug}`, lastModified: m.updatedAt })),
     ...posts.map((p) => ({ url: `${SITE_URL}/insights/${p.slug}`, lastModified: p.updatedAt })),
-    ...events.map((e) => ({ url: `${SITE_URL}/events/${e.slug}`, lastModified: e.updatedAt })),
     ...authors.map((a) => ({ url: `${SITE_URL}/authors/${a.slug}`, lastModified: a.updatedAt })),
     ...landingPages.map((p) => ({ url: `${SITE_URL}/${p.slug}` })),
   ];

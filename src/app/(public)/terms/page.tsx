@@ -16,9 +16,9 @@ export default async function TermsPage() {
     <LegalPageShell
       eyebrow="Legal"
       title="Terms & Conditions"
-      lastUpdated="6 September 2026"
+      lastUpdated="14 September 2026"
       intro={
-        "These terms govern your use of the Builders World Forum (“BWF,” “we,” “us”) website, membership application process, chapter meetings and events, and the Ask BWF chatbot. By using this website or submitting an application or registration, you agree to them."
+        "These terms govern your use of the Builders World Forum (“BWF,” “we,” “us”) website, membership application process, and chapter meetings. By using this website or submitting an application or registration, you agree to them."
       }
     >
       <h2>1. About Builders World Forum</h2>
@@ -64,20 +64,12 @@ export default async function TermsPage() {
 
       <h2>6. Visitors and guests</h2>
       <p>
-        Registering to attend a chapter meeting or event as a visitor does not entitle you to
-        membership or to any particular business category or chapter. A BWF member or administrator
-        may follow up with you about your interest in joining after your visit.
+        Registering to attend a chapter meeting as a visitor does not entitle you to membership or
+        to any particular business category or chapter. A BWF member or administrator may follow up
+        with you about your interest in joining after your visit.
       </p>
 
-      <h2>7. Ask BWF chatbot</h2>
-      <p>
-        The Ask BWF chatbot gives AI-generated answers based on BWF&apos;s public content. It may be
-        incomplete or inaccurate, and its answers are not professional, legal, or financial advice
-        and are not binding on BWF. For anything that matters, confirm directly with a BWF
-        administrator.
-      </p>
-
-      <h2>8. Acceptable use</h2>
+      <h2>7. Acceptable use</h2>
       <p>You agree not to:</p>
       <ul>
         <li>submit false or misleading information in an application, registration, or profile;</li>
@@ -86,7 +78,7 @@ export default async function TermsPage() {
         <li>use the website for any unlawful purpose.</li>
       </ul>
 
-      <h2>9. Intellectual property</h2>
+      <h2>8. Intellectual property</h2>
       <p>
         The BWF name, branding, and website content belong to BWF (or its licensors). By submitting
         content to your member profile, a blog post, a testimonial, or feedback, you grant BWF a
@@ -94,14 +86,14 @@ export default async function TermsPage() {
         published.
       </p>
 
-      <h2>10. Third-party links and services</h2>
+      <h2>9. Third-party links and services</h2>
       <p>
         This website links to third-party services — including WhatsApp click-to-chat, member
         websites, and members&apos; own social media profiles — that are governed by their own
         terms, not these. BWF is not responsible for the content or conduct of those third parties.
       </p>
 
-      <h2>11. Suspension and termination</h2>
+      <h2>10. Suspension and termination</h2>
       <p>
         BWF may suspend or terminate a member&apos;s status or an account&apos;s access to the
         website for: violation of these terms or BWF&apos;s code of conduct; non-payment of fees;
@@ -111,24 +103,24 @@ export default async function TermsPage() {
         the BWF community.
       </p>
 
-      <h2>12. Disclaimers</h2>
+      <h2>11. Disclaimers</h2>
       <p>
-        The website, member directory, and chatbot are provided &ldquo;as is.&rdquo; BWF does not
-        guarantee any particular business outcome from membership, the accuracy of another
-        member&apos;s profile, or the accuracy of chatbot answers.
+        The website and member directory are provided &ldquo;as is.&rdquo; BWF does not guarantee
+        any particular business outcome from membership, or the accuracy of another member&apos;s
+        profile.
       </p>
 
-      <h2>13. Limitation of liability</h2>
+      <h2>12. Limitation of liability</h2>
       <p>
         To the maximum extent permitted by law, BWF&apos;s total liability to you for any claim
-        arising out of or relating to your use of this website, your membership, or any event or
-        meeting shall not exceed the membership or registration fees you paid to BWF in the twelve
+        arising out of or relating to your use of this website, your membership, or any meeting
+        shall not exceed the membership or registration fees you paid to BWF in the twelve
         (12) months preceding the claim. BWF is not liable for indirect, incidental, special, or
         consequential damages, including loss of business, profits, or goodwill, arising from your
         use of the website or your participation in BWF activities.
       </p>
 
-      <h2>14. Indemnification</h2>
+      <h2>13. Indemnification</h2>
       <p>
         You agree to indemnify and hold harmless BWF, its officers, chapter administrators, and
         members from any claim, loss, liability, or expense (including reasonable legal fees)
@@ -136,19 +128,19 @@ export default async function TermsPage() {
         or any content you submit to the website.
       </p>
 
-      <h2>15. Governing law and dispute resolution</h2>
+      <h2>14. Governing law and dispute resolution</h2>
       <p>
         These terms are governed by the laws of India, and subject to the exclusive jurisdiction of
         the courts of Chennai, Tamil Nadu.
       </p>
 
-      <h2>16. Changes to these terms</h2>
+      <h2>15. Changes to these terms</h2>
       <p>
         We&apos;ll update the &ldquo;last updated&rdquo; date above whenever these terms change, and
         give reasonably prominent notice of any material change.
       </p>
 
-      <h2>17. Contact us</h2>
+      <h2>16. Contact us</h2>
       <p>
         {content["contact.email"] ?? <Placeholder>contact email</Placeholder>}
         {" · "}

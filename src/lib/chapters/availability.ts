@@ -25,3 +25,19 @@ export async function getOpenCategoryCounts(chapterIds: string[]): Promise<Map<s
 
   return new Map(chapterIds.map((id) => [id, totalActiveCategories - (occupiedByChapter.get(id)?.size ?? 0)]));
 }
+
+/**
+ * Phase 20 Batch 3 — Roster Sheet's final page needs the actual open
+ * category *names* for one chapter (the reference PDFs' "Open Categories"
+ * list), not just the count getOpenCategoryCounts() returns. Same live
+ * occupied-category query the chapter detail page already uses.
+ */
+export async function getOpenCategoryNames(chapterId: string): Promise<string[]> {
+  const [allActive, occupied] = await Promise.all([
+    db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.member.findMany({ where: { status: "ACTIVE", chapterId }, select: { categoryId: true } }),
+  ]);
+
+  const occupiedIds = new Set(occupied.map((m) => m.categoryId));
+  return allActive.filter((c) => !occupiedIds.has(c.id)).map((c) => c.name);
+}

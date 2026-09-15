@@ -42,13 +42,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         // Initial sign-in — `user` is whatever authorize() returned above.
         token.id = user.id as string;
         token.roles = (user as { roles: string[] }).roles;
         token.chapterId = (user as { chapterId: string | null }).chapterId;
         token.sessionVersion = (user as { sessionVersion: number }).sessionVersion;
+        token.issuedAt = Date.now();
+        return token;
+      }
+
+      // Step-up re-auth (brief §56) — requireRecentAuth() gates high-risk
+      // actions on `issuedAt` being within the last 15 minutes, but a JWT
+      // session otherwise lasts 8 hours and issuedAt was only ever set at
+      // sign-in, so it would go stale for the overwhelming majority of a
+      // session and every such action would 403 (the reported "you don't
+      // have access" bug on Roles & Permissions). confirmRecentAuth()
+      // (src/lib/auth/reauth-actions.ts) re-verifies the user's password
+      // then calls the client `update()` hook with this flag, which is the
+      // only way to bump issuedAt without a full sign-out/sign-in.
+      if (trigger === "update" && (session as { refreshAuthTime?: boolean } | undefined)?.refreshAuthTime) {
         token.issuedAt = Date.now();
         return token;
       }

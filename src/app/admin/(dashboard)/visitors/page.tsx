@@ -18,7 +18,7 @@ export default async function VisitorsPage() {
 
   const visitors = await db.visitor.findMany({
     where: chapterFilter,
-    include: { category: true, chapter: true, meeting: true, event: true },
+    include: { category: true, chapter: true, meeting: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -27,7 +27,7 @@ export default async function VisitorsPage() {
       <div>
         <h1 className="text-xl font-semibold text-neutral-900">Visitors</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Everyone who registered to visit a meeting or event online (brief §23-25) — track
+          Everyone who registered to visit a chapter meeting online (brief §23-25) — track
           follow-up here, then send the strong ones to Apply for Membership.
         </p>
       </div>
@@ -51,9 +51,7 @@ export default async function VisitorsPage() {
                 <td className="px-4 py-3 text-neutral-900">{v.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{v.category.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{v.chapter.name}</td>
-                <td className="px-4 py-3 text-neutral-600">
-                  {v.meeting?.title ?? v.event?.title ?? "—"}
-                </td>
+                <td className="px-4 py-3 text-neutral-600">{v.meeting?.title ?? "—"}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[v.status]}`}>
                     {v.status.replace(/_/g, " ")}

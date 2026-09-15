@@ -18,9 +18,11 @@ const ACTIVITY_TYPES = Object.keys(ACTIVITY_LABELS) as ActivityType[];
 /**
  * Real counts per activity type for one member, as of right now (not a
  * stored/cached total — recomputed on read, same as every other dashboard
- * metric in this project). VISITOR/CONSUMER/CHIEF_GUEST/INDUCTION all derive
- * from the *existing* public Visitor model rather than a new one — see the
- * PointsConfig schema comment for why.
+ * metric in this project). VISITOR still derives from the public Visitor
+ * model (a prospective-member visitor genuinely is that); CONSUMER/
+ * CHIEF_GUEST/INDUCTION derive from Consumer/MemberChiefGuest (self-reported,
+ * Phase 20 Batch 5) and Member.referredByMemberId (decision #6's manual
+ * picker) — see the PointsConfig schema comment for the full history.
  */
 export async function getMemberActivityCounts(memberId: string): Promise<Record<ActivityType, number>> {
   const [
@@ -44,9 +46,9 @@ export async function getMemberActivityCounts(memberId: string): Promise<Record<
     db.visitor.count({
       where: { referringMemberId: memberId, OR: [{ purposeOfVisit: null }, { purposeOfVisit: "PROSPECTIVE_MEMBER" }] },
     }),
-    db.visitor.count({ where: { referringMemberId: memberId, purposeOfVisit: "END_CONSUMER" } }),
-    db.visitor.count({ where: { referringMemberId: memberId, purposeOfVisit: "CHIEF_GUEST" } }),
-    db.visitor.count({ where: { referringMemberId: memberId, status: "CONVERTED" } }),
+    db.consumer.count({ where: { memberId } }),
+    db.memberChiefGuest.count({ where: { memberId } }),
+    db.member.count({ where: { referredByMemberId: memberId } }),
   ]);
 
   return {
@@ -145,21 +147,9 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
       where: { referringMemberId: inScope, OR: [{ purposeOfVisit: null }, { purposeOfVisit: "PROSPECTIVE_MEMBER" }] },
       _count: { _all: true },
     }),
-    db.visitor.groupBy({
-      by: ["referringMemberId"],
-      where: { referringMemberId: inScope, purposeOfVisit: "END_CONSUMER" },
-      _count: { _all: true },
-    }),
-    db.visitor.groupBy({
-      by: ["referringMemberId"],
-      where: { referringMemberId: inScope, purposeOfVisit: "CHIEF_GUEST" },
-      _count: { _all: true },
-    }),
-    db.visitor.groupBy({
-      by: ["referringMemberId"],
-      where: { referringMemberId: inScope, status: "CONVERTED" },
-      _count: { _all: true },
-    }),
+    db.consumer.groupBy({ by: ["memberId"], where: { memberId: inScope }, _count: { _all: true } }),
+    db.memberChiefGuest.groupBy({ by: ["memberId"], where: { memberId: inScope }, _count: { _all: true } }),
+    db.member.groupBy({ by: ["referredByMemberId"], where: { referredByMemberId: inScope }, _count: { _all: true } }),
   ]);
 
   referrals.forEach((r) => add("REFERRAL", r.fromMemberId, r._count._all));
@@ -170,9 +160,9 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
   conclavesOrganized.forEach((r) => add("CONCLAVE", r.organizedByMemberId, r._count._all));
   conclaveParticipations.forEach((r) => add("CONCLAVE", r.memberId, r._count._all));
   visitors.forEach((r) => r.referringMemberId && add("VISITOR", r.referringMemberId, r._count._all));
-  consumers.forEach((r) => r.referringMemberId && add("CONSUMER", r.referringMemberId, r._count._all));
-  chiefGuests.forEach((r) => r.referringMemberId && add("CHIEF_GUEST", r.referringMemberId, r._count._all));
-  inductions.forEach((r) => r.referringMemberId && add("INDUCTION", r.referringMemberId, r._count._all));
+  consumers.forEach((r) => add("CONSUMER", r.memberId, r._count._all));
+  chiefGuests.forEach((r) => add("CHIEF_GUEST", r.memberId, r._count._all));
+  inductions.forEach((r) => r.referredByMemberId && add("INDUCTION", r.referredByMemberId, r._count._all));
 
   return counts;
 }

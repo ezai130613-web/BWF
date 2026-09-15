@@ -1930,3 +1930,545 @@ was available to test with, and duplicating the same code path add no real cover
 - The "known gap" already on record in `docs/ARCHITECTURE.md` (no IP-based rate limiting beyond
   the per-account lockout) is now more load-bearing than before, since a correctly-guessed
   password is sufficient for a live session with no second factor in the way.
+
+## Phase 20 — Client Correction: Major Admin Restructure (Batches 1-2)
+
+**Status:** In progress — multi-batch, same numbering as Phase 15's addendum pattern (one phase
+number for the whole correction effort, batches appended as they ship rather than incrementing the
+phase number each time). See "Known issues / follow-ups" for what's still queued.
+
+**Numbering note:** a client correction, same category as Phases 15/16/17/19 (built at explicit
+user request from a delivered correction document, not from the brief's own phase table) —
+numbered here by build order, following Phase 19.
+
+**Source:** a large "BWF Admin — Major Restructure & Website Admin Corrections" + "Member
+Performance Admin Panel" brief delivered 2026-09-14, together with three real chapter roster-sheet
+PDFs (Chapter 1/2/3) as reference material for the still-pending Roster Sheet module. Full text
+lives in the chat transcript this phase was built from — not saved as a repo file (the user's own
+choice); re-read from that conversation if resuming without it.
+
+**What shipped (2026-09-14) — five features removed, all at the client's explicit confirmation:**
+- **Ask BWF chatbot** — deleted entirely, not just its admin page: the public floating widget/
+  launcher, `/api/chatbot`, `/admin/chatbot`, `src/lib/chatbot/` (client/prompt/retrieval), and the
+  `ChatbotSettings`/`ChatbotConversation`/`ChatbotLead` models. Every mention in `/terms` and
+  `/privacy` removed too (both pages renumbered and re-dated 14 September 2026) — while in there,
+  also corrected a since-stale claim in both legal pages that sign-in uses a one-time-passcode,
+  left over from Phase 19 removing OTP login the same day and never propagated to the legal copy.
+- **Admin Analytics** (`/admin/analytics`, `getAdminAnalytics()`) — deleted.
+- **Weekly Reports + the Weekly Member Export** (`/admin/reports`, `/admin/exports`,
+  `member-export.ts`, the `/api/cron/weekly-report` route, and its `vercel.json` cron entry) —
+  deleted. The client considers Exports superseded by the still-pending Roster Sheet module (see
+  below) and Weekly Reports never had a real sender wired up in the first place (Phase 9 always
+  deferred that to Phase 13, which never happened).
+- **Leads system** (`/admin/leads`, the `Lead` model, `recordLead()` and every one of its 3 call
+  sites in `apply`/`ask-bwf`/`visit` actions) — deleted. Client's reasoning: it only ever duplicated
+  Visitor/Membership Application records; no standalone public enquiry form exists to justify
+  keeping it as its own concept.
+- **Events** (`/admin/events`, the public `/events` pages, the `Event` model, `Visitor.eventId`,
+  and the event-capacity Serializable-transaction machinery in `visit/actions.ts` that existed
+  solely to guard event capacity) — deleted. `VisitorRegisterForm`/`registerVisitor` simplified
+  back down to meeting-only registration (their event branch was the only caller of that capacity
+  machinery). `sitemap.ts`, the admin dashboard's "Upcoming events" tile, and the admin Visitors
+  list/detail pages' `event` include and `visitor.event` references were all updated to match.
+
+**Migration:** `20260914191733_remove_analytics_exports_reports_leads_chatbot_events` — drops the
+7 models/6 enums above plus the `visitors.eventId` column. Applied live via `prisma migrate deploy`
+(the destructive-DB-operation gate in this environment correctly blocked it from running
+unattended; re-ran only after the user explicitly said "You can run it"). One real hiccup during
+this: the first migration attempt failed because the generated SQL file accidentally captured a
+stray `Loaded Prisma config from prisma.config.ts.` log line as its first line (from piping
+`prisma migrate diff`'s full stdout through `tee` instead of isolating just the SQL) — Postgres
+rejected it as a syntax error before running any real statement, so nothing was actually touched;
+fixed the file, marked the failed attempt `--rolled-back` (also gated, also re-confirmed with the
+user first), and re-deployed clean. Worth remembering for any future `prisma migrate diff --script`
+capture: redirect/tee only the SQL, not the whole command's stdout.
+
+**Dropped real data, all on features the client confirmed as unwanted:** 8 `Lead` rows, 6
+`ChatbotConversation` transcripts, 1 `ChatbotSettings` row, 1 `WeeklyReportSettings` row. No
+Member/Company/Application/Visitor/Meeting data was touched — the migration SQL was generated via
+`prisma migrate diff` and read in full before being applied, specifically to confirm this.
+
+**Verification performed:** `npx next build` clean (zero TypeScript errors, all 62 remaining routes
+listed correctly, none of the 5 removed features' routes present) both before and after the DB
+migration; `npx eslint src prisma --max-warnings=0` clean (no orphaned imports from the removals).
+Not exercised live via a real browser this pass — this was a pure removal/deletion batch with no
+new UI surface to click through; the build's route-generation step (which actually renders every
+static page at build time) is the closest equivalent and passed clean.
+
+### Batch 2 — Dashboard metric audit & fixes (2026-09-14, same day)
+
+**What shipped:** brief §2–15 — every dashboard number was traced back to its real query against
+the live (non-seed) database before touching any code (see the doc-comment at the top of
+`src/lib/dashboard/metrics.ts` for the full audit). Confirmed genuinely correct, just needed a
+relabel or regroup: Visitors=1, Applications=0, Meetings=0 (all real — a data-entry gap, not a
+dashboard bug; no historical visitor/meeting data has been imported into this system yet), Pending
+Approvals (already correctly derived from `ApplicationStatus notIn [PAID, REJECTED]`, not a
+hardcoded stat), Published Blogs=30 (renamed from "Blog Activity" per §11).
+- New `src/lib/dashboard/date-range.ts` — `resolveDateRange()`, 7 presets (Today/This Week/This
+  Month/Last 30 Days/Last 6 Months/This Year/Custom), defaulting to "This Month" (the brief states
+  no default for this filter specifically, unlike the Member Performance panel's own date filter
+  which explicitly defaults to "This Week" — This Month was chosen as the reasonable middle
+  ground). Custom range is two plain `<input type="date">` fields, GET-form based, no client JS —
+  matches the project's established filter-UI convention (Reports' period tabs, Member Search).
+- `getDashboardMetrics()` restructured into current-state fields (never affected by the date
+  range: Active Members, Unique Companies, Active Chapters, Open Category Slots, Published Blogs,
+  Pending Approvals, Upcoming Meetings) and selected-period fields (New Visitor Registrations,
+  Membership Applications, New Members, Visitor→Member Conversions/Inductions — all filtered by
+  `createdAt`/`joinedAt`/`updatedAt` falling inside the chosen range). **Deliberate deviation from
+  the brief's own §14 card-grouping**, documented inline: the brief lists Pending Approvals and
+  Upcoming Meetings under "Selected-Period," but both are current-state by nature (a past date
+  range can't sensibly filter "how many are pending right now" or "how many meetings are still
+  ahead") — moved to current-state instead, applying the brief's own stated principle ("do not
+  date-filter inherently current-state metrics") over its literal list. "Website Enquiries," the
+  brief's other selected-period tile, is omitted entirely per the user's 2026-09-14 instruction
+  that Leads/Website Enquiries isn't wanted as a concept at all.
+- Visitor→Conversion counting uses `Visitor.updatedAt` as the best-available proxy for "when this
+  visitor was marked CONVERTED" — there's no dedicated `convertedAt` timestamp on the model. Flagged
+  honestly in the code comment rather than silently treated as exact.
+- Dashboard page (`/admin`) rebuilt with the date-range form, two clearly-labelled tile sections
+  (Current State / the selected period's own label as the section heading), and §15's "Recent Admin
+  Activity" collapsed into a native `<details>`/`<summary>` disclosure (closed by default, no
+  client JS) instead of always-open — the full Activity Log page remains the authoritative view.
+- **Real finding surfaced while auditing Open Category Slots (485)**: the corrections brief guessed
+  this was `chapters × categories − active members`, and that's exactly right — but the deeper
+  problem is the `Category` table itself. It holds 204 rows, and it's not a curated taxonomy — it's
+  raw per-member category *text*, heavily near-duplicated (e.g. "Advocate" / "Advocate & Tax
+  Attorney" / "Advocate - Civil and Taxation" as three separate rows; "Architect" / "Architect - 1"
+  / "Architect - 2" as three separate rows instead of one "Architect" category with a 3-slot
+  count). The user, asked to resend a clean category/slot-count list, instead pointed at this
+  existing data ("use the old one I had given") — so the eventual Categories redesign (brief
+  §19–20) needs a dedup/merge pass over these 204 rows first, not just a new slot-count field. Left
+  the underlying Open Category Slots formula unchanged for this batch (still the most honest number
+  achievable under the current "1 slot per category per chapter" schema) — flagged to the user,
+  not yet resolved.
+
+**Verification performed:** ran `getDashboardMetrics()` directly against the live database across
+all 7 date-range presets plus one chapter scope (a throwaway script, deleted after) — confirmed
+current-state numbers stay identical across every range (as they should) while period numbers
+genuinely differ (e.g. `newMembersInPeriod` is 0 for "Today"/"This Week" but 127 for "This Month"
+onward, matching when the real member data was actually imported) — proving the filter logic
+actually works against real data, not just that it type-checks. `npx next build` and
+`npx eslint src --max-warnings=0` both clean.
+
+**Known issues / follow-ups — the rest of the same correction brief, not done yet:**
+- Company deduplication — the brief's suspicion that the Founder/Co-Founder (who are real members
+  in all 3 chapters) may have 3 separate `Company` rows for what should be 1 shared row each, plus
+  fixing the admin "Add Member" form to search/reuse existing companies instead of free-typing a
+  new one every time. Not yet investigated against the live `Company` table.
+- Categories redesign (per-chapter slot counts, multi-slot categories) — the user has confirmed
+  using the existing 204-row `Category` table rather than supplying a fresh list, but that table
+  needs a dedup/merge pass (see Batch 2's finding above) before slot counts can mean anything; not
+  yet started.
+- Two-workspace admin split ("Select Admin Workspace" landing screen — Website Admin vs Member
+  Performance Admin, one shared login).
+- The Roster Sheet PDF-generation module — a real chapter-meeting booklet generator, replacing the
+  just-removed Exports page. Three reference PDFs are in hand; the client confirmed one consistent
+  template across all chapters (not preserving each chapter's historical layout) and that a
+  Chapter-3-style invitation flyer page should be part of every generated roster.
+- Member Performance Admin panel refinement — most of the underlying activity tracking already
+  exists (Referral/ThankYouSlip/OneToOne/PowerDate/Conclave/Points, built Phase 18); what's still
+  needed is real per-member filtering/drill-down on the admin side, a new `Consumer` model (today
+  it's a `Visitor.purposeOfVisit` value, not a first-class record), a member-invited-Chief-Guest
+  activity model distinct from the existing public homepage `ChiefGuest` showcase, and a simpler
+  manual "referred by an existing member?" picker on member creation (client explicitly rejected
+  automatic Visitor-record matching for induction).
+- Remaining smaller corrections from the same brief not yet touched: Leadership Roles page removal,
+  Blog Categories page removal (fold into Blogs), standalone Authors page removal (fold into
+  Blogs), Testimonials member-select auto-populate flow, Users page admin-only audit (remove any
+  member accounts accidentally listed there), and the reported Super Admin "you don't have access"
+  bug on Roles & Permissions (not yet reproduced/investigated).
+- Client confirmed keeping the points/scoring engine exactly as built (live recompute from current
+  activity × current config, not historical point-value snapshots) — explicitly declined the
+  correction brief's §33 "Historical Point Integrity" request, so no work needed there.
+
+### Batch 3 — Roster Sheet PDF-generation module (2026-09-14, same day)
+
+**What shipped:** the real chapter-meeting roster PDF generator that replaces the Batch-1-removed
+Exports page, built from the 3 real reference roster PDFs (`docs/reference/roster-sheets/`)
+collapsed into one consistent template across all chapters (per the client's own decision — not
+each chapter's historical layout). Five sections per generated PDF: cover (Date/Name fill-in
+header, optional Chief Guest cards, Founder/Co-Founder band, Director/President/Secretary/
+Treasurer row — all sourced from the existing `ChapterLeadership`/`ChiefGuest` data, no new schema
+needed), Meeting Roles (a flat photo+name+role grid — see below), the full member roster table
+(S.no/photo+name+company+address+phone+email/Category/blank Give/blank Ask, one row per ACTIVE
+member ordered by `joinedAt`), a final page (Visitor Self-Introduction fill-in block, a live
+"Open Categories" list, the BWF Pledge, an admin-uploadable Visitor Feedback QR), and an invitation
+flyer (one featured Chief Guest, registration fee pulled from the existing `fees.*` content keys,
+date/time/venue from a real `Meeting` row, a blank Notes box) — now on every roster, not just
+Chapter 3's like the references.
+- New models: `RosterRole` (admin-extensible catalog, `/admin/roster-roles`, gated by
+  `chapters:manage` like `ChapterLeadershipRole`/`/admin/leadership-roles`) and `RosterAssignment`
+  (chapter+role+member, current per-chapter state — reassigned whenever a duty rotates, not a
+  per-meeting historical log). Deliberately **not** `ChapterLeadership` — `prisma/seed-members.ts`'s
+  own header comment already flagged why: the public `/chapters/[slug]` page renders every
+  `ChapterLeadership` row under "Leadership," and these week-to-week duty assignments (Power Date
+  Host, Visitor Host, Hot Seat Host, etc.) would swamp it. Seeded with a 16-role canonical catalog
+  consolidating the 3 references' slightly different wording for the same duties (e.g. "Digital
+  Host" / "Digital Marketing Coordinator" → one `DIGITAL_HOST` role).
+- Meeting Roles are managed on the existing `/admin/chapters/[id]` page as a direct sibling of the
+  Leadership section (same assign/remove form pattern, same `chapters:manage` gate).
+- New `roster:manage` permission, chapter-scoped via the existing `requireChapterAccess`/
+  `getChapterScope` pattern (Chapter Admin gets their own chapter only, same as `meetings:manage`) —
+  new `/admin/roster` generation page (chapter picker for Super/Central, locked for Chapter Admin →
+  upcoming-`Meeting` picker → optional Chief Guest checklist → download) and
+  `/api/admin/roster` (GET, query-param based so the plain form needs no client JS — re-validates
+  the picked `chiefGuestIds` actually belong to the meeting's chapter server-side, never trusts the
+  client-submitted list).
+- New `src/lib/roster/generate.ts` (pdfkit, already a dependency) — not a pixel-perfect recreation
+  of the reference PDFs' graphic design (rounded gradient panels, drop shadows); a clean, correctly
+  laid-out rendition of the same structure/content instead, a deliberate scope call given pdfkit is
+  a low-level drawing API. `getOpenCategoryNames()` added to `src/lib/chapters/availability.ts`
+  alongside the existing `getOpenCategoryCounts()`.
+- **Three real bugs caught only by actually opening the generated PDF, not by build/lint/typecheck**:
+  (1) PDFKit's built-in standard fonts don't include the ₹ glyph — it silently mis-rendered as a
+  stray superscript character instead of throwing; fixed by using "Rs." in the one place a formatted
+  fee string reaches the PDF, not by embedding a Unicode font. (2) A long member/officer name
+  wrapped to a second line under its circular photo and collided with the role-label caption below
+  it — same class of bug Phase 9's `toPdfBuffer` hit with fixed row heights; fixed with a shared
+  `drawCaption()` helper that forces one-line ellipsis truncation instead of wrapping. (3) The
+  Open Categories list assumed it would always fit one page — but this project's `Category` table
+  holds one row per available *slot*, not one per profession (204 rows total, per the Batch 2
+  finding above), so a real chapter can have 100+ open categories; the naive fixed-height layout
+  either silently overflowed the page or (worse, diagnosed via a real 25-page vs. expected ~11-page
+  generated PDF) triggered runaway pagination. Rewrote as an explicitly paginated 3-column grid
+  (same "check the real bottom, add a page, don't guess" discipline the member table already used),
+  and moved the Pledge/QR onto their own guaranteed-fresh page after however many category pages it
+  takes. A related sizing bug in the invitation flyer (a fixed green-box height that the fee bar and
+  date/time/venue line could silently overflow, landing white-text-on-white-background and
+  invisible) was fixed the same way — the box height is now derived from the same fixed content
+  increments used to place things inside it, not a separately guessed number.
+- Founder/Co-Founder and Meeting Role photos now actually flow through to the PDF (`Member.photoUrl`
+  fetched and embedded, circular-cropped, with an initials-placeholder fallback) — an earlier draft
+  had silently hardcoded `null` for the leadership band specifically, caught only by visual
+  inspection, not type-checking (the photo *type* was correct, the value passed just was not).
+
+**Real gap found during verification, not fabricated data**: `Member.photoUrl` is null for
+essentially every real member right now — including the two Founders, despite
+`prisma/seed-members.ts`'s own intent to set `ARASU_PHOTO`/`ABI_PHOTO` (verified directly against
+the live database). The generator degrades gracefully (an initials-circle placeholder, same visual
+language as `PhotoSlot`/`MediaPlaceholder`) rather than breaking or inventing a photo — but real
+member headshots (visible in all 3 reference PDFs) still need sourcing and uploading before a
+generated roster looks fully finished. Not blocking; flagged the same way every other "real data
+still needed" item in this log has been.
+
+**Verification performed:** full real end-to-end pass via Playwright against a real production
+build (not dev mode) and the live database — logged in as the real Super Admin, assigned real
+Meeting Role duties for Chapter 01 (verified against the actual reference PDF's real names/roles,
+not invented), created a temporary test `Meeting`, generated and downloaded a real roster PDF
+through the actual UI, then inspected every page as a rendered image (PyMuPDF, since neither
+`pdftoppm`/poppler nor Chromium's PDF viewer were usable headless in this environment — Playwright
+driving a real browser remains the click-path verification, PyMuPDF only the page-image inspection
+step) rather than just trusting it "generated something." This is what caught all three real bugs
+above — none were visible from code review or `npm run build`. Re-verified the real Chapter 01 data
+directly (58 members, 146 genuinely open categories, 6 real leadership assignments) after each fix
+via a throwaway script calling `generateRosterPdf()` directly against the live database, confirming
+final page counts (25 → 11 once the pagination bug was fixed) and correct rendering of every
+section. Confirmed chapter-scoping by code inspection (identical `requireChapterAccess` call already
+proven correct across `meetings:manage`/`visitors:manage`/etc. elsewhere in this codebase — not
+independently re-tested with a second Chapter Admin login this pass, unlike earlier phases' RBAC
+tests). Test meeting and test Meeting Role assignments deleted afterward. `npx next build`,
+`npx tsc --noEmit`, and `npx eslint src prisma --max-warnings=0` all clean.
+
+**Known issues / follow-ups:**
+- Real member photos (see "Real gap" above) — a bulk extraction-and-upload pass against the 3
+  reference PDFs is a plausible fast follow-up if wanted, not attempted this batch.
+- Chapter Admin's chapter-scoped access to `/admin/roster` was not independently re-verified with a
+  second real login this batch (reasoned from already-proven-correct shared code instead) — worth
+  a real Chapter-Admin-login check before this feature is relied on in production.
+- A pre-existing "Demo Member" test row (`ezai130613@gmail.com`) was noticed in Chapter 01's real
+  member list while verifying the roster table — unrelated to this batch's own work, not touched,
+  but worth a cleanup pass whenever chapter data gets tidied.
+- The rest of the Phase 20 brief (two-workspace admin login split, Member Performance Admin panel
+  refinement, and the smaller remaining corrections — Leadership Roles/Blog Categories/Authors page
+  removals, Testimonials auto-populate, Users page audit, the Roles & Permissions access bug) is
+  still not started.
+
+### Batch 4 — Two-workspace admin login split (2026-09-14, same day)
+
+**What shipped:** the "Select Admin Workspace" screen the Phase 20 brief calls for — one shared
+`/admin/login`, landing on a workspace picker (**Website Admin** vs **Member Performance Admin**)
+before the dashboard. The brief's own exact page-by-page split wasn't available this session (it
+was delivered as chat text in an earlier session, not saved to the repo) — confirmed directly with
+the user instead: Performance = App Points & Scoring, BWF App Activity, and Roster Sheets
+(meeting-operational); Website = everything else, Roster **Roles** included (config-level, same
+bucket as Leadership Roles, even though Roster **Sheets** itself moved to Performance).
+- **Deliberate scope decision, not asked but flagged for review before building**: only Super/
+  Central Admin see the picker at all. Chapter Admin holds no blanket permission in either bucket
+  (`prisma/seed.ts`'s `CHAPTER_ADMIN: []`) — their access is entirely chapter-scoped across *both*
+  buckets already (Members/Meetings/Visitors from Website, Roster Sheets/App Activity from
+  Performance). Splitting their nav into one workspace would have hidden half of what they can
+  already do today — a real regression, not a feature. So Chapter Admin's sidebar/dashboard is
+  completely unaffected by this batch; they never see `/admin/workspace` (a direct hit bounces
+  straight to `/admin`).
+- Persistence is a plain `bwf_admin_workspace` cookie (`"website" | "performance"`, ~30-day
+  `maxAge`), not a new `User` column — a per-browser UI preference, not account data worth a
+  migration. Remembered across logins (a one-time choice per browser, not a re-ask every session);
+  a "Switch workspace" link in the sidebar footer re-visits the picker to change it.
+- Gating lives in `src/proxy.ts`, alongside the file's existing role-based admin redirect logic —
+  role is already available on the JWT (`request.auth.user.roles`) with no DB round-trip needed,
+  since only SUPER_ADMIN/CENTRAL_ADMIN ever need the check.
+- New `src/app/admin/workspace/page.tsx` + `actions.ts` (`selectWorkspace()`, a Server Action set
+  via two plain `<form action>` buttons — no client JS, matching this project's established form
+  convention). Picking Website lands on `/admin`; picking Performance lands on the *existing*
+  `/admin/app-activity` page, not a new dashboard — "Member Performance Admin panel refinement" is
+  its own separate, not-yet-started backlog item, and building a new dashboard here would be scope
+  creep into it.
+- `src/components/admin/sidebar.tsx` — each `NAV_ITEMS` entry tagged `workspace: "website" |
+  "performance"`; the existing permission/chapter-scope filter runs first, and a workspace filter
+  only applies on top of it when the viewer isn't a Chapter Admin.
+- **One real bug caught only by driving a real browser, not by build/lint/typecheck**: the cookie
+  was originally set with `secure: process.env.NODE_ENV === "production"` — correct in spirit
+  (matches how a real session cookie should behave), but `next start` always runs in production
+  mode regardless of the shell's `NODE_ENV`, and a `Secure` cookie silently fails to store over
+  plain HTTP even on `localhost` in Chromium. Since this cookie carries no sensitive value (a UI
+  preference, not an auth token), there was nothing the `Secure` flag was actually protecting —
+  fixed by dropping it rather than working around the local-testing symptom.
+- A second, non-bug finding while writing the verification script: `waitForLoadState("networkidle")`
+  is unreliable on this admin shell specifically, because the sidebar's own Next.js link-prefetching
+  generates a constant stream of background RSC requests — `networkidle` can resolve before a real
+  client-side navigation actually lands. Switched the verification script to `waitForURL()` against
+  the expected destination instead; worth remembering for any future Playwright script against an
+  admin page with a populated sidebar.
+
+**Verification performed:** real end-to-end Playwright runs against a real production build (`next
+start`, not dev mode — run on port 3000 specifically, matching the project's `AUTH_URL` env var;
+an earlier attempt on a different port produced cross-origin redirect failures unrelated to this
+batch's own code, worth remembering if a future session picks a different port for the same kind
+of check) and the live database. Logged in as the real Super Admin with no cookie yet → confirmed
+landing on the picker, not the dashboard. Picked Website → confirmed `/admin` with the
+Website-only nav (no Roster Sheets/App Points/App Activity). Switched workspace → picked
+Performance → confirmed landing on `/admin/app-activity` with the Performance-only nav (no
+Chapters/Members/Roster Roles). Signed out and back in → confirmed the picker was skipped and the
+last-chosen workspace was restored from the cookie. Unauthenticated direct hit of `/admin/workspace`
+→ confirmed it still bounces to `/admin/login` (the existing role check wasn't accidentally
+bypassed). Created a real temporary Chapter Admin (scoped to Chapter 01) through the actual
+`/admin/users` UI, logged in as them, and confirmed: no workspace picker on login, their nav is the
+same merged Website+Performance set as before this batch (Dashboard/Members/Meetings/Visitors/
+Roster Sheets/BWF App Activity, all six), and a direct hit of `/admin/workspace` bounces them
+straight to `/admin` rather than showing a picker that doesn't apply to them — this was the one
+real regression risk worth checking for real, not just reasoning about, and it held. Test account
+deleted afterward. `npx next build`, `npx tsc --noEmit`, and `npx eslint src prisma
+--max-warnings=0` all clean.
+
+**Known issues / follow-ups:**
+- Member Performance Admin panel refinement (a real dashboard for that workspace, not just reusing
+  `/admin/app-activity`) — **Resolved 2026-09-14, see Batch 5 below** (same-day follow-up).
+- The smaller remaining Phase 20 corrections (Leadership Roles/Blog Categories/Authors page
+  removals, Testimonials auto-populate, Users page audit, the Roles & Permissions access bug) are
+  still not started.
+
+### Batch 5 — Member Performance Admin panel refinement (2026-09-14, same day)
+
+**What shipped:** the brief's remaining Member Performance items — real per-member admin
+filtering/drill-down, `Consumer` and `MemberChiefGuest` as first-class member-self-reported
+models, and decision #6's manual induction picker.
+
+- **Root cause found while reading the existing scoring engine** (`src/lib/points/score.ts`,
+  `src/lib/points/activity-stats.ts`): `ActivityType` already had `CONSUMER`/`CHIEF_GUEST`/
+  `INDUCTION` as distinct point-earning types, but all three were *derived* from the public
+  `Visitor` model (`purposeOfVisit`/`status`/`referringMemberId`) — exactly the "automatic
+  matching" pattern decision #6 already rejected for induction specifically ("let the induction
+  score alone be manual... give an option to select if they were invited by another member"). The
+  same reasoning extends to Consumer/Chief-Guest, so both became independent, member-self-reported
+  logs instead — the same shape as the existing `PowerDate` model (a member records "I brought X,"
+  X never needing to have gone through the public `/visit` registration flow at all). The public
+  `/visit` form's own `purposeOfVisit` picker (a walk-in/prebooking visitor's own self-
+  classification for registration/pricing) is untouched by this batch — genuinely a different
+  concern from member activity scoring.
+- **Checked the live database before deciding this was a clean cutover, not a migration**: 1 total
+  `Visitor` row, 0 with `purposeOfVisit: END_CONSUMER/CHIEF_GUEST`, 0 `CONVERTED` with a
+  `referringMemberId`, and every `PointsConfig.points` value still 0 (never set to a real number).
+  Nothing real to preserve or backfill.
+- New `Consumer` and `MemberChiefGuest` models (`prisma/schema.prisma`) — direct siblings of
+  `PowerDate`'s external-contact shape. `MemberChiefGuest` is deliberately separate from the
+  existing public `ChiefGuest` homepage-showcase model — one member's private activity record vs.
+  admin-curated public social proof. New member-portal self-report pages/forms at
+  `/member/consumers` and `/member/chief-guests-brought`, same `requireMemberProfile()` gate and
+  no-admin-approval-queue pattern as every other self-reported activity model.
+- New `Member.referredByMemberId` (nullable self-relation) for decision #6 — a plain "Referred by
+  (optional)" `<select>` added to both the admin Add Member form (`CreateMemberForm`, matching the
+  brief's literal "when admin team adds a new member") **and** a new dedicated
+  `MemberInductionForm` on the member edit page (so a data-entry mistake is correctable, not
+  permanent). Deliberately a **separate action** (`updateMemberInduction`, not part of
+  `updateMemberProfile`) — `updateMemberProfile` uses the shared `memberProfileFieldsSchema`, which
+  is also used by the member's own self-service profile-edit-request flow
+  (`src/app/member/(portal)/profile/actions.ts`); "who inducted this member" must never be
+  something a member can request to change about their own profile, only an admin correction.
+- `getMemberActivityCounts()`/`getActivityCountsForMembers()` (`score.ts`) and `getActivityStats()`
+  (`activity-stats.ts`) had their `consumers`/`chiefGuests`/`inductions` queries swapped from the
+  old `Visitor`-derived ones to `Consumer`/`MemberChiefGuest`/`Member.referredByMemberId` — `VISITOR`
+  (prospective-member) stays exactly as it was, still genuinely tied to real Visitor registrations.
+  No `ActivityType`/`PointsConfig` schema change needed — the enum values and their
+  admin-configurable point values (`/admin/points-config`) already existed and stay meaningful,
+  just backed by real data now.
+- New `/admin/app-activity/[memberId]` per-member drill-down — reuses `computeMemberScore()` (the
+  exact total+breakdown table the member portal's own `/member/points` already renders) plus that
+  one member's own rows across every activity type. Reached via a "Jump to member" picker (a
+  Server Action, `jumpToMember()`, so it can redirect to a computed dynamic path with zero client
+  JS — a plain GET form can only append query params to a fixed URL, not build a path segment) and
+  via linked names on the Leaderboard tab. Three new tabs (Consumers, Chief Guests, Inductions)
+  added to the existing chapter-wide `/admin/app-activity` tab set, same chapter-scoping pattern as
+  the rest of that page.
+
+**Verification performed:** real end-to-end via Playwright against a real production build and the
+live database. Admin side: created two real temporary members (an inductor and an inductee
+referred by them, via the actual `/admin/members` UI, using categories confirmed genuinely open
+for Chapter 01 first — this project enforces category exclusivity at the database level, so a
+guessed category collided with a real existing member on the first attempt, a real finding about
+the test approach, not a product bug), confirmed the induction showed up on both the Inductions
+tab and the inductor's own drill-down page. Member side: granted the inductee real portal login
+access, logged in as them, recorded a real Consumer and a real Chief-Guest-brought entry through
+the actual `/member/consumers` and `/member/chief-guests-brought` pages, confirmed both appear on
+the member's own `/member/points` breakdown (Consumers Brought / Chief Guests Brought counts moved
+off zero) — then, back as admin, confirmed the same two entries appear on the inductee's
+`/admin/app-activity/[memberId]` drill-down and on the main page's Consumers/Chief Guests tabs. All
+test members, the granted test login, and the test Consumer/MemberChiefGuest rows deleted
+afterward. `npx next build`, `npx tsc --noEmit`, and `npx eslint src prisma --max-warnings=0` all
+clean.
+
+**Known issues / follow-ups:**
+- The smaller remaining Phase 20 corrections (Leadership Roles/Blog Categories/Authors page
+  removals, Testimonials auto-populate, Users page audit, the Roles & Permissions access bug) —
+  **Resolved 2026-09-15, see Batch 6 below.**
+- Real member photos for the Roster Sheet module (Phase 20 Batch 3's own follow-up) and the
+  leftover "Demo Member" test row noticed in Chapter 01 (Batch 3's own follow-up) remain unactioned.
+
+### Batch 6 — Leadership Roles/Blog Categories/Authors removal, Testimonials auto-populate, Users audit, Roles & Permissions bug (2026-09-15)
+
+**What shipped:** the six smaller remaining items from the Phase 20 restructure brief.
+
+- **Leadership Roles page removed.** Deleted `/admin/leadership-roles` (page, actions, form) and
+  its sidebar entry. `ChapterLeadershipRole` (the role-type catalog) and the actual assignment flow
+  on `/admin/chapters/[id]` are untouched — that page already queries the catalog directly rather
+  than through the standalone page, so assignment keeps working; only the dangling "manage the role
+  list itself at Leadership Roles" link/text was removed. This is a pure removal, not a fold — no
+  UI is left to add a brand-new role *type* (President/VP/Secretary/etc.), on the read that this
+  catalog is essentially fixed, matching how `RosterRole`'s sibling catalog page was deliberately
+  **not** touched (different model, different scope, see the research note this batch started from).
+- **Blog Categories and Authors pages removed, folded into Blogs** (not lossily — both moves keep
+  every original field, including Authors' bio/photo/linked-member fields that a lighter "name-only
+  quick add" would have dropped). `createBlogCategory`/`createAuthor` moved into
+  `blogs/actions.ts` (revalidating `/admin/blogs` instead of their old routes); the existing
+  `CreateBlogCategoryForm`/`CreateAuthorForm` components were kept as-is, just re-pointed at the new
+  action location. `/admin/blogs` now renders two collapsible `<details>` sections below the main
+  post table/create form — "Blog Categories" and "Authors" — each with the same list-with-counts
+  table the standalone pages had, plus the create form. A brand-new category/author is immediately
+  selectable on the main post form because both live on the same page and share the same
+  `revalidatePath("/admin/blogs")`.
+- **Testimonials member-select auto-populate.** `/admin/testimonials` now fetches `ACTIVE` members
+  (with `company`) and passes them to `CreateTestimonialForm`, which gained a "Member (optional)"
+  `<select>` above Name. Selecting a member auto-fills Name/Company/Role from that member's
+  `name`/`company.name`/`designation` via refs (not a full controlled-component rewrite) — fields
+  stay editable afterward, so an admin can still correct a discrepancy without losing the member
+  link. `createTestimonialDirect`'s schema already accepted an optional `memberId`; nothing server-
+  side needed to change. The pre-existing `member-testimonials.tsx` (a separate component embedded
+  on a member's own admin edit page, which pins `memberId` via a hidden input) is unaffected.
+- **Users page audit.** `db.user.findMany` on `/admin/users` had no `where` filter at all, so a
+  member-portal login account (`User.roles` containing `MEMBER`, created whenever an admin grants a
+  member app/portal access) showed up as a row alongside real admin accounts — and the page's own
+  copy still claimed "Admin accounts only," a leftover from before Phase 11 member logins existed.
+  Fixed with `where: { roles: { some: { role: { key: { in: ADMIN_ROLE_KEYS } } } } } }`. Verified
+  directly against the real database: 6 total `User` rows, 5 admin-role, 1 member-linked — the page
+  now shows exactly 5.
+- **Roles & Permissions "you don't have access" bug — root cause found and fixed.**
+  `toggleRolePermission` (and, it turns out, `toggleUserStatus` on the Users page — same bug, wider
+  blast radius than the one page reported) both call `requireRecentAuth()`, which rejects any action
+  more than 15 minutes after the JWT was **originally issued at login** — not 15 minutes of
+  inactivity. Since the JWT session lasts 8 hours and nothing anywhere in the codebase ever refreshed
+  `token.issuedAt`, any Super Admin who'd been logged in more than 15 minutes (the overwhelming
+  majority of real usage) hit `forbidden()` on literally every permission-toggle or suspend-user
+  click, with no way to recover short of signing out and back in — that's what "you don't have
+  access to this" actually meant; page *viewing* itself was never the problem. Fixed by building the
+  step-up re-auth flow the brief's §56 always intended but never had: `src/lib/auth/config.ts`'s
+  `jwt` callback now handles a `trigger === "update"` call carrying `{ refreshAuthTime: true }` by
+  bumping `token.issuedAt` to now; `src/lib/auth/reauth-actions.ts` (`confirmRecentAuth`) verifies
+  the signed-in user's password against the DB; and a new client component,
+  `src/components/admin/reauth-guard.tsx` (`ReauthGuard`), wraps the sensitive table on both
+  `/admin/roles` and `/admin/users` — once the session is >15 minutes old it swaps the table for a
+  "confirm your password" prompt, and on success calls NextAuth's `update({ refreshAuthTime: true })`
+  to actually refresh the JWT before re-revealing the controls. `Date.now()` can't be read directly
+  during render under this project's React Compiler rules (`react-hooks/purity`), so staleness is
+  read via `useSyncExternalStore` with a 30s-interval clock subscription rather than `useState`
+  +`useEffect` (which separately trips `react-hooks/set-state-in-effect`).
+
+**Verification performed:** all real, against the live database and a real running dev server (not
+just build/lint) — a temporary Super Admin test account was created directly in the DB, driven
+through the actual UI with Playwright, and deleted afterward, same pattern as prior batches. Live
+findings that would not have surfaced from code review alone:
+1. `db.user.findMany`'s row count matched the DB's admin-only count (5) exactly, confirming the
+   filter, not just that it compiled.
+2. The Roles & Permissions reauth flow needed the 15-minute windows temporarily shortened (both the
+   client `RECENT_AUTH_WINDOW_MS` and server `requireRecentAuth`'s default) to actually trigger
+   staleness inside a test run; with that, the full loop was exercised for real — prompt appears
+   once stale, a wrong password is rejected, a correct password clears the prompt, and critically, a
+   real click on a permission toggle **after** reauth succeeded server-side with no `forbidden()`
+   interrupt (proving the JWT was genuinely refreshed, not just the client's local state) — the
+   toggle was flipped and flipped back to leave `RolePermission` data unchanged. Both temporary
+   windows were reverted to their real 15-minute values before finishing.
+3. First attempt at this verification gave uniformly wrong-looking results (nav items appearing
+   "already removed," folded sections "missing") because a fresh Super/Central Admin login lands on
+   `/admin/workspace` (Batch 4's workspace picker) before anywhere else — every check was silently
+   running against that picker page, not the real target page, until the script picked "Website
+   Admin" first.
+`npx next build`, `npx tsc --noEmit`, and `npx eslint src prisma --max-warnings=0` all clean.
+
+**Known issues / follow-ups:**
+- Real member photos for the Roster Sheet module and the leftover "Demo Member" test row in
+  Chapter 01 (both Batch 3 follow-ups) — **Resolved/decided 2026-09-15, see Batch 7 below.**
+
+### Batch 7 — Real member photos sourced from the reference roster PDFs (2026-09-15)
+
+**What shipped:** 126 of 127 active members now have a real `Member.photoUrl`, sourced directly
+from the 3 reference chapter roster PDFs (`docs/reference/roster-sheets/`) rather than asking the
+client to re-supply headshots that already existed in print form.
+
+- **"Demo Member" test row: kept, not deleted.** Investigated first — it's linked to the same
+  email this session runs as (a real login with real session history), not leftover test data as
+  the Batch 3 note assumed. Asked the user directly; confirmed to keep it. It's the one active
+  member with no photo (not in any roster PDF), which is expected and correct.
+- **The PDFs turned out to be a single flattened raster image per page** (confirmed via
+  `pdfjs-dist`: 0 extractable text items, 1 image XObject per page) — a Canva-style export, not a
+  real text/vector PDF. This ruled out both text-layer extraction and OCR as the way to get
+  member names per photo; instead each of the ~25 relevant pages was rendered at high resolution
+  and read directly (this model's own vision), which is more reliable than OCR for names like
+  "Er. NA. Vijayakrishna" anyway.
+- **Row geometry turned out to be a fixed grid, not variable-height as it first looked.**
+  Cropping by eyeballed pixel coordinates would have risked cutting off photos on rows with
+  longer addresses (some rows wrap to 4 address lines, others to 2). Detected the true row
+  boundaries programmatically instead — sampling pixel luminance down the page's empty "Give"
+  column to find the alternating light-gray/white row-stripe transitions — which showed the grid
+  is exactly 8 fixed-height rows per page (702px at the render scale used), identical across all
+  3 chapters' PDFs (same template/designer). The photo box itself sits at a fixed 14%–24.5% of
+  page width within each row band, also identical across all 3 files. Verified against several
+  edge cases before running in bulk: a short-content row, a long-content row, a row's exact photo
+  crop from each of the 3 different chapter PDFs, the last row of a page, and a page with only 1
+  row — all cropped clean with no cutoffs.
+- **Matching each cropped photo to the correct `Member` row**: transcribed every row's name from
+  all 25 pages (57 + 39 + 30 = 126 people across Chapters 01/02/03), then matched against each
+  chapter's real `ACTIVE` member list by normalizing both sides to lowercase alphanumeric-only
+  (strips periods/spacing differences like "C.V. Jyothi Kumar" vs "C. V. Jyothi Kumar" or
+  "Er.Vinoth Kumar" vs "Er. Vinoth Kumar"). Got a **100% match rate on the first pass** — 57/57,
+  39/39, 30/30, with the only non-match being Demo Member (correctly not in the PDF). No fuzzy
+  matching or manual disambiguation was actually needed, though the pipeline was written to
+  report unmatched rows rather than guess, in case it had been.
+- Cropped photos uploaded to the existing R2 bucket the same way `MediaUploadField` does
+  (`images/` folder, presigned-upload's same key pattern, just called directly from a
+  server-side script instead of via a presigned browser PUT), then `Member.photoUrl` set per
+  matched row via a direct Prisma update.
+
+**Verification performed:** live, not just a dry run. A `--dry-run` pass first printed every
+planned (member, source page/row) pairing for review — matched 126/126 expected rows with zero
+unmatched. Then the real run uploaded all 126 and confirmed via a direct DB query
+(`126 of 127 active members have photoUrl`, Demo Member's is still null as expected) and a live
+`curl` HTTP 200 on an uploaded image's public R2 URL. Additionally downloaded and visually
+re-inspected several photos post-upload (not just pre-upload crops) — including a member from
+each of the 3 chapters and one woman member (to confirm the fixed crop box isn't accidentally
+tuned to a particular hairstyle/framing) — all correctly cropped and correctly attributed.
+All temporary tooling (`pdfjs-dist`, `@napi-rs/canvas`, installed with `--no-save` for this task)
+was uninstalled afterward; `package.json`/`package-lock.json` show no diff.
+
+**Known issues / follow-ups:**
+- Demo Member (Chapter 01) has no photo — expected, not a gap to fill.
+- The Roster Sheet PDF generator (`src/lib/roster/generate.ts`, Phase 20 Batch 3) already degrades
+  gracefully to an initials placeholder when `photoUrl` is null, so no code change was needed there
+  for this batch to take effect — regenerating a roster now simply picks up the real photos.

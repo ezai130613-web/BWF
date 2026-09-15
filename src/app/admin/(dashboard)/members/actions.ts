@@ -31,13 +31,19 @@ const createSchema = z.object({
   companyId: z.string().min(1, "Select a company"),
   chapterId: z.string().min(1, "Select a chapter"),
   categoryId: z.string().min(1, "Select a category"),
+  // Phase 20 Batch 5, decision #6 — manual induction picker: who invited
+  // this member, if anyone. Deliberately NOT part of memberProfileFieldsSchema
+  // (shared with the member's own self-service profile-edit request flow) —
+  // this is an admin-only call, set once at creation, never something a
+  // member requests to change about themselves.
+  referredByMemberId: z.string().optional(),
 });
 
 export async function createMember(_prevState: { error?: string } | undefined, formData: FormData) {
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
-  const { chapterId, categoryId, companyId, ...rest } = parsed.data;
+  const { chapterId, categoryId, companyId, referredByMemberId, ...rest } = parsed.data;
 
   // Central/Super Admin can create in any chapter; a Chapter Admin only in
   // their own — enforced here, not just hidden in the UI.
@@ -54,6 +60,7 @@ export async function createMember(_prevState: { error?: string } | undefined, f
         companyId,
         chapterId,
         categoryId,
+        referredByMemberId: referredByMemberId || undefined,
         activeSlotKey: computeActiveSlotKey("ACTIVE", chapterId, categoryId),
       },
     });
@@ -138,6 +145,46 @@ export async function updateMemberProfile(_prevState: { error?: string } | undef
   revalidatePath("/members");
   revalidatePath("/members/[slug]", "page");
   revalidatePath("/chapters/[slug]", "page");
+  return { error: undefined };
+}
+
+const updateInductionSchema = z.object({
+  memberId: z.string(),
+  referredByMemberId: z.string().optional(),
+});
+
+/**
+ * Phase 20 Batch 5, decision #6 — a separate action from updateMemberProfile
+ * on purpose: "who inducted this member" is an admin-only correction, not a
+ * field a member can request to change about their own profile (the shared
+ * memberProfileFieldsSchema/self-edit-revision flow never touches it).
+ */
+export async function updateMemberInduction(_prevState: { error?: string } | undefined, formData: FormData) {
+  const parsed = updateInductionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { memberId, referredByMemberId } = parsed.data;
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+
+  if (referredByMemberId === memberId) {
+    return { error: "A member can't be their own inductor." };
+  }
+
+  await db.member.update({
+    where: { id: memberId },
+    data: { referredByMemberId: referredByMemberId || null },
+  });
+
+  await logActivity({
+    action: "member.induction_updated",
+    entity: "Member",
+    entityId: memberId,
+    metadata: { referredByMemberId: referredByMemberId || null },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/app-activity");
   return { error: undefined };
 }
 

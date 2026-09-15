@@ -10,7 +10,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
 
   const visitor = await db.visitor.findUnique({
     where: { id },
-    include: { category: true, chapter: true, meeting: true, event: true, referringMember: true },
+    include: { category: true, chapter: true, meeting: true, referringMember: true },
   });
   if (!visitor) notFound();
 
@@ -48,7 +48,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
               </div>
               <div>
                 <dt className="text-neutral-500">Registered for</dt>
-                <dd className="text-neutral-900">{visitor.meeting?.title ?? visitor.event?.title ?? "—"}</dd>
+                <dd className="text-neutral-900">{visitor.meeting?.title ?? "—"}</dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Purpose of visit</dt>

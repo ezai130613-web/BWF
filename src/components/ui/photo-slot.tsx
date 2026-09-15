@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * Renders a real photo when one exists, falling back to MediaPlaceholder
  * otherwise. Two source kinds share this component: (1) admin-supplied URLs
- * (Member.photoUrl, Blog.featuredImageUrl, Event.imageUrl — plain URL
- * fields, no object storage wired up yet per docs/ARCHITECTURE.md), which
+ * (Member.photoUrl, Blog.featuredImageUrl — plain URL fields, no object
+ * storage wired up yet per docs/ARCHITECTURE.md), which
  * default to `unoptimized` since they can point at any host an admin pastes
  * in and no remotePatterns allowlist exists (or should exist) for arbitrary
  * third-party links; and (2) our own files under `public/`, passed with

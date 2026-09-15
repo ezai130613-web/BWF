@@ -37,6 +37,23 @@ export default auth((request) => {
     if (hasAdminRole && isAdminPublicAuthPage) {
       return NextResponse.redirect(new URL("/admin", request.nextUrl.origin));
     }
+
+    // Phase 20 Batch 4 — two-workspace split (Website Admin / Member
+    // Performance Admin). Only Super/Central Admin hold any blanket
+    // permission at all (Chapter Admin is entirely requireChapterAccess()-
+    // scoped across both buckets already, per prisma/seed.ts's
+    // `CHAPTER_ADMIN: []`) — forcing them to pick one workspace would hide
+    // half of what they can already do today, so they never see this and
+    // the cookie is simply never checked for them. Role is available
+    // directly on the JWT, no DB round-trip needed for this check.
+    const needsWorkspaceChoice = roles.includes("SUPER_ADMIN") || roles.includes("CENTRAL_ADMIN");
+    const isWorkspacePicker = pathname === "/admin/workspace";
+    if (hasAdminRole && needsWorkspaceChoice && !isAdminPublicAuthPage && !isWorkspacePicker) {
+      const hasWorkspaceCookie = request.cookies.has("bwf_admin_workspace");
+      if (!hasWorkspaceCookie) {
+        return NextResponse.redirect(new URL("/admin/workspace", request.nextUrl.origin));
+      }
+    }
   }
 
   const isMemberRoute = pathname.startsWith("/member");

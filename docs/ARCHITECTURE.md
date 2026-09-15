@@ -430,6 +430,11 @@ would be a partial, inconsistent implementation. The application record captures
 needed for Phase 13 to wire real emails on top of without a schema change.
 
 ### Visitor registration, meetings & events (Phase 8)
+**The `Event` model was REMOVED 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) —
+`/admin/events`, the public `/events` pages, `Visitor.eventId`, and the event-capacity-check
+machinery (`createVisitorWithCapacityCheck()`) described below no longer exist. Meetings and
+visitor registration (the rest of this section) are unaffected and still accurate.
+
 **One `Visitor` row per registration**, not a separate `Visitor` + `VisitorRegistration` pair
 even though the brief's §13 model list names them separately. Every field brief §23 actually
 asks a visitor to submit — name/phone/email/company/category/chapter/meeting-or-event/
@@ -500,6 +505,13 @@ registration was deliberately kept from auto-creating a `MembershipApplication`,
 brief treats them as genuinely separate stages of the funnel (§17 vs §23-25).
 
 ### Reporting, exports & weekly reports (Phase 9)
+**REMOVED 2026-09-14 (client correction, `docs/PHASES.md` Phase 20).** The Weekly Member Export
+(`/admin/exports`, `/admin/reports`, `member-export.ts`, the weekly-report cron) and the Leads
+system (`/admin/leads`, the `Lead` model, `recordLead()`) described below were both deleted at
+the client's explicit request — the corrections brief treats Leads as a duplicate of Visitors/
+Membership Applications, and Exports/Reports as superseded by the new Roster Sheet module. Left
+below for historical reasoning only; do not build against anything in this section.
+
 **One export engine, two callers.** `src/lib/reports/member-export.ts` is the single source of
 truth for the Weekly Member Export's row set and rendering (brief §44) — `buildMemberExportRows()`
 queries Member joined to Category (and optionally Chapter/Company), and `toCsv()`/`toXlsxBuffer()`/
@@ -756,6 +768,12 @@ Phase 16 for the full verification (a real submit → approve → publish loop a
 both driven through the actual UI, not just reasoned about).
 
 ### Ask BWF RAG chatbot (Phase 12)
+**REMOVED 2026-09-14 (client correction, `docs/PHASES.md` Phase 20).** The entire feature —
+public widget/launcher, `/api/chatbot`, `/admin/chatbot`, `ChatbotSettings`/`ChatbotConversation`/
+`ChatbotLead`, and every reference to it in Terms & Privacy — was deleted at the client's explicit
+request ("do not consume AI/API credits for an internal feature that is not required"). Left below
+for historical reasoning only; do not build against anything in this section.
+
 **Retrieval is plain structured Prisma queries, not vector embeddings.** Confirmed with the user
 before building: BWF's public content (3 chapters, a handful of members, a starter blog list) is
 small enough that keyword `contains`/`insensitive` search — the same technique the Phase 4 member
@@ -997,17 +1015,17 @@ they aren't lost, with the phase they'd first block:
 | Real business-category taxonomy (Plumbing, Architect, etc.) | Before launch | Seeded with a 10-category starter list grounded in the brief's own examples — live-editable at `/admin/categories`. Refine/expand whenever BWF confirms the real list. |
 | Real email provider (Resend API key) | Phase 2 (before real use) | **Partially resolved 2026-09-04**, **advanced 2026-09-06**: a real Resend API key is set locally and verified with a real send. The real domain (`buildersworldforum.com`) is now registered with Resend via its Domains API, which returned the DKIM/SPF/MX DNS records needed to verify it — see `docs/PHASES.md`'s Phase 2 follow-ups for the exact values. Adding them requires DNS access at GoDaddy (where the domain's nameservers point), which the user doesn't have yet — it sits with the previous website developer. `EMAIL_FROM_ADDRESS` stays on Resend's shared `onboarding@resend.dev` test address until the domain actually verifies. |
 | ~~Real `NOTIFICATION_EMAIL` (business alert address)~~ | ~~Phase 13~~ | **Resolved 2026-09-06**: set to `buildersworldforum1@gmail.com` (the user's choice among the real admin addresses already in use) — admin alerts for new applications/chatbot leads now reach a real inbox instead of skipping silently. |
-| Real Vercel deployment (needed to actually fire the weekly-report cron) | Phase 13/14 | `vercel.json`'s daily schedule has never fired for real — only manually curled locally with `CRON_SECRET`. Not blocking now (Phase 14/15's deployment work), but the cron send itself is unverified against real infrastructure until then. |
+| ~~Real Vercel deployment (needed to actually fire the weekly-report cron)~~ | ~~Phase 13/14~~ | **Moot 2026-09-14** — the Weekly Report feature and its cron entry were removed (client correction, `docs/PHASES.md` Phase 20); `vercel.json` no longer declares any cron. |
 | Domain name + whether the old site stays live during build | Phase 14–15 | **Domain half answered 2026-09-06**: `buildersworldforum.com` is the real domain (already live, registered via GoDaddy) — no separate decision needed there. Still open: whether the old site stays live during the build, and DNS/registrar access itself (see the email-provider row above — same blocker). |
 | ~~Real photography for Homepage + Chapters~~ | ~~Phase 1~~ | **Resolved 2026-09-04**: see Design System above — all 13 shots (Homepage's 5 brand images + 2 per chapter) sourced and wired in via `public/images/`. |
 | ~~Real founder/Super Admin credentials~~ | ~~Phase 2~~ | **Resolved 2026-09-06**: real Super Admin (`abiramanathank1@gmail.com`) and two Central Admin accounts created; old placeholder (`admin@bwf.local`) suspended, not deleted. See `docs/PHASES.md`'s Phase 2 follow-ups. |
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
-| ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | **Resolved 2026-09-06** (backlog #17) — given Phase 15, a real `Lead` model aggregating across `MembershipApplication`/`Visitor`/`ChatbotLead` plus the site's other lead-generating flows, `/admin/leads`, and a real "New leads" dashboard tile (replacing the narrower "New chatbot leads" stand-in Phase 12 shipped). Two of brief §35's 7 listed sources ("Member profile enquiry", "Contact form") still have no real capture form on the site and so don't populate a `Lead` yet — flagged as Phase 15's own follow-up, not silently dropped. See `docs/PHASES.md` Phase 15. |
-| Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording | Noted since Phase 10 | **Built anyway 2026-09-06** (backlog #20), at the user's explicit request after being told plainly this is a deliberate brief deferral (unlike Leads' plain "unassigned" gap) and that most of what §51 asks for needs real GA4 data that doesn't exist yet (#19). `getAdminAnalytics()`/`/admin/analytics` cover only what's honestly derivable today — `Lead`/`MembershipApplication`/`Visitor` counts and conversion rates — with an explicit on-page note (not a silent gap, not a fabricated number) for the GA4-dependent metrics §51 also asks for. See `docs/PHASES.md` Phase 15's addendum. |
+| ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |
+| ~~Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording~~ | ~~Noted since Phase 10~~ | Built 2026-09-06 (backlog #20), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — `/admin/analytics` and `getAdminAnalytics()` no longer exist. |
 | ~~Member article submissions (brief §31) has no phase of its own~~ | Noticed in Phase 11 | **Resolved 2026-09-06** (backlog #21) — Phase 16, reusing the `Blog` model directly (new `submittedByMemberId`/`BlogSubmissionStatus` fields) rather than a parallel submissions table, new `/member/articles` + admin review surfaced on the existing `/admin/blogs` pages. See `docs/PHASES.md` Phase 16. |
-| Real `ANTHROPIC_API_KEY` for the Ask BWF chatbot | Phase 12 (before real use) | `src/lib/chatbot/client.ts` supports it already — until set, `/api/chatbot` reports itself unavailable and the widget shows an honest "not available" state, same pattern as `EMAIL_API_KEY`. Access-mode enforcement (`LOGIN_REQUIRED`/`LIMITED_FREE_QUESTIONS`) is written but couldn't be exercised live in this environment either, since it sits behind the same "is the chatbot configured" gate — see `docs/PHASES.md` Phase 12. |
+| ~~Real `ANTHROPIC_API_KEY` for the Ask BWF chatbot~~ | ~~Phase 12~~ | **Moot 2026-09-14** — the entire Ask BWF chatbot feature was removed (client correction, `docs/PHASES.md` Phase 20). |
 
 ## Non-negotiables carried from the brief (do not relitigate per phase)
 

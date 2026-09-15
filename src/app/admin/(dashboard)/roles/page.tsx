@@ -1,5 +1,6 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { toggleRolePermission } from "./actions";
 
 export default async function RolesPage() {
@@ -25,47 +26,49 @@ export default async function RolesPage() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Permission</th>
-              {roles.map((role) => (
-                <th key={role.id} className="px-4 py-3 font-medium">
-                  {role.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {permissions.map((permission) => (
-              <tr key={permission.id}>
-                <td className="px-4 py-3 text-neutral-900">{permission.label}</td>
-                {roles.map((role) => {
-                  const isGranted = granted.has(`${role.id}:${permission.id}`);
-                  const locked = role.key === "SUPER_ADMIN";
-                  return (
-                    <td key={role.id} className="px-4 py-3">
-                      <form action={toggleRolePermission.bind(null, role.id, permission.id)}>
-                        <button
-                          type="submit"
-                          disabled={locked}
-                          aria-label={`${isGranted ? "Revoke" : "Grant"} ${permission.label} for ${role.label}`}
-                          className={
-                            isGranted
-                              ? "h-5 w-5 rounded border border-neutral-900 bg-neutral-900 disabled:opacity-60"
-                              : "h-5 w-5 rounded border border-neutral-300 disabled:opacity-40"
-                          }
-                        />
-                      </form>
-                    </td>
-                  );
-                })}
+      <ReauthGuard>
+        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Permission</th>
+                {roles.map((role) => (
+                  <th key={role.id} className="px-4 py-3 font-medium">
+                    {role.label}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {permissions.map((permission) => (
+                <tr key={permission.id}>
+                  <td className="px-4 py-3 text-neutral-900">{permission.label}</td>
+                  {roles.map((role) => {
+                    const isGranted = granted.has(`${role.id}:${permission.id}`);
+                    const locked = role.key === "SUPER_ADMIN";
+                    return (
+                      <td key={role.id} className="px-4 py-3">
+                        <form action={toggleRolePermission.bind(null, role.id, permission.id)}>
+                          <button
+                            type="submit"
+                            disabled={locked}
+                            aria-label={`${isGranted ? "Revoke" : "Grant"} ${permission.label} for ${role.label}`}
+                            className={
+                              isGranted
+                                ? "h-5 w-5 rounded border border-neutral-900 bg-neutral-900 disabled:opacity-60"
+                                : "h-5 w-5 rounded border border-neutral-300 disabled:opacity-40"
+                            }
+                          />
+                        </form>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </ReauthGuard>
     </div>
   );
 }

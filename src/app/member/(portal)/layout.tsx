@@ -11,6 +11,8 @@ const NAV_LINKS = [
   { href: "/member/one-to-ones", label: "One-to-Ones" },
   { href: "/member/power-dates", label: "Power Dates" },
   { href: "/member/conclaves", label: "Conclaves" },
+  { href: "/member/consumers", label: "Consumers" },
+  { href: "/member/chief-guests-brought", label: "Chief Guests" },
   { href: "/member/points", label: "Points & Score" },
   { href: "/member/reports", label: "Reports" },
   { href: "/member/detailed-reports", label: "Detailed Reports" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createAuthor } from "@/app/admin/(dashboard)/authors/actions";
+import { createAuthor } from "@/app/admin/(dashboard)/blogs/actions";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
 
 const initialState: { error?: string } = {};

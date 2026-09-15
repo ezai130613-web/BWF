@@ -4,12 +4,12 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
  * Cloudflare R2 (S3-compatible) object storage for member photos, brochures,
- * company logos, testimonial media, and blog/event images (backlog #8, see
+ * company logos, testimonial media, and blog images (backlog #8, see
  * docs/ARCHITECTURE.md's confirmed "Hosting" decision). STORAGE_* env vars
  * are deliberately NOT in src/lib/env.ts's strict schema — same "graceful
- * no-op until configured" pattern as OPENAI_API_KEY (src/lib/chatbot/
- * client.ts) and EMAIL_API_KEY (src/lib/email.ts): every form that uses
- * MediaUploadField falls back to plain URL entry until this is set.
+ * no-op until configured" pattern as EMAIL_API_KEY (src/lib/email.ts): every
+ * form that uses MediaUploadField falls back to plain URL entry until this
+ * is set.
  */
 export function isStorageConfigured(): boolean {
   return Boolean(

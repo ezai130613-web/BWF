@@ -9,10 +9,12 @@ export function CreateMemberForm({
   chapters,
   categories,
   companies,
+  members,
 }: {
   chapters: { id: string; name: string }[];
   categories: { id: string; name: string }[];
   companies: { id: string; name: string }[];
+  members: { id: string; name: string; chapterName: string }[];
 }) {
   const [state, formAction, pending] = useActionState(createMember, initialState);
 
@@ -92,6 +94,25 @@ export function CreateMemberForm({
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+        Referred by (optional)
+        <select
+          name="referredByMemberId"
+          defaultValue=""
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        >
+          <option value="">No inductor recorded</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name} — {m.chapterName}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-neutral-500">
+          If another member invited them to join, select who — they get the induction credit.
+        </span>
       </label>
 
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}

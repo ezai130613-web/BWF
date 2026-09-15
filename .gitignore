@@ -50,3 +50,9 @@ next-env.d.ts
 # Raw source QR codes — the served copies live in /public/images/payment
 # (tracked). Not referenced by the app directly from here.
 /QR Codes/
+
+# Reference roster-sheet PDFs contain real members' personal phone numbers
+# and emails — this repo is public, so these stay local-only (used once as
+# a source for Phase 20 Batch 7's member photo extraction, not referenced
+# by the app itself).
+/docs/reference/

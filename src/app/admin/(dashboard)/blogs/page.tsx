@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateBlogForm } from "@/components/admin/create-blog-form";
+import { CreateBlogCategoryForm } from "@/components/admin/create-blog-category-form";
+import { CreateAuthorForm } from "@/components/admin/create-author-form";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-500",
@@ -21,13 +23,16 @@ const SUBMISSION_STYLES: Record<string, string> = {
 export default async function BlogsPage() {
   await requirePermission("blogs:manage");
 
-  const [posts, categories, authors] = await Promise.all([
+  const [posts, categories, authors, categoriesWithCounts, authorsWithCounts, members] = await Promise.all([
     db.blog.findMany({
       include: { category: true, author: true, submittedByMember: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
     }),
     db.blogCategory.findMany({ orderBy: { name: "asc" } }),
     db.author.findMany({ orderBy: { name: "asc" } }),
+    db.blogCategory.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { posts: true } } } }),
+    db.author.findMany({ orderBy: { name: "asc" }, include: { member: true, _count: { select: { posts: true } } } }),
+    db.member.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -91,6 +96,62 @@ export default async function BlogsPage() {
       </div>
 
       <CreateBlogForm categories={categories} authors={authors} />
+
+      <details className="rounded-lg border border-neutral-200 bg-white">
+        <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-neutral-900">
+          Blog Categories
+        </summary>
+        <div className="flex flex-col gap-4 border-t border-neutral-200 px-6 py-6">
+          <div className="overflow-hidden rounded-lg border border-neutral-200">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Posts</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {categoriesWithCounts.map((category) => (
+                  <tr key={category.id}>
+                    <td className="px-4 py-3 text-neutral-900">{category.name}</td>
+                    <td className="px-4 py-3 text-neutral-600">{category._count.posts}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <CreateBlogCategoryForm />
+        </div>
+      </details>
+
+      <details className="rounded-lg border border-neutral-200 bg-white">
+        <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-neutral-900">
+          Authors
+        </summary>
+        <div className="flex flex-col gap-4 border-t border-neutral-200 px-6 py-6">
+          <div className="overflow-hidden rounded-lg border border-neutral-200">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Linked member</th>
+                  <th className="px-4 py-3 font-medium">Posts</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {authorsWithCounts.map((author) => (
+                  <tr key={author.id}>
+                    <td className="px-4 py-3 text-neutral-900">{author.name}</td>
+                    <td className="px-4 py-3 text-neutral-600">{author.member?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-neutral-600">{author._count.posts}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <CreateAuthorForm members={members} />
+        </div>
+      </details>
     </div>
   );
 }

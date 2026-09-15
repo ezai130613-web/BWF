@@ -248,3 +248,88 @@ export async function deleteBlog(blogId: string) {
 
   revalidateBlogPaths(post.slug);
 }
+
+// Blog Categories and Authors folded onto this page (Phase 20 correction —
+// both used to be standalone admin pages; a category/author only ever needs
+// to exist to be picked on a post, so managing them here avoids a separate
+// nav item for a one-field catalog).
+
+const createCategorySchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+});
+
+export async function createBlogCategory(_prevState: { error?: string } | undefined, formData: FormData) {
+  const session = await requirePermission("blogs:manage");
+
+  const parsed = createCategorySchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const slug = slugify(parsed.data.name);
+  const existing = await db.blogCategory.findUnique({ where: { slug } });
+  if (existing) return { error: "A category with that name already exists." };
+
+  const category = await db.blogCategory.create({
+    data: { name: parsed.data.name, slug, description: parsed.data.description },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "blog_category.created",
+    entity: "BlogCategory",
+    entityId: category.id,
+  });
+
+  revalidatePath("/admin/blogs");
+  revalidatePath("/insights");
+  return { error: undefined };
+}
+
+const createAuthorSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  bio: z.string().optional(),
+  photoUrl: z.string().optional(),
+  memberId: z.string().optional(),
+});
+
+export async function createAuthor(_prevState: { error?: string } | undefined, formData: FormData) {
+  const session = await requirePermission("blogs:manage");
+
+  const parsed = createAuthorSchema.safeParse({
+    name: formData.get("name"),
+    bio: formData.get("bio") || undefined,
+    photoUrl: formData.get("photoUrl") || undefined,
+    memberId: formData.get("memberId") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const baseSlug = slugify(parsed.data.name) || "author";
+  let slug = baseSlug;
+  let suffix = 2;
+  while (await db.author.findUnique({ where: { slug } })) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  if (parsed.data.memberId) {
+    const existing = await db.author.findUnique({ where: { memberId: parsed.data.memberId } });
+    if (existing) return { error: "That member already has an author profile." };
+  }
+
+  const author = await db.author.create({
+    data: { ...parsed.data, slug },
+  });
+
+  await logActivity({
+    userId: session.user.id,
+    action: "author.created",
+    entity: "Author",
+    entityId: author.id,
+  });
+
+  revalidatePath("/admin/blogs");
+  return { error: undefined };
+}

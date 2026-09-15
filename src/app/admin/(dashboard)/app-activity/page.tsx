@@ -4,6 +4,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatInr } from "@/lib/format";
 import { getLeaderboard } from "@/lib/points/score";
+import { jumpToMember } from "./actions";
 
 /**
  * Chapter-wide admin visibility into the BWF App's member-recorded activity
@@ -30,6 +31,9 @@ const TABS = [
   { key: "one-to-ones", label: "One-to-Ones" },
   { key: "power-dates", label: "Power Dates" },
   { key: "conclaves", label: "Conclaves" },
+  { key: "consumers", label: "Consumers" },
+  { key: "chief-guests", label: "Chief Guests" },
+  { key: "inductions", label: "Inductions" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -62,7 +66,9 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             key: row.memberId,
             cells: [
               i + 1,
-              member.name,
+              <Link key={row.memberId} href={`/admin/app-activity/${row.memberId}`} className="text-neutral-900 underline hover:text-neutral-600">
+                {member.name}
+              </Link>,
               ...(showChapter ? [member.chapter.name] : []),
               row.total,
             ],
@@ -218,6 +224,85 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
         })),
       };
     }
+    case "consumers": {
+      const items = await db.consumer.findMany({
+        where: scope === "ALL" ? {} : { member: memberChapterFilter },
+        include: { member: { include: { chapter: true } } },
+        orderBy: { metAt: "desc" },
+      });
+      return {
+        columns: [
+          { header: "Brought by" },
+          ...(showChapter ? [{ header: "Chapter" }] : []),
+          { header: "Consumer" },
+          { header: "Company" },
+          { header: "Date" },
+        ],
+        rows: items.map((c) => ({
+          key: c.id,
+          cells: [
+            c.member.name,
+            ...(showChapter ? [c.member.chapter.name] : []),
+            c.name,
+            c.company ?? "—",
+            c.metAt.toLocaleDateString(),
+          ],
+        })),
+      };
+    }
+    case "chief-guests": {
+      const items = await db.memberChiefGuest.findMany({
+        where: scope === "ALL" ? {} : { member: memberChapterFilter },
+        include: { member: { include: { chapter: true } } },
+        orderBy: { metAt: "desc" },
+      });
+      return {
+        columns: [
+          { header: "Invited by" },
+          ...(showChapter ? [{ header: "Chapter" }] : []),
+          { header: "Chief Guest" },
+          { header: "Company" },
+          { header: "Date" },
+        ],
+        rows: items.map((g) => ({
+          key: g.id,
+          cells: [
+            g.member.name,
+            ...(showChapter ? [g.member.chapter.name] : []),
+            g.name,
+            g.company ?? "—",
+            g.metAt.toLocaleDateString(),
+          ],
+        })),
+      };
+    }
+    case "inductions": {
+      const items = await db.member.findMany({
+        where: {
+          referredByMemberId: { not: null },
+          ...(scope === "ALL" ? {} : { referredBy: memberChapterFilter }),
+        },
+        include: { referredBy: { include: { chapter: true } }, chapter: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return {
+        columns: [
+          { header: "Inducted by" },
+          ...(showChapter ? [{ header: "Chapter" }] : []),
+          { header: "New Member" },
+          { header: "Joined" },
+        ],
+        rows: items.map((m) => ({
+          key: m.id,
+          cells: [
+            m.referredBy!.name,
+            ...(showChapter ? [m.referredBy!.chapter.name] : []),
+            m.name,
+            m.createdAt.toLocaleDateString(),
+          ],
+        })),
+      };
+    }
   }
 }
 
@@ -230,7 +315,14 @@ export default async function AppActivityPage({
   const { tab: rawTab } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === rawTab) ? (rawTab as TabKey) : "leaderboard";
 
-  const { columns, rows } = await loadTab(tab, scope);
+  const [{ columns, rows }, jumpMembers] = await Promise.all([
+    loadTab(tab, scope),
+    db.member.findMany({
+      where: scope === "ALL" ? {} : { chapterId: scope },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -241,6 +333,33 @@ export default async function AppActivityPage({
           these are private records between members, not content that needs admin approval.
         </p>
       </div>
+
+      <form action={jumpToMember} className="flex items-end gap-3">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+          Jump to member
+          <select
+            name="memberId"
+            defaultValue=""
+            required
+            className="w-64 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          >
+            <option value="" disabled>
+              Select a member…
+            </option>
+            {jumpMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          Go
+        </button>
+      </form>
 
       <nav className="flex gap-2 overflow-x-auto whitespace-nowrap pb-1">
         {TABS.map((t) => (
