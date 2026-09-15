@@ -87,7 +87,7 @@ export function CreateMeetingForm({
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>
-      <div className="flex flex-col gap-2 sm:col-span-2">
+      <div className="flex flex-wrap items-start gap-4 sm:col-span-2">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Chief Guest
           <select
@@ -103,22 +103,21 @@ export function CreateMeetingForm({
               </option>
             ))}
           </select>
+          {!canManageChiefGuests && chapterId && availableChiefGuests.length === 0 ? (
+            <span className="text-xs font-normal text-neutral-500">No Chief Guests for this chapter yet.</span>
+          ) : null}
         </label>
-        {!canManageChiefGuests && chapterId && availableChiefGuests.length === 0 ? (
-          <span className="text-xs text-neutral-500">No Chief Guests for this chapter yet.</span>
-        ) : null}
         {canManageChiefGuests ? (
-          chapterId ? (
+          <div className="pt-6">
             <QuickAddChiefGuestForm
-              chapterId={chapterId}
+              chapters={chapters}
+              defaultChapterId={chapterId}
               onCreated={(guest) => {
-                setNewChiefGuests((prev) => [...prev, { ...guest, chapterId }]);
+                setNewChiefGuests((prev) => [...prev, { ...guest, chapterId: null }]);
                 setChiefGuestId(guest.id);
               }}
             />
-          ) : (
-            <p className="text-xs text-neutral-500">Select a chapter above to add a new Chief Guest here.</p>
-          )
+          </div>
         ) : null}
       </div>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
