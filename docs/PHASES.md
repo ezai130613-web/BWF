@@ -2918,3 +2918,52 @@ the Pledge still fitting on the same single page with no overlap. Test roster de
 `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and `npm run build` all clean.
 
 **Known issues / follow-ups:** none new — same three follow-ups as Batch 13 above still apply.
+
+### Batch 15 — Roster Sheet correction: Pledge box sized to content, Notes moved below it and enlarged (2026-09-16, same day)
+
+**What shipped:** three more corrections, this time driven by the client reviewing an actual
+rendered final page screenshot rather than a description.
+
+1. **Pledge box no longer stretches to fill leftover page space.** It had been sized as
+   `pageBottom - y - bottomFooterPad` — whatever was left after Open Categories, which could be a
+   lot of empty green padding around 4 short lines of text. Both the Pledge box and Open
+   Categories' available-height budget now derive from the Pledge's actual content height
+   (`pledgeBoxHeight`, computed once up-front from real text measurements — line-wrapped height
+   plus a fixed `pledgeVerticalPad`), the same "size to content, don't stretch" treatment Batch 12
+   already gave Open Categories itself.
+2. **Notes moved to below the Pledge box** (previously above the Self-Introduction block, per the
+   client's own earlier instruction — corrected after seeing it rendered) and made deliberately
+   larger: it now fills whatever real space remains down to the footer, with a `minNotesHeight`
+   (90pt) floor reserved in Open Categories' own budget so a long category list can never push it
+   below that floor or off the page. Mirrored in the wizard's Review-step preview
+   (`src/components/admin/roster-wizard.tsx`): Notes box now renders after the Pledge block, not
+   before Self-Introduction.
+3. **Real bug caught only by rendering the fix, not by reading the diff**: hoisting the Pledge
+   height calculation earlier in the function (needed so Open Categories' budget could reference
+   it) set the font with `doc.fontSize(pledgeFontSize)` but never the font *family* — at that point
+   in the function the family carried over as regular Helvetica from the member table, while the
+   actual render later happened right after the Pledge heading's `Helvetica-Bold` call, which also
+   only reset size, not family. Measuring in regular weight and rendering in bold (wider glyphs)
+   meant the real rendered text needed more lines than the height budget allowed for, and every
+   Pledge line was silently clipped mid-sentence with no ellipsis. Fixed by explicitly setting
+   `doc.font("Helvetica")` at both the measurement and render call sites instead of relying on
+   whatever family happened to carry over. A second, related bug from the same root architecture
+   change — forgetting to reserve `minNotesHeight` in Open Categories' budget — let a real long
+   category list push the Notes box (and its pill title) past the page bottom, triggering pdfkit's
+   documented silent-trailing-blank-page behavior (a 12th page with just a floating "Notes" label);
+   fixed by adding that reservation, verified by re-testing with both the chapter's real ~150-entry
+   category list and a deliberately small 2-category selection.
+
+**Verification performed:** rendered the real final page with PyMuPDF against Chapter 01's actual
+current category list (grew to ~150 entries since Batch 13's testing) with Notes enabled — confirmed
+a single page, Pledge text fully visible and wrapped correctly (no clipping), Pledge box tightly
+fit around its 4 lines with no dead space, and a Notes box beneath it sized close to its 90pt floor
+(since the long category list used most of its own budget). Re-tested with only 2 categories
+selected — confirmed the Notes box grew dramatically bigger (filling essentially the whole
+remaining page), proving the "give leftover space to Notes, not Pledge" behavior actually works
+both directions, not just in the cramped case. Confirmed the on-page Review-step preview's DOM
+order (Notes heading after the Pledge heading, not before Self-Introduction). Test rosters deleted
+afterward. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and `npm run build` all
+clean throughout.
+
+**Known issues / follow-ups:** none new.

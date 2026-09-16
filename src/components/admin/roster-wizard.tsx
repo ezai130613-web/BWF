@@ -403,7 +403,7 @@ function NotesStep({ notesEnabled, onChange }: { notesEnabled: boolean; onChange
       </label>
       <p className="mt-2 text-xs text-neutral-500">
         {notesEnabled
-          ? "One blank Notes box will print after the full member list, before the Guest Self-Introduction section — not a column on every member row."
+          ? "One blank Notes box will print at the bottom of the final page, below the Pledge — not a column on every member row."
           : "No Notes box will appear on the roster."}
       </p>
     </div>
@@ -495,14 +495,6 @@ function ReviewStep({
         )}
       </div>
 
-      {notesEnabled ? (
-        <div>
-          <h3 className="text-sm font-semibold text-neutral-900">Notes</h3>
-          <p className="mt-1 text-xs text-neutral-500">One overall notes box, printed before the Guest Self-Introduction section.</p>
-          <div className="mt-2 h-24 rounded-lg border border-dashed border-neutral-300 bg-white" aria-hidden />
-        </div>
-      ) : null}
-
       <div className="rounded-lg border border-neutral-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-neutral-900">{GUEST_SELF_INTRODUCTION_HEADING}</h3>
         <p className="mt-2 text-sm text-neutral-700">{GUEST_SELF_INTRODUCTION_SALUTATION}</p>
@@ -522,6 +514,14 @@ function ReviewStep({
           ))}
         </ul>
       </div>
+
+      {notesEnabled ? (
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-900">Notes</h3>
+          <p className="mt-1 text-xs text-neutral-500">One overall notes box, printed below the Pledge, filling the rest of the final page.</p>
+          <div className="mt-2 h-32 rounded-lg border border-dashed border-neutral-300 bg-white" aria-hidden />
+        </div>
+      ) : null}
     </div>
   );
 }

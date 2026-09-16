@@ -517,20 +517,27 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
 
   let y = PAGE_MARGIN;
 
-  // --- Notes (2026-09-16 correction) — one overall notes box for the whole
-  // roster, printed BEFORE the Guest Self-Introduction block. Not a
-  // per-member column next to Give/Ask — an earlier pass built it that way
-  // and the client corrected it: notes are a single blank area after the
-  // full member list is done, not something repeated per row.
-  if (data.notesEnabled) {
-    const notesHeight = 74;
-    doc.roundedRect(PAGE_MARGIN, y, width, notesHeight, 12).strokeColor(WHITE).lineWidth(1.5).stroke();
-    const notesTabWidth = 100;
-    doc.roundedRect(PAGE_MARGIN + (width - notesTabWidth) / 2, y - 12, notesTabWidth, 26, 13).fillColor(WHITE).fill();
-    doc.fillColor(GREEN).font("Helvetica-Bold").fontSize(11).text("Notes", PAGE_MARGIN + (width - notesTabWidth) / 2, y - 5, { width: notesTabWidth, align: "center" });
-    doc.fillColor(INK).font("Helvetica");
-    y += notesHeight + 26;
-  }
+  // --- Pledge dimensions computed up-front (2026-09-16 correction) —
+  // content-driven, independent of category count or page position, so
+  // Open Categories' available-space budget below is accurate and the
+  // Pledge box itself (drawn later) can be sized tightly to its own
+  // content instead of stretching to fill whatever's left, which is
+  // exactly the "lots of negative space" the client flagged.
+  const pledgeFontSize = 10;
+  const pledgeQrSize = 100;
+  const pledgeVerticalPad = 20;
+  const pledgeTextWidth = visitorFeedbackQr ? width - pledgeQrSize - 60 : width - 32;
+  // Explicit font family, not just size: measuring in whatever family
+  // happened to carry over from the previous page (Helvetica) while later
+  // rendering in Helvetica-Bold (left over from the Pledge heading draw)
+  // is exactly the bug that silently clipped pledge lines mid-sentence —
+  // bold glyphs are wider, so the actually-rendered text needed more
+  // lines than the regular-weight measurement predicted.
+  doc.font("Helvetica").fontSize(pledgeFontSize);
+  const pledgeLineHeights = PLEDGE_LINES.map((line) => doc.heightOfString(line, { width: pledgeTextWidth - 14 }));
+  const pledgeTextHeight = pledgeLineHeights.reduce((sum, h) => sum + h + 10, -10);
+  const pledgeContentHeight = Math.max(pledgeTextHeight, visitorFeedbackQr ? pledgeQrSize : 0);
+  const pledgeBoxHeight = pledgeContentHeight + pledgeVerticalPad * 2;
 
   // --- Guest Self-Introduction Format ---
   // Wording/heading now come from static-content.ts (the single source
@@ -562,17 +569,25 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
   // always stretching to fill whatever space was reserved — the old fixed
   // 190pt reservation for the Pledge block left a mostly-empty white panel
   // with small type whenever a chapter had only a handful of open
-  // categories. Whatever height the panel doesn't need gets handed to the
-  // Pledge box below instead of sitting unused.
+  // categories. The cap below reserves the Pledge box's real, content-
+  // driven height (computed above) AND a minimum for the Notes box below
+  // it (2026-09-16 correction) — a real bug caught only by testing with a
+  // real, long category list: without reserving Notes' own minimum here, a
+  // long list could push Pledge+Notes past the page bottom and trigger
+  // pdfkit's silent trailing-blank-page behavior. Whatever the panel
+  // doesn't need beyond its own natural height flows through to make Notes
+  // bigger than its minimum, not to Pledge (which is now fixed-height).
   const panelTop = y;
   const colGap = 16;
   const topPad = 22;
   const bottomPad = 14;
   const gapAfterPanel = 26;
   const pledgeHeadingHeight = 22;
-  const minPledgeBoxHeight = 150;
   const bottomFooterPad = 26;
-  const maxPanelHeight = pageBottom - panelTop - gapAfterPanel - pledgeHeadingHeight - minPledgeBoxHeight - bottomFooterPad;
+  const notesGap = 24;
+  const minNotesHeight = 90;
+  const notesReserve = data.notesEnabled ? notesGap + minNotesHeight : 0;
+  const maxPanelHeight = pageBottom - panelTop - gapAfterPanel - pledgeHeadingHeight - pledgeBoxHeight - notesReserve - bottomFooterPad;
 
   let panelHeight: number;
   let catCols = 3;
@@ -632,23 +647,17 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
   y = panelTop + panelHeight + gapAfterPanel;
 
   // --- Pledge + Visitor Feedback QR ---
+  // Box height is the content-driven `pledgeBoxHeight` computed up-front,
+  // not stretched to fill remaining page space (2026-09-16 correction —
+  // the stretch was exactly the "lots of negative space" the client
+  // flagged from a real rendered page).
   doc.font("Helvetica-Bold").fontSize(13).fillColor(WHITE).text(PLEDGE_HEADING, PAGE_MARGIN, y, { width, align: "center" });
   y += pledgeHeadingHeight;
 
-  const boxHeight = pageBottom - y - bottomFooterPad;
-  doc.roundedRect(PAGE_MARGIN, y, width, boxHeight, 12).strokeColor(WHITE).lineWidth(1.5).stroke();
+  doc.roundedRect(PAGE_MARGIN, y, width, pledgeBoxHeight, 12).strokeColor(WHITE).lineWidth(1.5).stroke();
 
-  const qrSize = Math.min(110, boxHeight - 40);
-  const textWidth = visitorFeedbackQr ? width - qrSize - 60 : width - 32;
-  const pledgeFontSize = 10;
-  doc.fontSize(pledgeFontSize).fillColor(WHITE);
-  const pledgeLineHeights = PLEDGE_LINES.map((line) => doc.heightOfString(line, { width: textWidth - 14 }));
-  const pledgeTextHeight = pledgeLineHeights.reduce((sum, h) => sum + h + 10, -10);
-  // Vertically centered rather than top-anchored — a taller box (now that
-  // Open Categories only takes the height it needs) would otherwise leave
-  // the same kind of dead space below the bullets that this whole pass is
-  // fixing.
-  let cy = y + Math.max(14, (boxHeight - pledgeTextHeight) / 2);
+  doc.font("Helvetica").fontSize(pledgeFontSize).fillColor(WHITE);
+  let cy = y + Math.max(pledgeVerticalPad, (pledgeBoxHeight - pledgeTextHeight) / 2);
   PLEDGE_LINES.forEach((line, i) => {
     const lineHeight = pledgeLineHeights[i];
     doc.rect(PAGE_MARGIN + 16, cy + 2, 3, lineHeight - 2).fillColor("#cfe86b").fill();
@@ -657,21 +666,43 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
     // silently inserts an extra trailing page once it thinks the block
     // might overflow — even though x/y are absolute here. Bounding it to
     // its own measured height keeps this page at exactly one page.
-    doc.fillColor(WHITE).text(line, PAGE_MARGIN + 28, cy, { width: textWidth - 14, height: lineHeight });
+    doc.fillColor(WHITE).text(line, PAGE_MARGIN + 28, cy, { width: pledgeTextWidth - 14, height: lineHeight });
     cy += lineHeight + 7;
   });
 
   if (visitorFeedbackQr) {
-    const qrX = PAGE_MARGIN + width - qrSize - 24;
-    const qrY = y + (boxHeight - qrSize) / 2 - 8;
+    const qrX = PAGE_MARGIN + width - pledgeQrSize - 24;
+    const qrY = y + (pledgeBoxHeight - pledgeQrSize) / 2;
     try {
-      doc.roundedRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 30, 8).fillColor(WHITE).fill();
-      doc.image(visitorFeedbackQr, qrX, qrY, { width: qrSize, height: qrSize });
-      doc.fontSize(7.5).fillColor(GREEN).font("Helvetica-Bold").text("Visitor Feedback", qrX - 8, qrY + qrSize + 4, { width: qrSize + 16, align: "center" });
+      doc.roundedRect(qrX - 8, qrY - 8, pledgeQrSize + 16, pledgeQrSize + 30, 8).fillColor(WHITE).fill();
+      doc.image(visitorFeedbackQr, qrX, qrY, { width: pledgeQrSize, height: pledgeQrSize });
+      doc.fontSize(7.5).fillColor(GREEN).font("Helvetica-Bold").text("Visitor Feedback", qrX - 8, qrY + pledgeQrSize + 4, { width: pledgeQrSize + 16, align: "center" });
       doc.fillColor(INK).font("Helvetica");
     } catch {
       // Skip silently — a broken QR image must never crash the PDF.
     }
+  }
+
+  y += pledgeBoxHeight;
+
+  // --- Notes (2026-09-16 correction) — one overall notes box for the
+  // whole roster, printed BELOW the Pledge (the client's own explicit
+  // placement, moved here after seeing the first rendered page — not
+  // above the Self-Introduction block like an earlier pass had it). Fills
+  // whatever real space is left down to the footer, since the Pledge box
+  // above no longer soaks it up — "there will still be extra page left,"
+  // per the client, so make the box bigger, not fixed-small.
+  if (data.notesEnabled) {
+    const notesTop = y + notesGap;
+    // Reuses the same minNotesHeight the Open Categories budget above
+    // already reserved — this can only be >= that floor, never less, so
+    // the page can never overflow regardless of category count.
+    const notesHeight = Math.max(minNotesHeight, pageBottom - notesTop - bottomFooterPad);
+    doc.roundedRect(PAGE_MARGIN, notesTop, width, notesHeight, 12).strokeColor(WHITE).lineWidth(1.5).stroke();
+    const notesTabWidth = 100;
+    doc.roundedRect(PAGE_MARGIN + (width - notesTabWidth) / 2, notesTop - 12, notesTabWidth, 26, 13).fillColor(WHITE).fill();
+    doc.fillColor(GREEN).font("Helvetica-Bold").fontSize(11).text("Notes", PAGE_MARGIN + (width - notesTabWidth) / 2, notesTop - 5, { width: notesTabWidth, align: "center" });
+    doc.fillColor(INK).font("Helvetica");
   }
 
   // `height` here isn't cosmetic: this sits right at the bottom margin, and
