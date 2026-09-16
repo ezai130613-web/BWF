@@ -80,20 +80,24 @@ export type RosterWizardData = {
 };
 
 /**
- * The chapter's Founding Team + Leadership Team + Coordinator member ids —
- * excluded from "All Other Members" per the client's own confirmation
- * (2026-09-16 planning): a member shows up in exactly one section, never
- * twice. Shared between the wizard loader below and the save action
+ * The chapter's Coordinator member ids — excluded from "All Other Members"
+ * since Coordinators keep their own dedicated section with no separate
+ * score. Shared between the wizard loader below and the save action
  * (src/app/admin/(dashboard)/roster/[meetingId]/actions.ts), which
  * re-derives this server-side rather than trusting whatever member ids the
  * client submits.
+ *
+ * Founding Team and Leadership Team members are deliberately NOT excluded
+ * here (2026-09-16 client correction, reversing the original planning
+ * decision): they're shown in their own section at the top of the roster
+ * *and* appear again, scored, in "All Other Members" — the client's own
+ * reasoning is that they're also members with their own specific Give/Ask,
+ * so their name and score belong in the general list too, duplication and
+ * all.
  */
 export async function getExcludedMemberIds(chapterId: string): Promise<Set<string>> {
-  const [leadership, assignments] = await Promise.all([
-    db.chapterLeadership.findMany({ where: { chapterId }, select: { memberId: true } }),
-    db.rosterAssignment.findMany({ where: { chapterId }, select: { memberId: true } }),
-  ]);
-  return new Set([...leadership.map((l) => l.memberId), ...assignments.map((a) => a.memberId)]);
+  const assignments = await db.rosterAssignment.findMany({ where: { chapterId }, select: { memberId: true } });
+  return new Set(assignments.map((a) => a.memberId));
 }
 
 /** Returns null if the meeting doesn't exist. Throws (via requireChapterAccess) if the caller can't manage this meeting's chapter's roster. */

@@ -2876,3 +2876,45 @@ build` all clean throughout.
 - The save round-trip (~2.8s for 51 members) is real network latency to Neon across 3 sequential
   queries, not further optimized this batch — fine at today's chapter sizes, worth revisiting only
   if a chapter's member count grows substantially.
+
+### Batch 14 — Roster Sheet correction: overall Notes box, Founding/Leadership Team duplicated into All Other Members (2026-09-16, same day)
+
+**What shipped:** two client corrections to Batch 13's brand-new interactive roster system, caught
+before either shipped to production.
+
+1. **Notes is one overall box, not a per-member column.** Batch 13 had put a third blank column
+   next to Give/Ask on every member row when the toggle was on — the client's actual intent was a
+   single blank Notes area for the whole roster, printed once the full member list is done, right
+   before the Guest Self-Introduction section. `renderMemberTable` (`src/lib/roster/generate.ts`)
+   reverted to always exactly two blank columns (Give/Ask); `renderFinalPage` gained a
+   `notesEnabled`-gated Notes box (pill header, bordered, ~74pt tall) at the very top of the final
+   page, ahead of the Self-Introduction block. Because the Open Categories panel's height was
+   already derived from whatever space remains above the Pledge box (Batch 12's own fix), pushing
+   the starting `y` down for the new Notes box needed no other change — the existing
+   shrink-as-needed budget absorbed it automatically. Mirrored on the wizard's Review-step preview
+   (`src/components/admin/roster-wizard.tsx`): no Notes column on either the Manage or Review
+   tables, a standalone "Notes" box rendered right before the Self-Introduction preview.
+2. **Founding Team and Leadership Team members are no longer excluded from "All Other Members"** —
+   reversing Batch 13's own planning decision. The client's reasoning: those members are still
+   shown first in their own section, but they're also regular members with their own Give/Ask, so
+   their name and score belong in the general scored list too, duplication and all. Coordinators
+   are unaffected — still shown only in their own section, still excluded from the scored list
+   (not mentioned in this correction, and the client confirmed everything else was fine as built).
+   `getExcludedMemberIds()` (`src/lib/roster/manage.ts`) now only excludes `RosterAssignment`
+   (Coordinator) member ids, not `ChapterLeadership` ones — a single-function change that both the
+   wizard loader and `saveRoster`'s server-side re-validation already shared, so nothing else
+   needed touching.
+
+**Verification performed:** re-ran the real Playwright pass against Chapter 01's actual data (57
+eligible members, 6 real leadership rows, 0 coordinators): confirmed the All Other Members table
+grew from 51 to 57 rows and now genuinely contains the real Founder ("Arasu Alagappan") and
+Co-Founder ("Abi Ramanathan") by name; confirmed neither the Manage-step nor Review-step table has
+a Notes column under any circumstance; confirmed a standalone "Notes" heading renders ahead of the
+Guest Self-Introduction heading in DOM order when the toggle is on. Saved for real (57
+`RosterScore` rows persisted) and downloaded the actual PDF — rendered every page with PyMuPDF and
+confirmed visually: the member table pages show only Give/Ask (no third column), and the final page
+shows a clean "Notes" pill box sitting above the Self-Introduction block, with Open Categories and
+the Pledge still fitting on the same single page with no overlap. Test roster deleted afterward.
+`npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and `npm run build` all clean.
+
+**Known issues / follow-ups:** none new — same three follow-ups as Batch 13 above still apply.

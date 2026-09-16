@@ -95,8 +95,8 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
 
       // Wipe and recreate rather than upsert-per-row: also naturally drops
       // scores for members no longer eligible/submitted (left the chapter,
-      // went inactive, or moved into a leadership/coordinator role since
-      // the last save), with no separate cleanup query needed.
+      // went inactive, or moved into a Coordinator role since the last
+      // save), with no separate cleanup query needed.
       await tx.rosterScore.deleteMany({ where: { rosterId: roster.id } });
       if (ranked.length > 0) {
         await tx.rosterScore.createMany({

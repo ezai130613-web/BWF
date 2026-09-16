@@ -399,12 +399,12 @@ function NotesStep({ notesEnabled, onChange }: { notesEnabled: boolean; onChange
           onChange={(e) => onChange(e.target.checked)}
           className="h-4 w-4 rounded border-neutral-300"
         />
-        Include Notes column in the roster sheet
+        Include a Notes box in the roster sheet
       </label>
       <p className="mt-2 text-xs text-neutral-500">
         {notesEnabled
-          ? "A blank Notes column will print alongside Give & Ask on the member table."
-          : "No Notes column will appear on the member table."}
+          ? "One blank Notes box will print after the full member list, before the Guest Self-Introduction section — not a column on every member row."
+          : "No Notes box will appear on the roster."}
       </p>
     </div>
   );
@@ -461,7 +461,6 @@ function ReviewStep({
                 <th className="px-3 py-2 font-medium">Category</th>
                 <th className="px-3 py-2 font-medium">Give &amp; Ask</th>
                 <th className="px-3 py-2 font-medium">Score</th>
-                {notesEnabled ? <th className="px-3 py-2 font-medium">Notes</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -476,11 +475,6 @@ function ReviewStep({
                     <span className="inline-block h-8 w-28 rounded border border-dashed border-neutral-300" aria-hidden />
                   </td>
                   <td className="px-3 py-2 align-top text-neutral-900">{m.score}</td>
-                  {notesEnabled ? (
-                    <td className="px-3 py-2 align-top text-neutral-400">
-                      <span className="inline-block h-8 w-28 rounded border border-dashed border-neutral-300" aria-hidden />
-                    </td>
-                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -500,6 +494,14 @@ function ReviewStep({
           </div>
         )}
       </div>
+
+      {notesEnabled ? (
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-900">Notes</h3>
+          <p className="mt-1 text-xs text-neutral-500">One overall notes box, printed before the Guest Self-Introduction section.</p>
+          <div className="mt-2 h-24 rounded-lg border border-dashed border-neutral-300 bg-white" aria-hidden />
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-neutral-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-neutral-900">{GUEST_SELF_INTRODUCTION_HEADING}</h3>

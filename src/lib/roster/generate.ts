@@ -86,9 +86,11 @@ export type RosterData = {
   openCategoryNames: string[];
   whatsInItForYou: string;
   visitorFeedbackQrUrl: string | null;
-  /// 2026-09-16 correction, requirement 6 — a per-meeting toggle for a blank
-  /// fill-in-by-hand Notes column on the member table, same treatment as
-  /// Give/Ask.
+  /// 2026-09-16 correction (client follow-up) — a per-meeting toggle for a
+  /// single blank Notes box on the final page, printed before the Guest
+  /// Self-Introduction block, once the full member list is done. Not a
+  /// per-member column — an earlier pass put it next to Give/Ask on every
+  /// row and the client corrected that.
   notesEnabled: boolean;
 };
 
@@ -415,14 +417,8 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
   const colPhoto = 78;
   const colDetails = (width - colSno - colPhoto) * 0.42;
   const colCategory = (width - colSno - colPhoto) * 0.2;
-  // Notes shares the same blank fill-in-by-hand treatment as Give/Ask
-  // (requirement 6) — three equal columns instead of two when enabled,
-  // rather than shrinking Details/Category to make room for a 4th.
-  const remaining = width - colSno - colPhoto - colDetails - colCategory;
-  const fillInCols = data.notesEnabled ? 3 : 2;
-  const colGive = remaining / fillInCols;
+  const colGive = (width - colSno - colPhoto - colDetails - colCategory) / 2;
   const colAsk = colGive;
-  const colNotes = data.notesEnabled ? colGive : 0;
 
   const buffers = await Promise.all(data.members.map((m) => fetchImageBuffer(m.photoUrl)));
 
@@ -451,10 +447,6 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
     doc.text("Give", hx, y + 7, { width: colGive });
     hx += colGive;
     doc.text("Ask", hx, y + 7, { width: colAsk });
-    if (data.notesEnabled) {
-      hx += colAsk;
-      doc.text("Notes", hx, y + 7, { width: colNotes });
-    }
     doc.fillColor(INK).font("Helvetica");
     y += 24;
 
@@ -500,10 +492,6 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
       doc.rect(cx, rowY, colGive, rowHeight).strokeColor(BORDER).lineWidth(0.5).stroke();
       cx += colGive;
       doc.rect(cx, rowY, colAsk, rowHeight).strokeColor(BORDER).lineWidth(0.5).stroke();
-      if (data.notesEnabled) {
-        cx += colAsk;
-        doc.rect(cx, rowY, colNotes, rowHeight).strokeColor(BORDER).lineWidth(0.5).stroke();
-      }
     }
 
     doc.moveTo(PAGE_MARGIN, tableBottom).lineTo(PAGE_MARGIN + width, tableBottom).strokeColor(BORDER).lineWidth(0.5).stroke();
@@ -511,13 +499,15 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
 }
 
 /**
- * One consolidated, fully green-branded final page: Visitor Self-
- * Introduction, Open Categories, and the BWF Pledge + feedback QR — the
- * client's own correction was explicit that splitting this across several
- * pages (as the prior version did) isn't the reference design. Open
- * Categories shrinks its own font to keep everything on this one page
- * rather than spilling onto a continuation, since the reference never
- * paginates this page either.
+ * One consolidated, fully green-branded final page: an optional overall
+ * Notes box, Guest Self-Introduction, Open Categories, and the BWF Pledge +
+ * feedback QR — the client's own correction was explicit that splitting
+ * this across several pages (as the prior version did) isn't the reference
+ * design. Open Categories shrinks its own font to keep everything on this
+ * one page rather than spilling onto a continuation, since the reference
+ * never paginates this page either — and since the Notes box (when
+ * present) pushes everything else down, the same shrink-as-needed budget
+ * automatically accounts for it too.
  */
 function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedbackQr: Buffer | null) {
   doc.addPage();
@@ -526,6 +516,21 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
   doc.rect(0, 0, doc.page.width, doc.page.height).fillColor(GREEN).fill();
 
   let y = PAGE_MARGIN;
+
+  // --- Notes (2026-09-16 correction) — one overall notes box for the whole
+  // roster, printed BEFORE the Guest Self-Introduction block. Not a
+  // per-member column next to Give/Ask — an earlier pass built it that way
+  // and the client corrected it: notes are a single blank area after the
+  // full member list is done, not something repeated per row.
+  if (data.notesEnabled) {
+    const notesHeight = 74;
+    doc.roundedRect(PAGE_MARGIN, y, width, notesHeight, 12).strokeColor(WHITE).lineWidth(1.5).stroke();
+    const notesTabWidth = 100;
+    doc.roundedRect(PAGE_MARGIN + (width - notesTabWidth) / 2, y - 12, notesTabWidth, 26, 13).fillColor(WHITE).fill();
+    doc.fillColor(GREEN).font("Helvetica-Bold").fontSize(11).text("Notes", PAGE_MARGIN + (width - notesTabWidth) / 2, y - 5, { width: notesTabWidth, align: "center" });
+    doc.fillColor(INK).font("Helvetica");
+    y += notesHeight + 26;
+  }
 
   // --- Guest Self-Introduction Format ---
   // Wording/heading now come from static-content.ts (the single source
