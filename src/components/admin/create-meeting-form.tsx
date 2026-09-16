@@ -11,13 +11,16 @@ export function CreateMeetingForm({
   chapters,
   chiefGuests,
   canManageChiefGuests,
+  defaultChapterId,
 }: {
   chapters: { id: string; name: string }[];
   chiefGuests: { id: string; name: string; chapterId: string | null }[];
   canManageChiefGuests: boolean;
+  /** Roster Sheets' "+ Create a new meeting" link pre-scopes this form to the chapter it came from. */
+  defaultChapterId?: string;
 }) {
   const [state, formAction, pending] = useActionState(createMeeting, initialState);
-  const [chapterId, setChapterId] = useState("");
+  const [chapterId, setChapterId] = useState(defaultChapterId ?? "");
   const [chiefGuestId, setChiefGuestId] = useState("");
   const [newChiefGuests, setNewChiefGuests] = useState<{ id: string; name: string; chapterId: string | null }[]>([]);
 

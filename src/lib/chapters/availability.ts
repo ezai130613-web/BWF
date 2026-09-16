@@ -28,16 +28,34 @@ export async function getOpenCategoryCounts(chapterIds: string[]): Promise<Map<s
 
 /**
  * Phase 20 Batch 3 — Roster Sheet's final page needs the actual open
- * category *names* for one chapter (the reference PDFs' "Open Categories"
- * list), not just the count getOpenCategoryCounts() returns. Same live
+ * categories for one chapter (the reference PDFs' "Open Categories" list),
+ * not just the count getOpenCategoryCounts() returns. Same live
  * occupied-category query the chapter detail page already uses.
+ *
+ * Returns full {id, name} objects — the 2026-09-16 interactive Roster
+ * wizard needs the id to build its Select Open Categories checklist
+ * (src/lib/roster/manage.ts) and to save the admin's chosen subset against
+ * a specific meeting's Roster; getOpenCategoryNames() below is just this
+ * mapped down to names for generate.ts's live-candidate use.
  */
-export async function getOpenCategoryNames(chapterId: string): Promise<string[]> {
+export async function getOpenCategories(chapterId: string): Promise<{ id: string; name: string }[]> {
   const [allActive, occupied] = await Promise.all([
-    db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    // Roster correction (2026-09-15): `isActive` alone was pulling in every
+    // near-duplicate/legacy category row the taxonomy had accumulated
+    // (204 active rows, most reference chapters only meant ~30-45 to ever
+    // show here). `showInOpenCategories` is the admin-curated subset
+    // (`/admin/categories`) actually eligible for this list — separate
+    // from `isActive`, which still governs everything else (new
+    // applications, member profile category, etc).
+    db.category.findMany({ where: { isActive: true, showInOpenCategories: true }, orderBy: { name: "asc" } }),
     db.member.findMany({ where: { status: "ACTIVE", chapterId }, select: { categoryId: true } }),
   ]);
 
   const occupiedIds = new Set(occupied.map((m) => m.categoryId));
-  return allActive.filter((c) => !occupiedIds.has(c.id)).map((c) => c.name);
+  return allActive.filter((c) => !occupiedIds.has(c.id)).map((c) => ({ id: c.id, name: c.name }));
+}
+
+export async function getOpenCategoryNames(chapterId: string): Promise<string[]> {
+  const open = await getOpenCategories(chapterId);
+  return open.map((c) => c.name);
 }

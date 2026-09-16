@@ -2673,3 +2673,206 @@ confirm again via a *fresh* browser navigation, not a reload of the same page, t
 client-side state masking a real gap). Test data (the temp Chief Guest, the temp admin account)
 cleaned up afterward. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and a full
 `npm run build` all clean.
+
+### Batch 12 — Roster Sheet PDF design correction (2026-09-15, same day)
+
+**What shipped:** the client's design review compared Batch 3's generated roster against the 3
+real reference roster PDFs (`docs/reference/roster-sheets/`) and found the layout had drifted into
+a plain "database export" look — this batch brings `src/lib/roster/generate.ts` back in line with
+the reference's own green-and-white booklet identity, rebuilding all four sections:
+
+1. **Cover** — full-bleed green Date/Name header and a full-bleed green Founder/Co-Founder +
+   Director/President/Secretary/Treasurer band (previously a plain rect with white margins);
+   Chief Guests now sit in a rounded green box with a pill title, rounded-square photo badges, and
+   a "What's in it for you?" strip whose copy is a new admin-editable content block
+   (`roster.whatsInItForYou`, `/admin/content` → Roster section) rather than hardcoded.
+2. **Coordinators, renamed page structure to match the reference's three-column "Associates"
+   layout** — President/Secretary/Treasurer Associates, each a pale-green rounded panel with a
+   pill header. The reference shows the *same* RosterRole (e.g. "Meeting Coordinator") under
+   different columns in different chapters, so the column can't be derived from the role label —
+   added `RosterAssignment.group` (new `RosterAssociateGroup` enum: PRESIDENT/SECRETARY/TREASURER),
+   set explicitly per assignment via a new dropdown on the existing assign form
+   (`assign-roster-role-form.tsx`) and displayed as a new column on the chapter detail page's
+   Coordinators table. Migration `20260915180000_roster_group_and_eligibility` — hand-written and
+   applied via `prisma migrate deploy` (same non-interactive-shell workaround as Batch 10's
+   migration), safe as a required column with no default since `roster_assignments` had zero rows
+   in every environment (Batch 8's own follow-up note).
+3. **Member table** — hard-capped to exactly 8 members/page (was fitting ~12/page by letting row
+   height grow with content), matching the reference's own density and preserving generous Give/Ask
+   handwriting space. Row height is now a fixed `available-height / 8` slot per page instead of
+   content-driven; long name/company/address/contact lines truncate with an ellipsis instead of
+   wrapping, so one long address can never overlap the next row (client's own explicit ask). Photos
+   are larger and rounded-square (matching the reference's own frame, not the old circular crop).
+   Same fix applies to Coordinators/cover photos. Added `Member.rosterEligible` (default `true`) —
+   status `ACTIVE` alone wasn't a safe "belongs on a printed roster" signal (a real "Demo Member"
+   seed row was still `ACTIVE` in production); flipped to `false` for that one row via a one-off
+   script rather than deleting it, since deleting test data was a separate call the client didn't
+   ask for this batch.
+4. **Final page** — consolidated Visitor Self-Introduction, Open Categories, and the Pledge +
+   Visitor Feedback QR onto **one** green branded page (previously spread across 3 separate pages).
+   Open Categories tries progressively more columns (3→6) and shrinks its font before falling back
+   to a hard clip against its own panel — the query behind it (`getOpenCategoryNames`) was already
+   correct (active categories minus this chapter's occupied ones), but the *data* has ~150
+   near-duplicate entries (Architect-1/2/3, multiple waterproofing/interior variants); deduping the
+   Category master is a content decision left to the client to do themselves in `/admin/categories`,
+   not guessed at here — the clip just guarantees the page never visually breaks in the meantime.
+   The invitation-flyer page (only ever present on one of the three reference chapters) was removed
+   entirely per the client's explicit correction — it's a separate promotional asset, not part of
+   the roster booklet; `RosterData` dropped the now-unused `meetingTitle`/`meetingStartsAt`/
+   `meetingVenue`/`meetingAddress`/`registrationFeeText` fields along with it.
+
+**Real bug caught only by rendering actual output, not code review**: two different `.text()` calls
+in the final page (the Pledge paragraph lines, and the `www.buildersworldforum.com` footer sitting
+right at the bottom margin) had no explicit `height` option. pdfkit treats an unbounded multi-line
+`.text()` call as flowing content — even with absolute x/y — and silently appends a trailing blank
+page once it decides the block might overflow, regardless of whether anything is actually drawn on
+it. This produced an 11-page-of-content PDF that actually shipped as 12 pages, with a fully blank
+page 12 — invisible unless you open the real file and check `page_count`, not something a visual
+diff of the content pages would catch. Fixed by giving every multi-line `.text()` call on that page
+an explicit `height`, which also fixed a related visible bug: the Chief Guest box's fixed guessed
+height (190) let the guest name card and the "What's in it for you?" strip overlap for real data;
+replaced with a derived `boxHeight` built from the same offsets used to place its own content
+(the exact pattern this file's Batch 3 invitation-flyer function — now removed — had already
+established for this class of bug). Also fixed Founder/Co-Founder rendering in query order instead
+of a fixed order, which could print Co-Founder before Founder depending on the database's own
+row order — now sorted via the same `FOUNDING_ROLE_ORDER`-style fixed array the chapter detail
+admin page already uses.
+
+**Verification performed:** rendered real generated PDFs to page images (PyMuPDF) and read them
+directly, not just diffed code — against Chapter 01's actual 57 roster-eligible members (58 minus
+the now-excluded Demo Member), its real Chief Guest, and its real ~150-entry (undeduplicated)
+category list, confirming: exactly 8 members/page across 8 pages with correctly blank trailing
+rows on the last page and sequential "ROSTER PAGE - N" numbering; the final page holds at one page
+with the categories block gracefully shrinking/clipping rather than overlapping the Pledge box
+below; page count is exactly 11, matching the reference PDFs' own page count. Separately created 12
+temporary `RosterAssignment` rows across all three groups (the table was empty in every real
+chapter) to verify the Coordinators page's three-column bucketing renders correctly, then deleted
+them. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and a full `npm run build` all
+clean.
+
+**Known issues / follow-ups:**
+- The Category master's ~150 near-duplicate entries (client's own explicit finding) are not
+  deduplicated by this batch — the client chose to handle that themselves in `/admin/categories`.
+  Until then, the Open Categories block on real chapters will lean on its column-shrink/clip
+  fallback and may truncate some longer names — expected to resolve on its own once the category
+  list is cleaned up, not a layout bug.
+- Every chapter's `RosterAssignment` table is still empty in production (same gap Batch 8 noted) —
+  the new `group` field has no live data to exercise yet; verified only via temporary rows.
+
+### Batch 13 — Roster Sheet becomes an interactive, per-meeting management system (2026-09-16)
+
+**What shipped:** the client asked for the Roster Sheet page to stop being a "pick a meeting,
+download a PDF" generator and become a full on-page roster manager — scores, automatic ranking,
+per-meeting open-category selection, and a Notes-column toggle, all saved against a specific
+`Meeting` and reviewable on the website before the PDF is ever downloaded (the PDF is now the
+final output of a save, not the primary feature).
+
+- New models: `Roster` (one per `Meeting`, `notesEnabled` toggle, `chiefGuests`/`openCategories`
+  implicit many-to-many — same pattern as `Blog.tags`/`BlogTag` — plus `savedAt`, null until the
+  admin explicitly saves) and `RosterScore` (one row per `Roster`+`Member` in the "All Other
+  Members" section only — Chief Guest/Founding Team/Leadership Team/Coordinators are never scored,
+  they keep their existing fixed/catalog order). Migration
+  `20260916075029_roster_scoring_and_config`, applied cleanly via `prisma migrate dev` against the
+  real dev database — no shadow-DB workaround needed this time.
+- `src/lib/roster/manage.ts` — `getRosterWizardData(meetingId)`, computed once server-side and
+  handed to a client wizard as plain data, same precedent as the Phase 7 `/apply` wizard. Sections
+  mirror the client's exact ordering: Chief Guest (from the chapter's `ChiefGuest` catalog, default
+  = `Meeting.chiefGuestId` if set), Founding Team (`ChapterLeadership` `FOUNDER`/`CO_FOUNDER`,
+  same `FOUNDING_ROLE_ORDER` convention as `/admin/chapters/[id]`), Leadership Team (the rest of
+  `ChapterLeadership`), Coordinators (`RosterAssignment`, unchanged three-column grouping), and
+  All Other Members — every other `ACTIVE`/`rosterEligible` member, explicitly **excluding** anyone
+  already shown in the three sections above (client's own call: a member appears in exactly one
+  section, never twice).
+- **Score carry-forward (client's own call):** a brand-new meeting's roster doesn't start every
+  member at 0 — each member's score pre-fills from their most recent *other* scored meeting in the
+  same chapter, as a starting point the admin then adjusts. Fetched and reduced to "most recent hit
+  per member" in JS (a two-hop relation sort — `RosterScore` → `Roster` → `Meeting.startsAt` — isn't
+  something a single Prisma `orderBy` expresses cleanly), same "fine at this scale" precedent as
+  `findMatchingCompany`'s JS-side company dedup (Phase 7). The **display order** of a never-saved
+  roster still falls back to `joinedAt` (score-sorting only happens once an admin actually clicks
+  Save, per requirement 4) — verified live this is exactly what happens: a second meeting's members
+  showed the first meeting's carried-forward score *values* in `joinedAt` order, then correctly
+  re-ranked by score once saved.
+- `src/app/admin/(dashboard)/roster/[meetingId]/actions.ts` — `saveRoster()`, one transaction:
+  upserts `Roster` (notes toggle, chief guests, open categories — re-validated server-side against
+  the meeting's own chapter, never trusting client-submitted ids), stable-sorts the submitted
+  members by score descending (ties keep their submitted relative order for free, since
+  `Array.prototype.sort` is stable), and writes `RosterScore` rows.
+- `src/components/admin/roster-wizard.tsx` — one client component owning steps 3–7 (Manage
+  Members & Scores, Select Open Categories, Configure Notes, Review & Save, Download PDF) off the
+  one server-computed payload; steps 1–2 (chapter, meeting) stayed plain GET-form/link pages, same
+  as before. Back/Next never lose unsaved edits (all in React state until Save Roster is clicked).
+  The Review step previews a live "what Save will persist" projection (same stable-sort-by-score
+  the server runs) rather than showing stale last-saved data while the admin is mid-edit. Download
+  PDF stays disabled until the roster has been saved at least once **and** there are no edits since
+  (client-side dirty check against a snapshot taken at last save) — satisfies the brief's "changes
+  must be saved before downloading the updated PDF" literally.
+- `/admin/roster` (step 2) now lists **every** meeting for the chapter, not just upcoming/scheduled
+  ones, tagged Saved/Not started, so a past meeting's roster can be reopened — and a
+  "+ Create a new meeting" link goes to `/admin/meetings?chapterId=…` (client's own explicit
+  preference over duplicating that form inside the wizard); `CreateMeetingForm` now accepts a
+  `defaultChapterId` to preselect that dropdown on arrival.
+- `/api/admin/roster` (PDF download) no longer computes anything live — it reads the persisted
+  `Roster`/`RosterScore` rows straight through, and 409s with a friendly message if the roster was
+  never saved. `src/lib/roster/generate.ts` gained a `notesEnabled` flag (a third blank
+  fill-in-by-hand column alongside Give/Ask, same treatment, not admin-typed text) and now renders
+  members in the saved `RosterScore.order`, not `joinedAt`.
+- `src/lib/roster/static-content.ts` — the Pledge and Guest Self-Introduction wording, extracted
+  out of `generate.ts` into one module shared by the PDF and the wizard's on-page preview so they
+  can never drift apart (requirement 8: "the preview must closely match the final PDF").
+- **Checked the "BWF rules and regulations" / "oath" requirement against the actual 3 reference
+  PDFs before building anything** (they're scanned images with no extractable text, so read
+  page-by-page as rendered images): no such section exists in any of the 3 references — only the
+  Pledge and the Self-Introduction format. Per the client: the Pledge stands in for "oath and
+  pledge," and nothing was invented for "rules and regulations" since no source wording exists for
+  it.
+- **Real bug caught only by re-reading the reference images at full resolution, not by reusing the
+  prior batch's transcription as-is**: the Self-Introduction block's opening line — "Dear Guest,"
+  (or "Dear Visitor," on Chapter 1's own version) — was present on every one of the 3 references but
+  had been silently dropped from `generate.ts` since Batch 3. Restored it and standardized the
+  heading on "BWF – Guest Self Introduction Format" (2 of the 3 references, and the client's own
+  phrasing) with the salutation now correctly rendered above the instructions line.
+
+**Real bug caught only by testing against real production data, not a handful of test rows**: the
+first save-roster pass against Chapter 01's real 51 non-leadership members took long enough
+(one `upsert` per member inside a single interactive transaction, each a real network round-trip to
+Neon) that a save genuinely in progress looked like a broken "Download PDF" button — the client-side
+save had not actually finished by the time a quick check looked at it. Fixed by replacing the
+per-row upsert loop with delete-all-then-`createMany` (3 queries total regardless of member count,
+not N+1) — same safe swap as any other table where no other row references `RosterScore.id` by
+foreign key. Re-measured live: ~2.8s for 51 members end-to-end, versus previously exceeding several
+seconds unmeasured before the fix made it look stuck.
+
+**Verification performed:** full real pass via Playwright against a real production build
+(`next build && next start`) and the live database, logged in as the real Super Admin, against
+Chapter 01's actual 51 eligible members (not seeded/fabricated test rows): set 5 real members'
+scores (three distinct, two intentionally tied) through the actual UI, selected exactly 2 of the
+chapter's 89 real open categories, enabled Notes, clicked Save Roster, and confirmed — via a full
+page reload, not just in-memory state — the saved scores, the correctly re-ranked order (descending
+by score, the tied pair keeping their original relative order), the 2 selected categories, and the
+Notes toggle all reloaded exactly as saved. Downloaded the real PDF and rendered every page with
+PyMuPDF: the member table's first page matches the saved ranking exactly with a working Notes
+column; the final page shows exactly the 2 selected categories and the corrected Self-Introduction
+wording; the cover correctly shows the meeting's own default Chief Guest and the real
+Founder/Co-Founder/Director/President/Secretary/Treasurer band, all unchanged from before this
+batch; the Coordinators page correctly shows its real empty state (Chapter 01's
+`RosterAssignment` table is still empty in production, same known gap Batch 8/12 already flagged).
+Separately verified isolation and carry-forward: created a second real meeting via
+`/admin/meetings?chapterId=…` (confirmed the chapter dropdown arrived preselected), confirmed its
+roster opened with the first meeting's saved scores carried forward, edited and saved it, and
+confirmed via direct database query that the first meeting's saved `Roster` (`savedAt` and every
+score) was completely untouched. All temporary meetings/rosters created during verification were
+deleted afterward. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and `npm run
+build` all clean throughout.
+
+**Known issues / follow-ups:**
+- Give &amp; Ask stays blank fill-in-by-hand space on both the on-page table and the PDF, same as
+  every reference roster — the brief calls only Score "editable"; not a gap, a deliberate read of
+  the requirement.
+- Chapter Admin's chapter-scoped access to the new `/admin/roster/[meetingId]` route was not
+  independently re-verified with a second real Chapter Admin login this batch — reasoned from the
+  already-proven-correct `requireChapterAccess` pattern shared with every other roster route
+  instead, same gap Batch 3 flagged for the original generation route.
+- The save round-trip (~2.8s for 51 members) is real network latency to Neon across 3 sequential
+  queries, not further optimized this batch — fine at today's chapter sizes, worth revisiting only
+  if a chapter's member count grows substantially.

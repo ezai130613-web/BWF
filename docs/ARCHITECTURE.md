@@ -1002,6 +1002,56 @@ the "never run destructive commands" rule). The one build-script change this pha
 schema already in the repo, it can't touch data, and skipping it doesn't defer risk, it just
 breaks the build.
 
+### Roster Sheet interactive management (2026-09-16 client correction)
+**The Roster Sheet PDF is now the final output of a saved `Roster`, not something computed live
+on every request.** Through Batch 12 (`docs/PHASES.md`), `/api/admin/roster` recomputed the member
+list, open categories, and Chief Guest selection fresh from `Member`/`Category`/`ChiefGuest` on
+every download — nothing about a specific meeting's roster was ever persisted. The client asked for
+scores, automatic ranking, per-meeting open-category selection, and a Notes-column toggle to be
+editable and reviewable on the website itself, which needs real per-meeting state: `Roster` (one
+per `Meeting`, holding the Notes toggle and this specific roster's `chiefGuests`/`openCategories`
+selections as implicit many-to-many relations — same pattern as `Blog.tags`/`BlogTag`) and
+`RosterScore` (one row per `Roster`+`Member`, `score` + a recomputed `order`).
+
+**Only "All Other Members" is ever scored.** Chief Guest, Founding Team (`ChapterLeadership`
+`FOUNDER`/`CO_FOUNDER`), Leadership Team (the rest of `ChapterLeadership`), and Coordinators
+(`RosterAssignment`) keep their existing fixed/catalog display order — a member who already
+appears in one of those three sections is explicitly excluded from "All Other Members" (client
+confirmed: one section per member, never duplicated). Ranking recomputes only when the admin
+clicks Save (not live as scores are typed) — a stable descending sort by score, so tied scores keep
+whatever relative order they were already displayed in.
+
+**Score carry-forward, not a hard reset to 0.** A brand-new meeting's roster pre-fills each
+member's score from their most recent *other* scored meeting in the same chapter (client's own
+call — scores are a starting point to adjust, not blank every time). This is computed by fetching
+that member's `RosterScore` rows across the chapter and reducing to "most recent" in JS
+(`src/lib/roster/manage.ts`) rather than a Prisma `orderBy` two relation-hops deep
+(`RosterScore` → `Roster` → `Meeting.startsAt`), which isn't something a single `orderBy` clause
+expresses — same "fetch and compare in JS, fine at this scale" precedent as `findMatchingCompany`
+(Phase 7). The carried-forward *display order* still defaults to `joinedAt` until the roster is
+actually saved for the first time — score-sorting is strictly a Save-time effect.
+
+**Saving writes `RosterScore` via delete-all-then-`createMany`, not one upsert per member.** A real
+51-member chapter save with a naive per-row upsert loop took long enough (N sequential
+interactive-transaction round-trips to Neon) that it looked like a broken UI before it actually
+finished — caught only by testing against real production data, not a handful of test rows (see
+`docs/PHASES.md` Batch 13). `RosterScore` has no other row referencing its `id` by foreign key, so
+wiping and recreating it on every save is safe and holds the query count at 3 regardless of member
+count.
+
+**The wizard is one client component off one server-computed payload, same precedent as the Phase
+7 `/apply` wizard** — `getRosterWizardData()` computes everything once server-side;
+`RosterWizard` (`src/components/admin/roster-wizard.tsx`) owns every step transition, edit, and the
+Review step's "what Save will persist" preview entirely in React state, with nothing round-tripping
+to the server until "Save Roster" is clicked. Download PDF is gated client-side on
+`isSaved && !dirty` (a snapshot comparison against the state at last save) — satisfies "changes
+must be saved before downloading the updated PDF" without any server-side dirty-tracking.
+
+**Give & Ask stays blank fill-in-by-hand space, on-screen and in the PDF — not an admin-typed
+field.** The brief's "Required table columns" table calls only Score editable; Give/Ask (and now
+Notes, when enabled) are handwritten at the meeting itself, matching every one of the 3 reference
+roster PDFs.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

@@ -9,9 +9,17 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-red-50 text-red-700",
 };
 
-export default async function MeetingsPage() {
+export default async function MeetingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ chapterId?: string }>;
+}) {
   const scope = await getChapterScope("meetings:manage");
   const chapterFilter = scope === "ALL" ? {} : { chapterId: scope };
+  // Roster Sheets' "+ Create a new meeting" link (src/app/admin/(dashboard)/roster/page.tsx)
+  // passes ?chapterId= so the create form below starts pre-scoped to that
+  // chapter instead of asking the admin to pick it again.
+  const { chapterId: preselectChapterId } = await searchParams;
 
   const session = await requireAdminSession();
   const permissions = await getUserPermissionKeys(session.user.id);
@@ -82,7 +90,12 @@ export default async function MeetingsPage() {
         </table>
       </div>
 
-      <CreateMeetingForm chapters={chapters} chiefGuests={chiefGuests} canManageChiefGuests={canManageChiefGuests} />
+      <CreateMeetingForm
+        chapters={chapters}
+        chiefGuests={chiefGuests}
+        canManageChiefGuests={canManageChiefGuests}
+        defaultChapterId={preselectChapterId && chapters.some((c) => c.id === preselectChapterId) ? preselectChapterId : undefined}
+      />
     </div>
   );
 }

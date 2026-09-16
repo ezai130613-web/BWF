@@ -215,18 +215,30 @@ model Chapter {
 }
 
 model Category {
-  id          String  @id @default(cuid())
-  name        String
-  slug        String  @unique
-  description String?
-  isActive    Boolean @default(true)
+  id                   String  @id @default(cuid())
+  name                 String
+  slug                 String  @unique
+  description          String?
+  isActive             Boolean @default(true)
+  /// Roster correction (2026-09-15): whether this category can appear in a
+  /// generated roster's "Open Categories" section. Separate from `isActive`
+  /// — the category master accumulated many near-duplicate/legacy rows
+  /// (e.g. "Civil Contractors 2" alongside "Civil Contractor - 2") that are
+  /// still legitimately `isActive` (a member may hold one, or an admin may
+  /// still want it selectable elsewhere) but shouldn't independently count
+  /// as an "open slot" on the printed roster. Defaults true so a newly
+  /// created category shows up without extra admin steps; existing rows
+  /// were backfilled by cross-referencing real member data and the
+  /// reference roster PDFs, not left to the default.
+  showInOpenCategories Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members      Member[]
-  applications MembershipApplication[]
-  visitors     Visitor[]
+  members          Member[]
+  applications     MembershipApplication[]
+  visitors         Visitor[]
+  rosterSelections Roster[]
 
   @@map("categories")
 }
@@ -253,17 +265,23 @@ enum MemberStatus {
 }
 
 model Member {
-  id          String       @id @default(cuid())
+  id             String       @id @default(cuid())
   /// Public profile URL: /members/{slug}. Generated from name at creation
   /// (see slugify() in members/actions.ts); stable afterwards even if the
   /// name is later edited, so published links never break.
-  slug        String       @unique
-  name        String
-  designation String?
-  bio         String?
-  email       String?
-  phone       String?
-  status      MemberStatus @default(ACTIVE)
+  slug           String       @unique
+  name           String
+  designation    String?
+  bio            String?
+  email          String?
+  phone          String?
+  status         MemberStatus @default(ACTIVE)
+  /// Roster correction (2026-09-15): an ACTIVE member can still be a
+  /// non-roster row (seed/test/demo data) — status alone isn't a safe
+  /// "should this appear on a printed roster" signal. Defaults true so
+  /// every real member keeps appearing without any admin action; flip off
+  /// per-member for anything that shouldn't print.
+  rosterEligible Boolean      @default(true)
 
   // --- Public profile content (brief §19) — describes THIS member's own
   // specialisation, which can differ from another member at the same
@@ -370,6 +388,7 @@ model Member {
   conclavesOrganized    Conclave[]            @relation("ConclaveOrganizer")
   conclaveParticipation ConclaveParticipant[] @relation("ConclaveParticipation")
   rosterAssignments     RosterAssignment[]
+  rosterScores          RosterScore[]
   consumersBrought      Consumer[]
   chiefGuestsBrought    MemberChiefGuest[]
 
@@ -807,6 +826,7 @@ model Meeting {
   updatedAt DateTime @updatedAt
 
   visitors Visitor[]
+  roster   Roster?
 
   @@index([chapterId, startsAt])
   @@map("meetings")
@@ -930,6 +950,7 @@ model ChiefGuest {
   updatedAt DateTime @updatedAt
 
   meetings Meeting[]
+  rosters  Roster[]
 
   @@index([chapterId])
   @@index([isPublished])
@@ -1235,11 +1256,24 @@ model RosterRole {
   @@map("roster_roles")
 }
 
+/// Roster PDF correction (2026-09-15): the reference roster's Coordinators
+/// page groups assignments into three columns — President / Secretary /
+/// Treasurer Associates — but the same RosterRole (e.g. "Meeting
+/// Coordinator") shows up under different columns across the 3 reference
+/// chapters, so the column can't be derived from the role. An admin picks it
+/// explicitly per assignment instead.
+enum RosterAssociateGroup {
+  PRESIDENT
+  SECRETARY
+  TREASURER
+}
+
 model RosterAssignment {
-  id        String @id @default(cuid())
+  id        String               @id @default(cuid())
   chapterId String
   roleId    String
   memberId  String
+  group     RosterAssociateGroup
 
   chapter Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   role    RosterRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
@@ -1253,4 +1287,75 @@ model RosterAssignment {
   @@unique([chapterId, roleId, memberId])
   @@index([chapterId])
   @@map("roster_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Roster Sheet interactive management (2026-09-16 client correction) — the
+// Roster Sheet page stops being a stateless "compute a PDF live" generator
+// and becomes a real per-Meeting record: scores, automatic ranking, which
+// open categories to print, and whether the Notes column is shown are all
+// saved here, editable across sessions, and read back verbatim by
+// generate.ts when the PDF is downloaded. One Roster per Meeting.
+// ---------------------------------------------------------------------------
+
+model Roster {
+  id        String  @id @default(cuid())
+  meetingId String  @unique
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// Section 6 of the correction brief — a single on/off column toggle, not
+  /// per-member note text (Give/Ask/Notes are all blank fill-in-by-hand
+  /// space on the printed sheet, same as every reference roster).
+  notesEnabled Boolean @default(false)
+
+  /// Which Chief Guest(s) are featured on this specific roster's cover —
+  /// independent of Meeting.chiefGuestId (that field is the single speaker
+  /// shown on the public meeting/visit page; a roster cover can feature more
+  /// than one guest, matching the Chapter 1 reference's two-guest cover).
+  chiefGuests ChiefGuest[]
+
+  /// The admin-curated subset of this chapter's currently-open categories to
+  /// print on this specific roster — defaults to the full open set when a
+  /// roster is first opened (src/lib/roster/manage.ts), then admin-editable
+  /// per meeting from there.
+  openCategories Category[]
+
+  scores RosterScore[]
+
+  /// Null until the admin explicitly clicks "Save Roster" — the wizard
+  /// distinguishes "opened but never saved" (Download PDF stays disabled)
+  /// from a genuinely saved roster.
+  savedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("rosters")
+}
+
+/// One row per (Roster, Member) in the roster's "All Other Members" section
+/// — Chief Guest/Founding Team/Leadership Team/Coordinators are NOT scored
+/// (see src/lib/roster/manage.ts's exclusion logic; those sections keep
+/// their existing fixed/catalog order, unaffected by score).
+model RosterScore {
+  id       String @id @default(cuid())
+  rosterId String
+  memberId String
+
+  /// Editable by the admin; drives the automatic ranking on Save.
+  score Int @default(0)
+
+  /// Recomputed on every Save — a stable descending sort by score (ties
+  /// keep their prior relative order) — and used directly as this member's
+  /// printed S.No within the roster, both on-screen and in the PDF.
+  order Int @default(0)
+
+  roster Roster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rosterId, memberId])
+  @@index([rosterId])
+  @@map("roster_scores")
 }
