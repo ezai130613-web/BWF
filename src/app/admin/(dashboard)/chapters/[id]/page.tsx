@@ -13,6 +13,16 @@ import { removeChapterLeadership, removeRosterAssignment } from "../actions";
 // generator's own Founder/Co-Founder band (src/lib/roster/generate.ts).
 const FOUNDING_ROLE_ORDER = ["FOUNDER", "CO_FOUNDER"] as const;
 
+// Roster Sheet PDF correction (2026-09-15) — which of the three Coordinators
+// columns (President/Secretary/Treasurer Associates) an assignment renders
+// under. See RosterAssignment.group's schema comment for why this can't be
+// derived from the role itself.
+const ROSTER_GROUP_LABELS: Record<string, string> = {
+  PRESIDENT: "President Associates",
+  SECRETARY: "Secretary Associates",
+  TREASURER: "Treasurer Associates",
+};
+
 export default async function ChapterDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("chapters:manage");
   const { id } = await params;
@@ -148,6 +158,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
+                <th className="px-4 py-3 font-medium">Column</th>
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Member</th>
                 <th className="px-4 py-3" />
@@ -156,6 +167,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
             <tbody className="divide-y divide-neutral-100">
               {chapter.rosterAssignments.map((entry) => (
                 <tr key={entry.id}>
+                  <td className="px-4 py-3 text-neutral-600">{ROSTER_GROUP_LABELS[entry.group]}</td>
                   <td className="px-4 py-3 text-neutral-900">{entry.role.label}</td>
                   <td className="px-4 py-3 text-neutral-600">{entry.member.name}</td>
                   <td className="px-4 py-3 text-right">
@@ -169,7 +181,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
               ))}
               {chapter.rosterAssignments.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-neutral-400">
+                  <td colSpan={4} className="px-4 py-6 text-center text-neutral-400">
                     No coordinators assigned yet.
                   </td>
                 </tr>

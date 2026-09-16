@@ -169,6 +169,7 @@ const assignRosterRoleSchema = z.object({
   chapterId: z.string(),
   memberId: z.string().min(1, "Select a member"),
   roleId: z.string().min(1, "Select a role"),
+  group: z.enum(["PRESIDENT", "SECRETARY", "TREASURER"]),
 });
 
 export async function assignRosterRole(_prevState: { error?: string } | undefined, formData: FormData) {
@@ -177,7 +178,7 @@ export async function assignRosterRole(_prevState: { error?: string } | undefine
   const parsed = assignRosterRoleSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
-  const { chapterId, memberId, roleId } = parsed.data;
+  const { chapterId, memberId, roleId, group } = parsed.data;
 
   const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
   if (member.chapterId !== chapterId) {
@@ -186,8 +187,8 @@ export async function assignRosterRole(_prevState: { error?: string } | undefine
 
   await db.rosterAssignment.upsert({
     where: { chapterId_roleId_memberId: { chapterId, roleId, memberId } },
-    update: {},
-    create: { chapterId, roleId, memberId },
+    update: { group },
+    create: { chapterId, roleId, memberId, group },
   });
 
   await logActivity({
@@ -195,7 +196,7 @@ export async function assignRosterRole(_prevState: { error?: string } | undefine
     action: "chapter.roster_role_assigned",
     entity: "Chapter",
     entityId: chapterId,
-    metadata: { memberId, roleId },
+    metadata: { memberId, roleId, group },
   });
 
   revalidatePath(`/admin/chapters/${chapterId}`);

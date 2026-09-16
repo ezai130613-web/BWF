@@ -332,6 +332,16 @@ async function main() {
       section: "Roster",
       value: null,
     },
+    // Roster design correction (2026-09-15) — the cover's "What's in it for
+    // you?" panel. The reference PDFs' own copy is a reasonable default, but
+    // this is exactly the kind of small promotional line BWF may want to
+    // tune per season/chapter emphasis, hence editable rather than hardcoded.
+    {
+      key: "roster.whatsInItForYou",
+      label: "Roster Sheet cover — \"What's in it for you?\" text",
+      section: "Roster",
+      value: "Connect with builders, contractors, and suppliers in a focused networking space.",
+    },
   ] as const;
 
   for (const content of WEBSITE_CONTENT) {

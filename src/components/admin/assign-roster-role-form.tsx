@@ -50,6 +50,22 @@ export function AssignRosterRoleForm({
           ))}
         </select>
       </label>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+        Associates column
+        <select
+          name="group"
+          required
+          defaultValue=""
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        >
+          <option value="" disabled>
+            Select a column…
+          </option>
+          <option value="PRESIDENT">President Associates</option>
+          <option value="SECRETARY">Secretary Associates</option>
+          <option value="TREASURER">Treasurer Associates</option>
+        </select>
+      </label>
       <button
         type="submit"
         disabled={pending}

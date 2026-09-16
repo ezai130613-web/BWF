@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateCategoryForm } from "@/components/admin/create-category-form";
-import { toggleCategoryActive } from "./actions";
+import { toggleCategoryActive, toggleShowInOpenCategories } from "./actions";
 
 export default async function CategoriesPage() {
   await requirePermission("categories:manage");
@@ -20,6 +20,15 @@ export default async function CategoriesPage() {
           seeded with a starter list, edit freely. Deactivating a category hides it from new
           membership applications (Phase 7) without affecting existing members.
         </p>
+        <p className="mt-2 max-w-xl text-sm text-neutral-600">
+          &ldquo;Show in Open Categories&rdquo; is separate — it only controls whether a category
+          can appear in a generated Roster Sheet&rsquo;s Open Categories section. The taxonomy
+          accumulated a lot of near-duplicate entries over time (e.g. &ldquo;Civil Contractors
+          2&rdquo; alongside &ldquo;Civil Contractor - 2&rdquo;); this was turned off for ~57
+          likely-duplicate rows on 2026-09-15 by cross-referencing real member data and the
+          reference roster PDFs — review and adjust as needed, this is a best-effort starting
+          point, not a final judgment.
+        </p>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
@@ -29,6 +38,7 @@ export default async function CategoriesPage() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Members</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Open Categories</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -48,12 +58,30 @@ export default async function CategoriesPage() {
                     {category.isActive ? "Active" : "Inactive"}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={
+                      category.showInOpenCategories
+                        ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                        : "rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500"
+                    }
+                  >
+                    {category.showInOpenCategories ? "Shown" : "Hidden"}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-right">
-                  <form action={toggleCategoryActive.bind(null, category.id)}>
-                    <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
-                      {category.isActive ? "Deactivate" : "Activate"}
-                    </button>
-                  </form>
+                  <div className="flex justify-end gap-3">
+                    <form action={toggleShowInOpenCategories.bind(null, category.id)}>
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                        {category.showInOpenCategories ? "Hide from roster" : "Show on roster"}
+                      </button>
+                    </form>
+                    <form action={toggleCategoryActive.bind(null, category.id)}>
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                        {category.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}

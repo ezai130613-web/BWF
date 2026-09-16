@@ -61,3 +61,24 @@ export async function toggleCategoryActive(categoryId: string) {
   revalidatePath("/chapters/[slug]", "page");
   revalidatePath("/apply");
 }
+
+/**
+ * Roster correction (2026-09-15) — separate from `isActive`. Only affects
+ * the generated roster's "Open Categories" section; doesn't touch new
+ * applications, member profile category, or anything else `isActive` gates.
+ */
+export async function toggleShowInOpenCategories(categoryId: string) {
+  const session = await requirePermission("categories:manage");
+
+  const category = await db.category.findUniqueOrThrow({ where: { id: categoryId } });
+  await db.category.update({ where: { id: categoryId }, data: { showInOpenCategories: !category.showInOpenCategories } });
+
+  await logActivity({
+    userId: session.user.id,
+    action: category.showInOpenCategories ? "category.hidden_from_open_categories" : "category.shown_in_open_categories",
+    entity: "Category",
+    entityId: categoryId,
+  });
+
+  revalidatePath("/admin/categories");
+}
