@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { MarketingNav } from "@/components/admin/marketing-nav";
 import { PLATFORM_LABELS, STATUS_BADGE_CLASSES, STATUS_LABELS, formatIst } from "@/lib/marketing/constants";
 
 export default async function MarketingDashboardPage() {
@@ -37,8 +36,6 @@ export default async function MarketingDashboardPage() {
           Upload a video once, schedule it across Instagram, Facebook, YouTube, and Pinterest, and track what&rsquo;s published.
         </p>
       </div>
-
-      <MarketingNav active="/admin/marketing" />
 
       {connectedCount === 0 ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -81,8 +78,8 @@ export default async function MarketingDashboardPage() {
       </div>
 
       <div className="flex gap-3">
-        <Link href="/admin/marketing/library" className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800">
-          Upload content
+        <Link href="/admin/marketing/create" className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800">
+          Write &amp; create content
         </Link>
         <Link
           href="/admin/marketing/calendar"

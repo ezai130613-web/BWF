@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { MarketingNav } from "@/components/admin/marketing-nav";
 import { ScheduledPostCard } from "@/components/admin/scheduled-post-card";
 
 /** Brief §10 — publishing history: platforms published to, date/time, status, and published URL where available. */
@@ -20,8 +19,6 @@ export default async function MarketingHistoryPage() {
         <h1 className="text-xl font-semibold text-neutral-900">Publishing History</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">Published and failed posts across every platform.</p>
       </div>
-
-      <MarketingNav active="/admin/marketing/history" />
 
       <div className="flex flex-col gap-4">
         {posts.map((post) => (

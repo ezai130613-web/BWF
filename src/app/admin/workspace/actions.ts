@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireAdminSession } from "@/lib/auth/rbac";
 
-export type AdminWorkspace = "website" | "performance";
+export type AdminWorkspace = "website" | "performance" | "marketing";
 
 const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
   website: "/admin",
@@ -13,6 +13,9 @@ const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
   // BWF App Activity page as Performance's landing spot rather than
   // building a new dashboard here.
   performance: "/admin/app-activity",
+  // Marketing portal (2026-09-18) — has its own real Dashboard page, unlike
+  // Performance above.
+  marketing: "/admin/marketing",
 };
 
 /**

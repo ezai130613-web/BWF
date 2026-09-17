@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { MarketingNav } from "@/components/admin/marketing-nav";
-import { CreateMarketingContentForm } from "@/components/admin/create-marketing-content-form";
 
 export default async function MarketingLibraryPage() {
   await requirePermission("marketing:manage");
@@ -14,14 +12,20 @@ export default async function MarketingLibraryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Content Library</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Every video uploaded once here can be scheduled to any combination of platforms — reused, not re-uploaded.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">Content Library</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Every video uploaded once here can be scheduled to any combination of platforms — reused, not re-uploaded.
+          </p>
+        </div>
+        <Link
+          href="/admin/marketing/create"
+          className="flex-shrink-0 rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          + Create new
+        </Link>
       </div>
-
-      <MarketingNav active="/admin/marketing/library" />
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
         <table className="w-full text-left text-sm">
@@ -76,8 +80,6 @@ export default async function MarketingLibraryPage() {
           </tbody>
         </table>
       </div>
-
-      <CreateMarketingContentForm />
     </div>
   );
 }

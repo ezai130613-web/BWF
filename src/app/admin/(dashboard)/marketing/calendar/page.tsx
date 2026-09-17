@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { MarketingNav } from "@/components/admin/marketing-nav";
 import { PLATFORM_LABELS, STATUS_BADGE_CLASSES, STATUS_LABELS, toIstDateTimeInputs } from "@/lib/marketing/constants";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -68,8 +67,6 @@ export default async function MarketingCalendarPage({
         <h1 className="text-xl font-semibold text-neutral-900">Publishing Calendar</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">All times shown in IST.</p>
       </div>
-
-      <MarketingNav active="/admin/marketing/calendar" />
 
       <div className="flex items-center justify-between">
         <Link href={monthLink(prevMonth.year, prevMonth.month)} className="text-sm text-neutral-600 hover:text-neutral-900">

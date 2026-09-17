@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
@@ -17,6 +18,7 @@ function revalidateMarketing() {
   revalidatePath("/admin/marketing");
   revalidatePath("/admin/marketing/library");
   revalidatePath("/admin/marketing/library/[id]", "page");
+  revalidatePath("/admin/marketing/schedule");
   revalidatePath("/admin/marketing/calendar");
   revalidatePath("/admin/marketing/history");
 }
@@ -27,9 +29,17 @@ const contentSchema = z.object({
   title: z.string().min(1, "Title is required"),
   videoUrl: z.string().min(1, "A video is required"),
   thumbnailUrl: optionalText(),
+  script: optionalText(),
   notes: optionalText(),
 });
 
+/**
+ * Unlike this file's other actions, this one redirects on success straight
+ * into the new content's Scheduling & Posting view — the Script Writing &
+ * Content Creation page's whole point is "write it, then schedule it," not
+ * a list+inline-form page an admin stays on (the earlier chief-guest-style
+ * precedent elsewhere in this admin).
+ */
 export async function createMarketingContent(_prevState: { error?: string } | undefined, formData: FormData) {
   await requirePermission("marketing:manage");
 
@@ -40,7 +50,7 @@ export async function createMarketingContent(_prevState: { error?: string } | un
 
   await logActivity({ action: "marketing_content.created", entity: "MarketingContent", entityId: content.id });
   revalidateMarketing();
-  return { error: undefined };
+  redirect(`/admin/marketing/library/${content.id}`);
 }
 
 const updateContentSchema = contentSchema.extend({ contentId: z.string() });

@@ -28,7 +28,13 @@ const NAV_ITEMS = [
   { href: "/admin/visitors-payment", label: "Visitors Payment", permission: "payments:view", workspace: "performance" },
   { href: "/admin/invitations", label: "Meeting Invitations", permission: "invitations:manage", workspace: "performance" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
-  { href: "/admin/marketing", label: "Marketing", permission: "marketing:manage", workspace: "website" },
+  { href: "/admin/marketing", label: "Dashboard", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/calendar", label: "Content Calendar", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/create", label: "Script Writing & Content Creation", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/schedule", label: "Scheduling & Posting", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/library", label: "Content Library", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/history", label: "Publishing History", permission: "marketing:manage", workspace: "marketing" },
+  { href: "/admin/marketing/connected-accounts", label: "Connected Accounts", permission: "marketing:manage", workspace: "marketing" },
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
   { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage", workspace: "website" },
   { href: "/admin/points-config", label: "App Points & Scoring", permission: "points_config:manage", workspace: "performance" },
@@ -51,7 +57,7 @@ export function Sidebar({
   permissions: Set<string>;
   isChapterAdmin: boolean;
   /** null for Chapter Admin (workspace-agnostic) or before a Super/Central Admin has picked one yet. */
-  workspace: "website" | "performance" | null;
+  workspace: "website" | "performance" | "marketing" | null;
 }) {
   const pathname = usePathname();
 
@@ -113,7 +119,7 @@ export function Sidebar({
         <p className="truncate text-sm text-ivory-200">{userName}</p>
         {!isChapterAdmin && workspace ? (
           <p className="mt-1 text-xs text-slate-400">
-            {workspace === "website" ? "Website Admin" : "Member Performance Admin"} ·{" "}
+            {workspace === "website" ? "Website Admin" : workspace === "performance" ? "Member Performance Admin" : "Marketing Admin"} ·{" "}
             <Link href="/admin/workspace" className="underline hover:text-ivory-100">
               Switch workspace
             </Link>

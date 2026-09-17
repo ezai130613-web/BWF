@@ -1746,6 +1746,13 @@ model MarketingContent {
   thumbnailUrl String?
   notes        String?
 
+  /// Marketing portal (2026-09-18) — the draft caption/script written on the
+  /// Script Writing & Content Creation page. Separate from `notes` (internal-
+  /// only) — this is real starting copy, used to pre-fill the Scheduling &
+  /// Posting composer's common-caption field so writing happens once and
+  /// gets reused, not retyped per platform.
+  script String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

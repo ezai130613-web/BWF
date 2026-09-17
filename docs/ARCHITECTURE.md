@@ -1053,6 +1053,16 @@ Notes, when enabled) are handwritten at the meeting itself, matching every one o
 roster PDFs.
 
 ### Marketing module — social media scheduling & publishing (2026-09-16 client brief, Phase 21)
+**Marketing is its own third admin workspace (Phase 27), not a page under Website Admin.** The
+client asked for a portal parallel to Website Admin and Member Performance Admin, not a nav item
+inside one of them — `AdminWorkspace` (`src/app/admin/workspace/actions.ts`) has a `"marketing"`
+value alongside the existing two, same cookie-based per-browser mechanism from Phase 20 Batch 4, no
+new role: Super/Central Admin (who hold `marketing:manage`) switch into it from the same picker,
+Chapter Admin sees none of the three-way split since they hold no `marketing:manage` anywhere. All
+7 marketing pages are real sidebar entries under this workspace — the in-page `MarketingNav` tab
+bar Batch 1 originally shipped was deleted, since the sidebar doing that job is how every other
+workspace in this admin already works, and having both would have been a redundant second nav.
+
 **Direct integration against each platform's own official API, not a third-party aggregator
 (Ayrshare/Postiz/Blotato/Publer) — client's explicit choice to avoid a recurring $149-599/mo fee.**
 Before writing any code, verified current (Sept 2026) requirements against Meta, Google, and

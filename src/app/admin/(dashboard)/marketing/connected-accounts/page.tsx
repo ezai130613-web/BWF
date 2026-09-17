@@ -1,6 +1,5 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { MarketingNav } from "@/components/admin/marketing-nav";
 import { PLATFORM_LABELS } from "@/lib/marketing/constants";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,8 +38,6 @@ export default async function MarketingConnectedAccountsPage() {
           Manage which BWF social media accounts this system can publish to.
         </p>
       </div>
-
-      <MarketingNav active="/admin/marketing/connected-accounts" />
 
       <div className="rounded-lg border border-neutral-200 bg-white">
         {connections.map((c) => (

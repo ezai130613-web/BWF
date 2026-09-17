@@ -3521,3 +3521,76 @@ flow, not an oversight.
 - Re-screenshotted the homepage full-page after generalizing `ChiefGuestsSection` — the "Chief
   Guests at BWF" section renders byte-identical to before (same heading, same carousel, no CTA
   button appended).
+
+---
+
+## Phase 27 — Marketing Admin: Third Workspace Portal
+
+**Status:** Complete (page/layout restructure — platform connections and real publishing are still
+Phase 21's deferred Batches 2-3, unchanged by this phase).
+
+**Why its own phase, not a Phase 21 batch:** Phases 22-26 (QR/Attendance/Payments, Visitor
+Management, Invitations, Brand Logo, Chief Guest page) all landed in between, built by other
+sessions — this project's own "batch" convention (see Phase 15/20's addenda) is for same-session
+continuous follow-up, not resuming work after several unrelated phases shipped. New phase number,
+same project-build-order-numbering precedent as Leads (15) and Member Article Submissions (16).
+
+**What shipped:**
+- Marketing is now a third workspace on `/admin/workspace`, alongside Website Admin and Member
+  Performance Admin — `AdminWorkspace` (`src/app/admin/workspace/actions.ts`) gained a `"marketing"`
+  value with its own home (`/admin/marketing`), same cookie-based per-browser mechanism as the
+  existing two (Phase 20 Batch 4), no new role needed — Super/Central Admin (who already hold
+  `marketing:manage`) can switch into it same as the other two; Chapter Admin still sees neither,
+  same as before this phase (they hold no `marketing:manage` anywhere, chapter-scoped or otherwise).
+- The single sidebar "Marketing" link is gone — all 7 marketing pages are now real sidebar entries
+  tagged `workspace: "marketing"` (`src/components/admin/sidebar.tsx`), matching how Website
+  Admin/Performance already list their own pages directly rather than one link + in-page tabs. The
+  in-page `MarketingNav` tab bar built in Phase 21 is deleted outright — redundant once the sidebar
+  does that job, same as every other workspace already worked.
+- Two new pages fulfilling the client's exact ask: **Script Writing & Content Creation**
+  (`/admin/marketing/create`) — upload the video and write its caption/script together, a new
+  `MarketingContent.script` field (separate from the existing internal-only `notes`) that pre-fills
+  the Scheduling & Posting composer's common-caption field once a platform is selected, so writing
+  happens once and gets reused, not retyped per platform. **Scheduling & Posting**
+  (`/admin/marketing/schedule`) — a "what needs scheduling" picker (split into Needs
+  scheduling/Fully scheduled), each row opening into the *same* `ScheduleComposer` that's always
+  lived on a content's detail page — deliberately not a second copy of that composer, just a new
+  top-level entry point into the one real implementation.
+- Content Library is now browse-only — its inline create form moved out entirely to the new Create
+  page; a "+ Create new" link replaces it. The content detail page gained a real edit capability
+  (`EditMarketingContentForm` — title/thumbnail/script/notes) that Phase 21 never actually built
+  despite writing the `updateMarketingContent` action for it.
+- "Publishing Calendar" is renamed "Content Calendar" in the sidebar to match the client's own
+  wording; the route/implementation is unchanged.
+
+**A real bug found only by testing an actual save, not by re-reading the Phase 21 code:**
+`ScheduledPostCard`'s and the new `EditMarketingContentForm`'s edit-save buttons both closed the
+edit form via `onClick={() => !pending && setEditing(false)}` — this fires as part of the same
+click that submits the form, before `pending` has flipped true, so the form (and its inputs) got
+unmounted essentially synchronously with triggering its own submission. Phase 21's live
+verification only ever exercised "Edit then Cancel" for `ScheduledPostCard`, never a real "Edit
+then Save," so this shipped unnoticed. Caught this phase by actually completing an edit-and-save
+cycle on the new content-edit form and finding the edited text didn't appear. Fixed in both
+components identically: track pending's previous value in a ref, and only call `setEditing(false)`
+from a `useEffect` when pending transitions `true → false` with no error — i.e., close on genuine
+completion, never on click. Worth remembering as a general pattern: `useActionState`'s `pending`
+value is stale at the moment of the very click that starts it, so anything gating on "did this
+submission finish" needs to react to the state transition, not the click handler.
+
+**Verification performed:** `npm run build`/`lint`/`typecheck` clean throughout. Full real
+production-build (`next build && next start`) Playwright run, logged in as Super Admin: confirmed
+the workspace picker now renders exactly 3 cards including "Marketing Admin," selecting it lands on
+`/admin/marketing`, and the sidebar lists exactly the 7 expected marketing pages (nothing from
+Website/Performance leaking in). Created real content through the new Create page (real R2 video
+upload, script text saved), confirmed it redirected straight into the content's detail/scheduling
+view, confirmed the script text rendered there. Selected Instagram in the composer and confirmed
+its caption field auto-filled from the saved script (not just an empty box needing "Apply to all").
+Scheduled it, then used Edit Details to change the script and confirmed — after the fix above — the
+edited text actually persisted and rendered. Confirmed the Scheduling & Posting picker correctly
+listed the content under "Needs scheduling" with the right "1 of 4 platforms" count, and that
+Content Calendar showed the real scheduled entry. All test content and scheduled posts deleted
+afterward via direct DB query (confirmed zero rows remaining).
+
+**Known issues / follow-ups:** none new beyond Phase 21's own carried-forward list (Batches 2-3 —
+OAuth connect flows and the cron publish worker — still blocked on the client registering the
+Meta/Google/Pinterest developer apps per Phase 21's walkthrough).

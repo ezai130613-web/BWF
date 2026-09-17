@@ -32,11 +32,23 @@ const inputClass =
  * were saved React remounts this component fresh (clearing all local
  * selection state) instead of reaching for an effect to reset it — the
  * server's own data is the source of truth here, not local optimism.
+ *
+ * `initialScript` pre-fills the common-caption field from the Script Writing
+ * & Content Creation page's saved draft (`MarketingContent.script`) — write
+ * once, reuse here, still editable per platform before scheduling.
  */
-export function ScheduleComposer({ contentId, alreadyScheduled }: { contentId: string; alreadyScheduled: MarketingPlatform[] }) {
+export function ScheduleComposer({
+  contentId,
+  alreadyScheduled,
+  initialScript,
+}: {
+  contentId: string;
+  alreadyScheduled: MarketingPlatform[];
+  initialScript?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(createScheduledPosts, initialState);
   const [selected, setSelected] = useState<Set<MarketingPlatform>>(new Set());
-  const [commonCaption, setCommonCaption] = useState("");
+  const [commonCaption, setCommonCaption] = useState(initialScript ?? "");
   const [entries, setEntries] = useState<Record<MarketingPlatform, Entry>>({
     INSTAGRAM: { ...emptyEntry },
     FACEBOOK: { ...emptyEntry },
@@ -52,6 +64,13 @@ export function ScheduleComposer({ contentId, alreadyScheduled }: { contentId: s
       if (next.has(p)) next.delete(p);
       else next.add(p);
       return next;
+    });
+    // Newly selecting a platform starts its caption from the common draft
+    // (if it doesn't already have one of its own) so writing happens once,
+    // not per platform by default — still freely editable below.
+    setEntries((prev) => {
+      if (selected.has(p) || prev[p].caption) return prev;
+      return { ...prev, [p]: { ...prev[p], caption: commonCaption } };
     });
   }
 

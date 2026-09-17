@@ -7,17 +7,19 @@ import { MediaUploadField } from "@/components/ui/media-upload-field";
 const initialState: { error?: string } = {};
 
 /**
- * Brief §4 — upload once, reuse across every platform. Notably no
- * per-platform fields here at all; those live on ScheduledPost, filled in
- * later from this content's own detail page (ScheduleComposer).
+ * Script Writing & Content Creation (2026-09-18) — brief §4's "upload once"
+ * plus a real place to write the caption/script alongside it, rather than
+ * only at scheduling time. `script` pre-fills the Scheduling & Posting
+ * composer's common-caption field (see ScheduleComposer's `initialScript`
+ * prop) — written once here, reused there, still fully editable per
+ * platform. No per-platform fields on this page itself; those stay on
+ * ScheduledPost, filled in on the next screen this redirects to.
  */
 export function CreateMarketingContentForm() {
   const [state, formAction, pending] = useActionState(createMarketingContent, initialState);
 
   return (
     <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
-      <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Upload Content</h2>
-
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Title
         <input
@@ -41,10 +43,21 @@ export function CreateMarketingContentForm() {
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+        Script / caption
+        <textarea
+          name="script"
+          rows={5}
+          placeholder="Write the caption or script for this post — you'll be able to fine-tune it per platform on the next screen."
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Internal notes (optional)
         <textarea
           name="notes"
           rows={2}
+          placeholder="Not shown publicly — for your own team's reference."
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>
@@ -57,7 +70,7 @@ export function CreateMarketingContentForm() {
           disabled={pending}
           className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
         >
-          {pending ? "Uploading…" : "Upload Content"}
+          {pending ? "Saving…" : "Save & Continue to Scheduling"}
         </button>
       </div>
     </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { cancelScheduledPost, retryScheduledPost, updateScheduledPost } from "@/app/admin/(dashboard)/marketing/actions";
 import { PLATFORM_FIELDS, PLATFORM_LABELS, STATUS_BADGE_CLASSES, STATUS_LABELS, formatIst, toIstDateTimeInputs } from "@/lib/marketing/constants";
 import type { MarketingPlatform, ScheduledPostStatus } from "@/generated/prisma/client";
@@ -32,6 +32,17 @@ export function ScheduledPostCard({ post }: { post: ScheduledPostRow }) {
   const editable = post.status !== "PUBLISHING" && post.status !== "PUBLISHED";
   const fields = PLATFORM_FIELDS[post.platform];
   const ist = toIstDateTimeInputs(post.scheduledFor);
+
+  // Close the edit form only once the save genuinely finishes (pending
+  // true → false with no error) — closing it from the submit button's own
+  // onClick fires before the action even starts, unmounting the form mid
+  // submission. Real bug, only caught by testing an actual save, not just
+  // "click Edit then Cancel."
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending && !state?.error) setEditing(false);
+    wasPending.current = pending;
+  }, [pending, state]);
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-neutral-200 p-4">
@@ -107,7 +118,6 @@ export function ScheduledPostCard({ post }: { post: ScheduledPostRow }) {
             <button
               type="submit"
               disabled={pending}
-              onClick={() => !pending && setEditing(false)}
               className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
             >
               {pending ? "Saving…" : "Save changes"}

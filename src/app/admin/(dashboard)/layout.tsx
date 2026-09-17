@@ -9,7 +9,8 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const permissions = await getUserPermissionKeys(session.user.id);
   const cookieStore = await cookies();
   const workspaceCookie = cookieStore.get("bwf_admin_workspace")?.value;
-  const workspace: AdminWorkspace | null = workspaceCookie === "website" || workspaceCookie === "performance" ? workspaceCookie : null;
+  const workspace: AdminWorkspace | null =
+    workspaceCookie === "website" || workspaceCookie === "performance" || workspaceCookie === "marketing" ? workspaceCookie : null;
 
   return (
     <div className="flex min-h-screen">

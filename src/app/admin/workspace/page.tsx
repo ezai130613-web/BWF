@@ -18,6 +18,7 @@ export default async function WorkspaceSelectPage() {
 
   const selectWebsite = selectWorkspace.bind(null, "website");
   const selectPerformance = selectWorkspace.bind(null, "performance");
+  const selectMarketing = selectWorkspace.bind(null, "marketing");
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -32,7 +33,7 @@ export default async function WorkspaceSelectPage() {
           sidebar.
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <form action={selectWebsite}>
             <button
               type="submit"
@@ -56,6 +57,19 @@ export default async function WorkspaceSelectPage() {
                 App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
                 Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Payments, Visitors QR,
                 Visitors Attendance &amp; Visitors Payment.
+              </p>
+            </button>
+          </form>
+
+          <form action={selectMarketing}>
+            <button
+              type="submit"
+              className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+            >
+              <p className="text-base font-semibold text-neutral-900">Marketing Admin</p>
+              <p className="mt-1.5 text-sm text-neutral-600">
+                Content Calendar, Script Writing &amp; Content Creation, Scheduling &amp; Posting,
+                Content Library, Publishing History &amp; Connected Accounts.
               </p>
             </button>
           </form>
