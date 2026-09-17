@@ -862,9 +862,61 @@ model Meeting {
   attendances        Attendance[]
   payments           Payment[]
   visitorAttendances VisitorAttendance[]
+  invitation         MeetingInvitation?
 
   @@index([chapterId, startsAt])
   @@map("meetings")
+}
+
+// ---------------------------------------------------------------------------
+// Meeting Invitation Generator (client spec, 2026-09-18). A separate,
+// invitation-specific copy of the fields an admin wants on the poster — never
+// writes back to Meeting/ChiefGuest, same "customise without modifying the
+// original record" rule Phase 22's Attendance/Payment pair already follows.
+// dateLabel/timeLabel/venueLabel/addressLabel/feeLabel are deliberately plain
+// manual text (confirmed with the user): Meeting has no end-time field and no
+// meeting ever had a fee field to begin with, so there is nothing to "auto
+// fetch" for those — the admin types them fresh per invitation, same as the
+// spec's own "if information is missing, allow manual entry" fallback.
+// ---------------------------------------------------------------------------
+
+model MeetingInvitation {
+  id String @id @default(cuid())
+
+  meetingId String  @unique
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  headingLine1 String @default("BUILDERS WORLD FORUM")
+  headingLine2 String @default("YOU ARE INVITED")
+
+  /// Copied from ChiefGuest at first save, then independently editable —
+  /// never written back to the ChiefGuest catalog row.
+  guestName         String?
+  guestDesignation  String?
+  guestOrganisation String?
+  guestPhotoUrl     String?
+
+  whyAttendText String @default("Connect with entrepreneurs, build meaningful business relationships, exchange referrals and discover new opportunities through the Builders World Forum.")
+
+  /// Manual-only — see the model-block comment above.
+  dateLabel       String?
+  timeLabel       String?
+  venueLabel      String?
+  addressLabel    String?
+  feeLabel        String?
+  isComplimentary Boolean @default(false)
+
+  includeQr Boolean @default(true)
+
+  /// Snapshot of Meeting.updatedAt at last save/refresh — lets the page
+  /// detect "the underlying meeting changed since this invitation was last
+  /// saved" (spec: offer a refresh rather than silently going stale).
+  meetingSnapshotAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("meeting_invitations")
 }
 
 enum VisitorStatus {

@@ -3283,3 +3283,107 @@ follows).
   `requireChapterAccess`/`getChapterScope` pattern already proven for Members/Meetings/Attendance/
   Payments, not independently re-verified with a second real Chapter Admin login this session —
   same category of gap flagged for Phase 22 and earlier phases.
+
+**Correction, 2026-09-18:** all six pages from this phase and its Visitors follow-up — QR Codes,
+Attendance, Payments, Visitors QR, Visitors Attendance, Visitors Payment — were originally tagged
+`workspace: "website"` in `src/components/admin/sidebar.tsx`'s `NAV_ITEMS` (Phase 20 Batch 4's
+two-workspace split). Client asked for them to move to the Member Performance Admin workspace
+instead; retagged to `workspace: "performance"` and the `/admin/workspace` picker's description
+text updated to match. No permission/route-access change — the workspace split only filters sidebar
+visibility for Super/Central Admin, so this is nav placement only.
+
+## Phase 24 — Meeting Invitation Generator
+
+**Status:** Complete (initial design — see note on the reference poster below)
+
+**What shipped:** the client's "Meeting Invitation Generator" spec (2026-09-18) — a new
+`/admin/invitations` admin page that turns an existing chapter meeting into a downloadable,
+WhatsApp-shareable invitation poster. Brand corrected by the client mid-spec to premium green (not
+the brief's original blue) — rendered using the exact same emerald/gold design tokens
+(`src/app/globals.css`'s `@theme` block) the rest of `/admin` already renders with, so no new
+palette was introduced.
+
+- **Schema:** one new model, `MeetingInvitation` (`meetingId` unique, `onDelete: Cascade` from
+  `Meeting`) — the invitation's own editable copy of heading/subheading, chief guest name/
+  designation/organisation/photo, "Why Attend" copy, date/time/venue/address/fee labels, a
+  Complimentary-Entry flag, and an `includeQr` toggle. Never writes back to `Meeting`/`ChiefGuest` —
+  same "customise without modifying the original record" rule Phase 22's Attendance/Payment pair
+  already follows. `meetingSnapshotAt` stores `Meeting.updatedAt` at last save/refresh, so the page
+  can detect "the underlying meeting changed since this invitation was last saved" and offer a
+  refresh rather than silently drifting stale. Migration
+  `20260918120000_meeting_invitation_generator`, applied via `prisma migrate deploy` (the
+  established non-interactive path in this environment).
+- **Two fields have no source to auto-fetch from, confirmed with the user before building:**
+  `Meeting` has only a single `startsAt` (no end time), and no meeting-fee field exists anywhere in
+  the schema — visitor pricing was never tracked per-meeting. Both `timeLabel`/`feeLabel` are
+  manual-only invitation fields (the admin types them fresh each time; `timeLabel` is pre-filled
+  with the meeting's own start time as a starting point), never touching `Meeting`. Declined the
+  larger alternative (adding `endsAt`/a fee column to `Meeting` itself) to keep this feature additive
+  and out of Meeting Management's existing form.
+- **No new upload path or shareable link** — chief guest photo replacement reuses the existing
+  `MediaUploadField`/presigned-R2-upload flow as-is, and Download is client-side only
+  (`canvas.toBlob` → local file), confirmed with the user rather than also uploading the rendered
+  PNG to R2 for a persistent link.
+- **Permission:** new `invitations:manage`, chapter-scoped the same way as `attendance:manage`
+  (`requireChapterAccess`/`getChapterScope`, added to `sidebar.tsx`'s `chapterScopedPermissions`) —
+  Central Admin gets it blanket, Chapter Admin only for their own chapter. Nav entry ("Meeting
+  Invitations") placed in the Member Performance Admin workspace, alongside the QR Codes/Attendance/
+  Payments group this same session just moved there (see the correction note above).
+- **Poster rendering — one shared canvas function for both preview and export**
+  (`src/lib/invitations/poster.ts`'s `drawInvitationPoster()`), matching the spec's own "use the same
+  rendering source... to prevent layout differences." The live preview is the *same*
+  `<canvas width={1600} height={2000}>` element the Download button reads from, just constrained to
+  a smaller CSS width — not a separate DOM mockup kept in sync by hand. A no-photo chief guest gets a
+  clean text-only layout (no broken image, no stock photo); long names/venues/addresses wrap via a
+  small `wrapText()` helper; the QR block's vertical position is computed from wherever the meeting
+  details finished wrapping, rather than a fixed offset, so a long address can't overlap it.
+- **Canvas-tainting fix for the chief guest photo (spec's own explicit ask):** an R2-hosted photo
+  drawn directly onto the canvas would taint it on export, since this project doesn't control R2's
+  CORS headers. Fixed with a small server action, `imageUrlToDataUrl()`
+  (`src/app/admin/(dashboard)/invitations/[meetingId]/actions.ts`), that fetches the image
+  server-side and returns a base64 `data:` URL — a data URL never taints a canvas. Restricted to
+  URLs under this project's own `STORAGE_PUBLIC_URL`, since the caller is an authenticated admin
+  action, not arbitrary user input; this also closes off any accidental SSRF surface. The visitor
+  registration QR itself is generated client-side with the already-installed `qrcode` package's
+  browser build (`QRCode.toDataURL()`), reusing the exact same `visitorAttendanceQrToken`/
+  `getVisitorCheckinUrl()` pair Phase 23's Visitors QR page already established — generated once per
+  meeting and reused, never a second independent token.
+- **Real UI bug caught only by live testing, not typecheck/lint:** the chief guest `MediaUploadField`
+  owns its displayed value internally from `defaultValue` only once on mount. Naively keying it by
+  the current photo URL to pick up an external "Refresh from meeting" reset would have remounted it
+  (and dropped focus/cursor) on every normal keystroke or upload too, since typing a URL also flows
+  through the same `onValueChange` → parent state → prop path. Fixed with a separate
+  `photoResetKey` counter bumped only by the explicit Refresh action, not by every value change.
+
+**Verification performed:** `npm run typecheck`/`lint`/`build` clean. Ran a real production build
+(`next build && next start`) and drove the full flow live with Playwright against the real
+production database, logged in as the real Super Admin: opened `/admin/invitations`, selected
+Chapter 01's real "Thursday Meeting" (a real chief guest with no photo and no designation — a good
+real-world edge case, not a contrived one), confirmed every auto-populated field matched the live
+`Meeting`/`ChiefGuest` records, edited the Why-Attend text and fee, toggled Complimentary Entry
+(confirmed the fee input disables), watched the preview update with no refresh, Saved, reloaded the
+page and confirmed the saved state restored instead of the defaults (not the meeting's live
+defaults), pasted a second real R2-hosted photo URL to exercise the with-photo layout end-to-end
+(proves the cross-origin proxy-to-data-URL fix actually works — a tainted canvas would have made
+`canvas.toBlob()` throw, not silently produce a bad file), downloaded the PNG and verified via its
+own header bytes that it decodes to real 1600×2000 pixels with photo/QR/text all present. Caught and
+fixed two real layout bugs from the first render (not from code review): a large dead gap in the
+middle of the no-photo layout (the "why attend" card's top was floored at a value only correct when
+a photo occupies that space) and a "Scan to Register" caption crowding the poster's bottom frame
+border (fixed by moving the QR block's default anchor further from the edge). Test
+`MeetingInvitation` row deleted afterward; its two `AuditLog` entries kept, per this project's
+standing discipline of never scrubbing the audit trail itself.
+
+**Known issues / follow-ups:**
+- **The poster layout is explicitly an initial design**, per the spec's own "until the reference is
+  provided, create a simple initial design" — the client said a reference invitation poster would
+  be supplied separately. Revisit `drawInvitationPoster()`'s layout once that reference arrives,
+  rather than treating the current structure as final.
+- No chief guest in the live database has a `photoUrl` set yet — the with-photo layout was verified
+  using a real member's own R2-hosted photo pasted into the invitation's independent photo field
+  (proving the pipeline works end-to-end), not an actual chief guest photo, since none exists to
+  test with today.
+- Chapter Admin's chapter-scoped access to this page was reasoned from the same
+  `requireChapterAccess`/`getChapterScope` pattern already proven for Attendance/Payments/Visitors
+  QR, not independently re-verified with a second real Chapter Admin login this session — same
+  category of gap flagged for Phases 22/23.

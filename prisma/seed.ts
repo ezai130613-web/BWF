@@ -37,6 +37,7 @@ const PERMISSIONS = [
   { key: "attendance:manage", label: "Generate meeting QR codes and manage attendance" },
   { key: "payments:view", label: "View meeting payment submissions" },
   { key: "payments:approve", label: "Approve, reject, or request clarification on meeting payments" },
+  { key: "invitations:manage", label: "Generate meeting invitation posters" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -65,6 +66,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "marketing:manage",
     "attendance:manage",
     "payments:view",
+    "invitations:manage",
     // payments:approve is deliberately NOT given to Chapter Admin, even
     // though it's granted here to Central Admin — the QR/Attendance/Payment
     // spec is explicit that approval is Central Admin, Super Admin, or an
@@ -77,7 +79,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
   // meetings:manage/visitors:manage/roster:manage/attendance:manage/
-  // payments:view below (mirrors members:manage — see requireChapterAccess
+  // payments:view/invitations:manage below (mirrors members:manage — see requireChapterAccess
   // in src/lib/auth/rbac.ts). payments:approve is NOT in this scoped set —
   // see the comment on Central Admin's own grant above; a Chapter Admin can
   // view their chapter's payment records but never approve/reject them.

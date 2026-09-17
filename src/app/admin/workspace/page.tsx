@@ -52,7 +52,8 @@ export default async function WorkspaceSelectPage() {
               <p className="text-base font-semibold text-neutral-900">Member Performance Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
                 App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
-                Power Dates, Conclaves), and Roster Sheets.
+                Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Payments, Visitors QR,
+                Visitors Attendance &amp; Visitors Payment.
               </p>
             </button>
           </form>

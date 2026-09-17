@@ -1269,6 +1269,59 @@ deliberately not typo-tolerant fuzzy matching) for the same reason: a wrong auto
 would silently mislink two different people's histories, which is worse than requiring a human to
 click a name.
 
+### Meeting Invitation Generator (2026-09-18 client spec, Phase 24)
+
+**`MeetingInvitation` is a full independent copy of the poster's fields, not a sparse set of
+overrides on `Meeting`/`ChiefGuest`.** Same principle as `Attendance`/`Payment` (Phase 22) never
+writing back to each other: an admin customizing an invitation's wording or swapping in a different
+photo for one specific poster must never touch the underlying meeting or chief guest catalog record.
+`meetingSnapshotAt` (a copy of `Meeting.updatedAt` taken at last save/refresh) is what lets the page
+notice the source meeting changed since — compared on read, not enforced by a trigger or a
+background job.
+
+**Two fields the spec calls "automatically retrieve" have no home in the schema and were
+deliberately kept that way.** `Meeting` models a single `startsAt`, never an end time, and no
+meeting-fee field exists anywhere — visitor pricing has never been tracked per-meeting in this
+project. Confirmed with the user: `timeLabel`/`feeLabel` stay plain manual invitation-only text
+(the spec's own "if information is missing, allow manual entry" fallback), rather than adding
+`endsAt`/a fee column to `Meeting` itself and expanding the existing Meetings admin form for a
+feature that doesn't otherwise need it.
+
+**The live preview and the downloaded PNG are the same canvas, not two implementations kept in
+sync.** `src/lib/invitations/poster.ts`'s `drawInvitationPoster()` is pure drawing code with no
+DOM/React dependency; the preview renders it onto a `<canvas width={1600} height={2000}>` scaled
+down by CSS, and Download reads `canvas.toBlob()` off that exact element — literally the same
+pixels, which is what the spec's own "use the same rendering source... to prevent layout
+differences" asks for.
+
+**Chief guest photos are proxied to a `data:` URL server-side before being drawn, closing the
+canvas-tainting failure mode the spec explicitly calls out.** This project doesn't control R2's CORS
+headers, so an R2-hosted photo `<img>`'d straight onto the canvas would taint it and make
+`canvas.toBlob()` fail (or silently omit the image, depending on the browser) at export time — a
+"poster with missing images" the spec explicitly says not to ship. `imageUrlToDataUrl()`
+(`src/app/admin/(dashboard)/invitations/[meetingId]/actions.ts`) fetches the image on the server
+and returns base64; restricted to URLs under this project's own `STORAGE_PUBLIC_URL` since it's an
+authenticated-admin-triggered fetch, not arbitrary user input, which also rules out using this as an
+SSRF vector. The registration QR itself needs no such proxy — it's generated directly in the browser
+via the `qrcode` package's own browser build.
+
+**No new visitor-registration mechanism — the poster's QR reuses Phase 23's own
+`visitorAttendanceQrToken`/`getVisitorCheckinUrl()` pair verbatim**, generated once per meeting (if
+missing) the same way `/admin/visitors-qr/[meetingId]` already does. Two independently-generated
+tokens for the same physical QR use case would risk a poster whose QR points at a different
+registration flow than the one `/admin/visitors-qr` shows — a real "wrong chapter/meeting" failure
+mode the spec explicitly warns against, not a hypothetical one.
+
+**Download is local-only; no R2 upload of the rendered poster.** Confirmed with the user — the
+spec's own literal ask is a "Download Invitation" button, and the admin already has WhatsApp
+open on the same device to attach the file manually. Revisit only if the client later asks for a
+poster to be shareable as a link rather than an attachment.
+
+**The current poster layout is an explicitly initial design.** The spec itself says so ("I will
+provide a reference invitation poster separately... until the reference is provided, create a
+simple initial design") — treat `drawInvitationPoster()`'s current layout as a placeholder to revise
+once that reference arrives, not as a finished visual spec.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1290,6 +1343,7 @@ they aren't lost, with the phase they'd first block:
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
+| Reference invitation poster for the Meeting Invitation Generator's final layout | Phase 24 | Client said a reference poster would be supplied separately; the spec itself says to build a simple initial design until then. `drawInvitationPoster()` (`src/lib/invitations/poster.ts`) is that placeholder — revise its layout once the reference arrives rather than treating it as final. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
 | ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |
 | ~~Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording~~ | ~~Noted since Phase 10~~ | Built 2026-09-06 (backlog #20), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — `/admin/analytics` and `getAdminAnalytics()` no longer exist. |

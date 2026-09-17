@@ -19,12 +19,13 @@ const NAV_ITEMS = [
   { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage", workspace: "website" },
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
   { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
-  { href: "/admin/qr-codes", label: "QR Codes", permission: "attendance:manage", workspace: "website" },
-  { href: "/admin/attendance", label: "Attendance", permission: "attendance:manage", workspace: "website" },
-  { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: "website" },
-  { href: "/admin/visitors-qr", label: "Visitors QR", permission: "attendance:manage", workspace: "website" },
-  { href: "/admin/visitors-attendance", label: "Visitors Attendance", permission: "attendance:manage", workspace: "website" },
-  { href: "/admin/visitors-payment", label: "Visitors Payment", permission: "payments:view", workspace: "website" },
+  { href: "/admin/qr-codes", label: "QR Codes", permission: "attendance:manage", workspace: "performance" },
+  { href: "/admin/attendance", label: "Attendance", permission: "attendance:manage", workspace: "performance" },
+  { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: "performance" },
+  { href: "/admin/visitors-qr", label: "Visitors QR", permission: "attendance:manage", workspace: "performance" },
+  { href: "/admin/visitors-attendance", label: "Visitors Attendance", permission: "attendance:manage", workspace: "performance" },
+  { href: "/admin/visitors-payment", label: "Visitors Payment", permission: "payments:view", workspace: "performance" },
+  { href: "/admin/invitations", label: "Meeting Invitations", permission: "invitations:manage", workspace: "performance" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
   { href: "/admin/marketing", label: "Marketing", permission: "marketing:manage", workspace: "website" },
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
@@ -67,6 +68,7 @@ export function Sidebar({
       "roster:manage",
       "attendance:manage",
       "payments:view",
+      "invitations:manage",
     ];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
