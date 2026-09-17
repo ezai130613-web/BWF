@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/members", label: "Members" },
   { href: "/insights", label: "Insights" },
   { href: "/faqs", label: "FAQ" },
+  { href: "/chief-guest", label: "Chief Guest" },
 ];
 
 export function Header() {
@@ -39,9 +40,6 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <Link href="/member" className="text-sm font-medium text-slate-400 hover:text-gold-400">
-            Member Login
-          </Link>
           <Button href="/visit" variant="secondary" className="px-5 py-2.5 text-xs">
             Visit BWF
           </Button>
@@ -90,13 +88,6 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/member"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-2 py-3 text-base font-medium text-slate-400 hover:bg-emerald-800"
-            >
-              Member Login
-            </Link>
             <div className="mt-3 flex flex-col gap-3">
               <Button href="/visit" variant="secondary" onClick={() => setOpen(false)}>
                 Visit BWF

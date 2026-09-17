@@ -3451,3 +3451,73 @@ wordmark already appeared, not a redesign.
 - Ran `generateRosterPdf()` standalone against synthetic roster data (not the real DB) and
   rendered the resulting PDF's first page to an image — logo renders correctly beside the cover
   page's wordmark.
+
+## Phase 26 — Chief Guest Landing Page & Nav Restructure
+
+**Status:** Complete
+
+**What shipped:** a client build instruction asked for three things — (A) a header/footer
+restructure adding a "Chief Guest" nav item and moving Member Login into the footer, (B) a new
+public `/chief-guest` landing page selling the Chief Guest program, and (C) a whole new public
+Chief Guest application form plus an admin review/meeting-assignment workflow. Parts A and B
+shipped as specified. **Part C was deliberately dropped, at the client's explicit direction**,
+after investigation surfaced that this codebase already has two unrelated existing "Chief Guest"
+concepts — the admin-curated `ChiefGuest` catalog (homepage carousel, meeting picker, invitation
+poster) and, separately, the public `/visit` page's existing "I would like to visit as a Chief
+Guest / Business Connect" purpose option (`VisitorPurpose.CHIEF_GUEST`), which already reaches an
+admin via Visitors. Once that overlap was flagged, the client confirmed: no new
+`ChiefGuestApplication` model, no new public form, no new admin review section, no
+meeting-assignment integration — every "Apply as Chief Guest" CTA on the new page instead sends
+people to the existing `/visit` page. **If a future phase is ever asked to build Part C
+(dedicated Chief Guest application + admin review + meeting assignment) from the original brief,
+check with the client first** — this was a considered decision to avoid duplicating a working
+flow, not an oversight.
+
+- **Header** (`src/components/layout/header.tsx`): added `{ href: "/chief-guest", label: "Chief
+  Guest" }` to `NAV_LINKS` after FAQ; removed the `Member Login` link from both the desktop CTA
+  row and the mobile panel (it was already present in the footer, so this is a deletion, not a
+  move — confirmed no other header behavior changed).
+- **Footer** (`src/components/layout/footer.tsx`): added a Chief Guest link to `EXPLORE_LINKS`;
+  `MEMBERSHIP_LINKS` already had Member Login, untouched.
+- **New route** `src/app/(public)/chief-guest/page.tsx`, composing six new server components
+  under `src/components/chief-guest/` (Hero, Benefits, Builder's Advantage, Eligibility, How It
+  Works, and the reused Previous-Chief-Guests carousel) — no new UI primitives, all built from
+  the existing `Container`/`SectionLabel`/`Button`/`PhotoSlot` and the same
+  card/hover/numbered-badge language `WhyBwf` and the About page already established. No Prisma
+  schema changes; the whole page is read-only against existing data.
+- **`src/components/chief-guest/network-diagram.tsx`**: a new reusable hub-and-spoke visual
+  (center bubble + trig-positioned spoke bubbles + an SVG line per spoke), used twice — "CHIEF
+  GUEST" surrounded by professional categories in the Hero, and "YOUR NEXT PROJECT" surrounded by
+  the construction value chain in the Builder's Advantage section. Pure CSS/SVG, no client JS, no
+  new dependency. Below the `sm` breakpoint the radial layout is replaced with a plain wrapped row
+  of static chips (same styling precedent as `about/interactive-bubbles.tsx`).
+- **`src/components/marketing/chief-guests-section.tsx` generalized, not duplicated** (brief:
+  "Use the existing Chief Guest data rather than manually duplicating records"): added optional
+  `sectionLabel`/`heading`/`cta`/`hideWhenEmpty` props, all defaulted to the exact existing
+  homepage copy/behavior, so the homepage's own `<ChiefGuestsSection />` call (no props) is
+  unaffected. `/chief-guest` calls it as "Leaders Who Have Joined Us" with a
+  "Join Our Distinguished Chief Guests – Apply Now" CTA and `hideWhenEmpty={false}` (a friendly
+  empty state instead of vanishing, since it's a named section on this page rather than an
+  optional homepage block).
+- **Small `/visit` deep-link addition** (not a new form): `VisitorRegisterForm` gained an
+  optional `defaultPurpose` prop used as the Purpose-of-Visit `<select>`'s `defaultValue`;
+  `/visit/page.tsx` reads a `?purpose=chief-guest` query param and passes `"CHIEF_GUEST"` when
+  present. Every `/chief-guest` CTA links to `/visit?purpose=chief-guest`, landing with the
+  dropdown already set. No changes to `/visit`'s Server Action, the `Visitor` model, or any admin
+  Visitors page.
+
+**Verification performed:**
+- `npm run build` — clean production build and typecheck, `/chief-guest` prerendered as a static
+  route.
+- Ran the app locally (`next dev`) and used Playwright to screenshot the desktop header at
+  1280/1366/1440/1920px (confirmed single line, no wrap/overflow, Chief Guest present, Member
+  Login absent), the mobile hamburger menu, and the footer.
+- Screenshotted `/chief-guest` full-page at desktop (1440px), tablet (768px, confirming the radial
+  network diagram renders) and mobile (390px, confirming the chip fallback and the vertical
+  timeline's connecting line render correctly) widths.
+- Scripted click-throughs: the Hero's "Explore the Benefits" CTA lands on `/chief-guest#benefits`;
+  "Apply as Chief Guest" lands on `/visit?purpose=chief-guest` with the Purpose dropdown's value
+  confirmed (via `inputValue()`) to be `CHIEF_GUEST`, not just visually.
+- Re-screenshotted the homepage full-page after generalizing `ChiefGuestsSection` — the "Chief
+  Guests at BWF" section renders byte-identical to before (same heading, same carousel, no CTA
+  button appended).

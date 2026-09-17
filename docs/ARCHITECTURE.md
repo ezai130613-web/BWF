@@ -1334,6 +1334,34 @@ real venue address wrapped past a fixed-height banner into the QR code below it 
 pre-wrapping each column's text to measure real line counts, sizing the banner to fit, and capping
 any column to 3 lines with an ellipsis so an unusually long address can't blow out the layout.
 
+### Chief Guest landing page & nav restructure (2026-09-18 client build instruction, Phase 26)
+
+**Part C of the client's build instruction (a new `ChiefGuestApplication` model, public
+application form, and admin review/meeting-assignment workflow) was deliberately not built.**
+The instruction was written without visibility into this codebase, and asking for it would have
+built a second, parallel "apply as a Chief Guest" path alongside one that already exists and
+already works: the public `/visit` page's Purpose-of-Visit dropdown already has an "I would like
+to visit as a Chief Guest / Business Connect" option (`VisitorPurpose.CHIEF_GUEST`), which already
+reaches an admin via the Visitors admin. Flagged to the client mid-build; their explicit call was
+to keep the one existing form rather than duplicate it. `/chief-guest`'s CTAs deep-link to
+`/visit?purpose=chief-guest` instead (`VisitorRegisterForm`'s new `defaultPurpose` prop, read from
+`visit/page.tsx`'s `?purpose=` search param) — a pure UX convenience, not a new submission path.
+**If a future phase is asked to build a dedicated Chief Guest application/admin-review system
+from the original brief, confirm with the client first** rather than assuming this was an
+oversight — see the Phase 26 entry in `docs/PHASES.md` for the full reasoning.
+
+**`ChiefGuestsSection` (the homepage's "Chief Guests at BWF" carousel) was generalized in place,
+not copy-pasted, to also power `/chief-guest`'s "Leaders Who Have Joined Us" section** — same
+principle as every other "reuse, don't duplicate" call in this codebase (e.g. Phase 24's shared
+canvas renderer). New optional props (`sectionLabel`/`heading`/`cta`/`hideWhenEmpty`) default to
+the exact original homepage copy/behavior, so the homepage's parameterless call is unaffected;
+`/chief-guest` passes its own heading/CTA and `hideWhenEmpty={false}` so the section shows a
+friendly empty state instead of vanishing when the `ChiefGuest` catalog has zero published rows
+(unlike the homepage, where the whole block is optional and fine to omit).
+
+**No Prisma schema changes.** The whole page reads the existing `ChiefGuest` catalog; nothing new
+is written anywhere by this phase.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

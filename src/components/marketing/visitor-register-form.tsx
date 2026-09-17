@@ -19,6 +19,7 @@ export function VisitorRegisterForm({
   members,
   meetingId,
   fixedChapter,
+  defaultPurpose,
   qrCodeUrl,
   visitorMeetingOnlyFee,
   visitorMeetingBreakfastFee,
@@ -33,6 +34,8 @@ export function VisitorRegisterForm({
   members: Option[];
   meetingId?: string;
   fixedChapter?: Option;
+  /** Pre-selects the Purpose of Visit dropdown — e.g. deep-linked from /chief-guest. */
+  defaultPurpose?: string;
   qrCodeUrl?: string | null;
   visitorMeetingOnlyFee?: string | null;
   visitorMeetingBreakfastFee?: string | null;
@@ -170,7 +173,7 @@ export function VisitorRegisterForm({
           <select
             name="purposeOfVisit"
             required
-            defaultValue=""
+            defaultValue={defaultPurpose ?? ""}
             className="w-full min-w-0 rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none"
           >
             <option value="" disabled>

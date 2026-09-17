@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   description: "Register to visit a Builders World Forum chapter meeting.",
 };
 
-export default async function VisitPage() {
+export default async function VisitPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ purpose?: string }>;
+}) {
+  const { purpose } = await searchParams;
   const [chapters, categories, members, content] = await Promise.all([
     db.chapter.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
     db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -45,6 +50,7 @@ export default async function VisitPage() {
             categories={categories}
             chapters={chapters}
             members={members}
+            defaultPurpose={purpose === "chief-guest" ? "CHIEF_GUEST" : undefined}
             qrCodeUrl={content["payment.qrCodeUrl"]}
             visitorMeetingOnlyFee={withGst(formatInr(content["fees.visitorPrebookMeetingOnly"]))}
             visitorMeetingBreakfastFee={withGst(formatInr(content["fees.visitorPrebookMeetingBreakfast"]))}

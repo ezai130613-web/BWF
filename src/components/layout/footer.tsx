@@ -8,6 +8,7 @@ const EXPLORE_LINKS = [
   { href: "/chapters", label: "Chapters" },
   { href: "/members", label: "Member Directory" },
   { href: "/insights", label: "Insights" },
+  { href: "/chief-guest", label: "Chief Guest" },
 ];
 
 const MEMBERSHIP_LINKS = [
