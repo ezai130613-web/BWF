@@ -2967,3 +2967,99 @@ afterward. `npx tsc --noEmit`, `npx eslint src prisma --max-warnings=0`, and `np
 clean throughout.
 
 **Known issues / follow-ups:** none new.
+
+---
+
+## Phase 21 — Marketing Module: Social Media Scheduling & Publishing (Batch 1)
+
+**Status:** Batch 1 of 3 complete (schema + admin UI). Batches 2 (OAuth connect flows) and 3
+(cron-driven publish worker) are blocked on the client registering a Meta developer app, a Google
+Cloud project, and a Pinterest developer app — see the Connected Accounts follow-up below.
+
+**Why this is its own phase, not folded into Phase 20:** a new, unrelated client brief (2026-09-16)
+— "add a Marketing page that centralizes social media content management, scheduling, and
+publishing to Instagram/Facebook/YouTube/Pinterest" — not a correction to the admin-restructure
+brief Phase 20 covers. Same precedent as Leads (Phase 15) and Member Article Submissions
+(Phase 16): a new feature area gets its own phase number in this project's own build-order
+numbering, even though the brief itself doesn't name a phase for it.
+
+**What shipped:**
+- Before any code: researched and verified current (Sept 2026) official API requirements for all
+  four platforms, and compared direct integration against third-party aggregators (Ayrshare,
+  Postiz, Blotato, Publer) — see `docs/ARCHITECTURE.md`'s Marketing module section for the full
+  writeup. Client explicitly chose direct integration to avoid recurring aggregator fees ($149+/mo)
+  once informed that Meta and Google both offer a no-App-Review path for a single organization
+  posting only to its own accounts.
+- Schema: `MarketingContent` (the video, uploaded once), `PlatformConnection` (one row per
+  platform, seeded NOT_CONNECTED — real OAuth token fields land in Batch 2), `ScheduledPost` (one
+  row per content×platform, carrying that platform's own caption/title/hashtags/board/destination
+  link and `scheduledFor`), `PublishAttempt` (audit trail for Batch 3's retry/idempotency needs).
+  `MarketingContent → ScheduledPost` is `onDelete: Restrict`, not `Cascade` — deleting content
+  can't silently erase real Publishing History (same pattern as Company↔Member).
+- New `marketing:manage` permission (Super/Central Admin blanket, not chapter-scoped — this is a
+  BWF-wide brand function, not a per-chapter one), new `marketingVideo` storage kind
+  (`src/lib/storage.ts`, 2GB cap vs the existing `video` kind's 200MB — sized for Meta's/
+  Pinterest's own stated Reel/video-Pin ceilings, not a member-profile clip).
+- Admin UI at `/admin/marketing` (Dashboard — tile counts, upcoming posts), `/library` (upload +
+  content list), `/library/[id]` (per-content detail: scheduled posts, the Schedule Posts composer
+  — platform checkboxes, a common-caption-with-override field, per-platform settings matching
+  brief §6 exactly, Publish Now or IST date/time, Confirm & Schedule), `/calendar` (month-grid,
+  day/week toggle deliberately deferred as a fast-follow), `/history` (published/failed posts,
+  Retry), `/connected-accounts` (read-only status view — real Connect flow is Batch 2).
+- IST handling (`src/lib/marketing/constants.ts`) is a fixed +05:30 offset conversion, not a
+  timezone library — IST has no DST, so this doesn't need one.
+
+**Batch 1's honesty boundary, explicit:** `ScheduledPost` rows created now persist real schedule
+intent (status `SCHEDULED`, correct `scheduledFor`), but nothing actually publishes yet — no cron
+worker exists to read them. "Publish Now" is represented as `scheduledFor = now`, not a synchronous
+publish call. Same precedent as the old Weekly Report cron (Phase 9), which shipped its settings/
+recipients UI a full phase before the sender existed, rather than half-building automation. The
+Dashboard and every schedule-affecting page say this plainly when no platform is connected.
+
+**Verification performed:** `npm run build`/`lint`/`typecheck` clean throughout. Ran a real
+production build (`next build && next start`, not dev mode — this project's own standing
+discipline) and drove the entire flow with Playwright against a real (non-seed) database, as
+Super Admin: logged in, confirmed the Marketing sidebar link and workspace scoping, uploaded a
+real file through the browser (a real presigned-PUT round trip to R2 — not mocked), confirmed it
+appeared in the Content Library, opened its detail page, selected Instagram (Publish Now) and
+YouTube (a real future IST date/time), filled independent captions per platform, clicked Confirm &
+Schedule, and confirmed both rows appeared with the correct status/timestamps. Confirmed the
+Instagram post appeared on today's calendar cell and the YouTube post on the correct December
+cell. Edited the YouTube post's fields, cancelled the Instagram post (with the confirm dialog),
+and confirmed the content detail page reflected both changes live. Confirmed Publishing History
+correctly showed its empty state (nothing published/failed yet — by design, nothing publishes in
+Batch 1) and Connected Accounts correctly listed all 4 platforms as Not Connected. All test content
+and scheduled posts deleted afterward via direct DB query (confirmed zero rows remaining).
+
+**Two real bugs found only by testing live, not by type-checking or code review:**
+1. `POST /api/uploads`'s request-body validation (`src/app/api/uploads/route.ts`) hardcoded
+   `z.enum(["image", "pdf", "video"])` for the upload `kind` — predates this phase, and the new
+   `marketingVideo` kind wasn't in it, so every real upload attempt 400'd with a generic "Invalid
+   request." despite `src/lib/storage.ts`'s `MEDIA_KINDS` already knowing about it correctly and
+   the client-side `MediaUploadField` component being updated too. `npm run typecheck` had no way
+   to catch this — the string literal wasn't type-checked against `MediaKind`. Fixed by deriving
+   the zod enum from `Object.keys(MEDIA_KINDS)` instead of hand-copying the list, so a future new
+   kind can't silently repeat this. Worth remembering: any hardcoded literal union that's supposed
+   to mirror another module's exported type is a latent bug waiting for the next kind/variant to be
+   added — derive it, don't copy it, wherever that's possible.
+2. The `PlatformConnection` seed block was added to `prisma/seed.ts` *after* the one `npx prisma db
+   seed` run already made this session (which only had the new `marketing:manage` permission in it
+   at the time) — so the 4 platform rows Connected Accounts depends on didn't actually exist yet
+   despite the seed code being correct and committed. Caught by the live verification script
+   reporting 0 connection rows instead of the expected 4, not by reading the seed file. Re-running
+   `npx prisma db seed` (safe — every seed operation in this file is an idempotent upsert) fixed it
+   immediately. Worth remembering: editing a seed file doesn't retroactively apply to a database
+   that was already seeded before the edit — a seed change needs its own explicit re-run, the same
+   way a schema change needs its own explicit migration.
+
+**Known issues / follow-ups:**
+- Connected Accounts' "Connect" buttons are inert (`disabled`) until Batch 2 registers a real OAuth
+  flow per platform — blocked on the client creating a Meta developer app, a Google Cloud project,
+  and a Pinterest developer app (see `docs/ARCHITECTURE.md` for exactly what each involves).
+- The Publishing Calendar ships as a month-grid only; day/week views are a straightforward
+  fast-follow on the same data (`byDate` bucketing already exists), deliberately not built this
+  batch to keep scope contained.
+- Pinterest's board picker is a free-text field (`boardName`) for now — a live board list needs a
+  real Pinterest connection (Batch 2/3) to fetch from.
+- No cron worker exists yet — `ScheduledPost` rows past their `scheduledFor` time just sit as
+  `SCHEDULED` until Batch 3 adds the polling worker described in `docs/ARCHITECTURE.md`.

@@ -7,6 +7,7 @@ const ACCEPT_BY_KIND: Record<MediaKind, string> = {
   image: "image/jpeg,image/png,image/webp,image/avif,image/gif",
   pdf: "application/pdf",
   video: "video/mp4,video/webm,video/quicktime",
+  marketingVideo: "video/mp4,video/quicktime",
 };
 
 /**

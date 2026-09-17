@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
   { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
+  { href: "/admin/marketing", label: "Marketing", permission: "marketing:manage", workspace: "website" },
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
   { href: "/admin/chief-guests", label: "Chief Guests", permission: "chief_guests:manage", workspace: "website" },
   { href: "/admin/points-config", label: "App Points & Scoring", permission: "points_config:manage", workspace: "performance" },

@@ -1052,6 +1052,74 @@ field.** The brief's "Required table columns" table calls only Score editable; G
 Notes, when enabled) are handwritten at the meeting itself, matching every one of the 3 reference
 roster PDFs.
 
+### Marketing module — social media scheduling & publishing (2026-09-16 client brief, Phase 21)
+**Direct integration against each platform's own official API, not a third-party aggregator
+(Ayrshare/Postiz/Blotato/Publer) — client's explicit choice to avoid a recurring $149-599/mo fee.**
+Before writing any code, verified current (Sept 2026) requirements against Meta, Google, and
+Pinterest's own developer docs, and researched the aggregator alternative. The deciding fact:
+because BWF is a single organization publishing only to its own accounts — not a multi-tenant SaaS
+serving many customers — Meta and Google both offer a genuinely lightweight path that skips App
+Review/Business Verification entirely:
+- **Instagram + Facebook (Meta Graph API):** *Standard Access* requires no App Review and no
+  Business Verification, as long as every account posted to belongs to someone holding an
+  Admin/Developer/Tester role on BWF's own Meta app — true for BWF's own accounts. *Advanced
+  Access* (needed to post to accounts outside the app's own role holders, which is what a
+  multi-tenant aggregator needs) is what actually requires the expensive review — not applicable
+  here.
+- **YouTube (Data API v3):** keeping the OAuth app in "Testing" status with BWF's own channel
+  account as a test user (100-user cap) avoids Google's sensitive/restricted-scope verification
+  entirely; Google's own production-readiness docs also list internal organizational use as a
+  recognized exemption.
+- **Pinterest (API v5):** the one platform with no single-org exemption — moving from Trial
+  (sandbox-only) to Standard (production) access requires a one-time review submission including a
+  screen recording of the OAuth flow and API calls, regardless of scale. Budgeted as a one-time
+  developer task, not a recurring cost.
+
+An aggregator's only real advantage over direct integration is skipping that one-time Pinterest
+review — not worth $1,800-7,200/year given Meta and Google are already a wash, and the aggregator
+still requires the same custom admin-panel UI work either way (brief's own multi-section dashboard
+spec has to be built regardless of what's behind it). See `docs/PHASES.md` Phase 21 for the full
+verified-facts writeup that led to this recommendation, including per-platform video specs
+(Instagram Reels: 5-90s, 9:16 preferred, MP4/MOV, ≤1GB; Facebook similar; YouTube: no separate
+Shorts endpoint, a vertical ≤3min upload auto-classifies as a Short; Pinterest: two-step video
+upload, no lightweight tier), token refresh behavior, and rate limits.
+
+**No background job infrastructure existed in this project before this phase** (blog/event
+scheduling both deliberately avoided needing one — see their own sections above) — actual
+publishing at a specific wall-clock time can't use that same lazy-check-at-read-time trick, since
+something has to really call the platform API at the right moment. The planned fix (Batch 3, not
+yet built) is a Vercel Cron job (already available on the project's Pro plan) polling every few
+minutes for due `ScheduledPost` rows and driving each through a small persisted state machine
+(`QUEUED → UPLOADING → PROCESSING → PUBLISHING → PUBLISHED/FAILED`) rather than one long-running
+function call per post — Instagram/Facebook container processing can take minutes, longer than a
+single serverless invocation should block for, and a durable per-attempt DB row (`PublishAttempt`)
+is what makes retry-after-failure/interruption safe against double-publishing (brief §8), the same
+way `RateLimitHit`/`AuditLog` already use Postgres instead of reaching for a new Redis dependency
+(Phase 14 made the same call for rate limiting, for the same "no external service credentials this
+project doesn't have yet" reason).
+
+**One `ScheduledPost` row per (content, platform), not a shared JSON blob of per-platform
+overrides.** Brief §6 is explicit that caption, title, and publishing time must all be
+independently settable per platform for the same uploaded video — modeling each platform's
+schedule as its own real row (rather than a JSON map keyed by platform on one row) means the
+existing `status`/`scheduledFor`/`publishedUrl` fields this app already knows how to query/index
+apply uniformly, and a platform-specific failure genuinely is independent of the others (brief §8:
+"a failure on one platform must not prevent successful publishing to the other platforms") without
+needing any cross-row coordination logic.
+
+**`MarketingContent → ScheduledPost` is `onDelete: Restrict`, not `Cascade`.** Deleting the one
+uploaded video must not silently erase real Publishing History for it — same pattern as
+Company↔Member (a company with members can't be deleted out from under them). The Library page
+only offers a Delete button when a content row has zero `ScheduledPost` children; the FK itself is
+the actual backstop if that's ever bypassed.
+
+**Batch 1 (schema + admin UI) is honest about what doesn't work yet, not a fabricated "it's
+scheduled" state.** `ScheduledPost` rows created now persist real intent, but nothing publishes
+until Batch 3's worker exists — the Dashboard and content detail page say so plainly whenever no
+platform is connected, following the same discipline the old Weekly Report cron (Phase 9) and this
+project's "never claim a platform is fully integrated until an actual publishing test has
+succeeded" standard (the client's own instruction) both already established.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1059,6 +1127,7 @@ they aren't lost, with the phase they'd first block:
 
 | Decision | Needed by | Notes |
 |---|---|---|
+| Meta developer app + Google Cloud project + Pinterest developer app registration | Phase 21 Batch 2 | Client-owned account creation (see Phase 21 in `docs/PHASES.md`) — needed before OAuth "Connect" flows can be wired up for Instagram/Facebook, YouTube, and Pinterest. Not something to create on the client's behalf; walk-through offered, ownership stays with BWF. |
 | ~~Display serif + UI sans-serif typefaces~~ | ~~Phase 1~~ | **Resolved Phase 1**: Fraunces + Inter. |
 | ~~Headless component primitives~~ | ~~Phase 1~~ | **Resolved Phase 1**: hand-built, no library — see Design System above. |
 | Real chapter names/locations for the 3 active chapters | Before launch | Seeded as "Chapter 01/02/03" (Chennai) — now live-editable at `/admin/chapters` (not a code change), so this no longer blocks any phase. Rename whenever real names exist. |

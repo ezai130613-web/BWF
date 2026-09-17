@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
-import { createPresignedUpload, isStorageConfigured, MEDIA_KINDS } from "@/lib/storage";
+import { createPresignedUpload, isStorageConfigured, MEDIA_KINDS, type MediaKind } from "@/lib/storage";
 import { rateLimit, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 
 /**
@@ -12,8 +12,15 @@ import { rateLimit, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
  * matters is on the actual profile/entity write this URL ends up in
  * (updateMemberProfile, submitProfileRevision, createCompany, etc.).
  */
+// Derived from MEDIA_KINDS' own keys rather than hand-copied — a new kind
+// registered in src/lib/storage.ts (e.g. the Marketing module's
+// marketingVideo) previously had to also be added here by hand, and wasn't,
+// which meant every upload of that kind silently 400'd with "Invalid
+// request." until caught by an actual live upload attempt.
+const mediaKinds = Object.keys(MEDIA_KINDS) as [MediaKind, ...MediaKind[]];
+
 const bodySchema = z.object({
-  kind: z.enum(["image", "pdf", "video"]),
+  kind: z.enum(mediaKinds),
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(100),
   size: z.number().int().positive(),

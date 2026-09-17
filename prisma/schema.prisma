@@ -1359,3 +1359,175 @@ model RosterScore {
   @@index([rosterId])
   @@map("roster_scores")
 }
+
+// ---------------------------------------------------------------------------
+// Marketing module (2026-09-16 client brief) — social media content
+// scheduling & publishing. Built as DIRECT integration against each
+// platform's own official API (Instagram/Facebook Graph API, YouTube Data
+// API v3, Pinterest API v5) rather than a third-party aggregator (Ayrshare
+// etc.) — the client explicitly chose to avoid recurring aggregator fees,
+// and per docs/ARCHITECTURE.md's verified research, Meta and Google both
+// offer a low-friction path (no App Review/Business Verification) for a
+// single organization posting only to its own accounts; only Pinterest
+// requires a one-time review.
+//
+// Batch 1 (this change) ships the schema + the admin UI for upload,
+// library, scheduling, calendar, and history — PlatformConnection exists now
+// so Connected Accounts has something real to render ("Not Connected"
+// everywhere), but its OAuth flow and token fields are only populated once
+// Batch 2 (developer-app registration + OAuth connect) lands. Batch 3 adds
+// the actual cron-driven publish worker — ScheduledPost rows created before
+// then persist as real schedule intent but nothing fires yet.
+// ---------------------------------------------------------------------------
+
+enum MarketingPlatform {
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  PINTEREST
+}
+
+/// The video uploaded once (brief §4 — "upload the video only once"),
+/// reused across every platform-specific ScheduledPost. Deliberately no
+/// per-platform copy of the file — every ScheduledPost.content points at
+/// the same R2 object.
+model MarketingContent {
+  id           String  @id @default(cuid())
+  title        String
+  videoUrl     String
+  thumbnailUrl String?
+  notes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduledPosts ScheduledPost[]
+
+  @@map("marketing_content")
+}
+
+enum PlatformConnectionStatus {
+  NOT_CONNECTED
+  CONNECTED
+  EXPIRED
+  ERROR
+}
+
+/// One row per platform (not per social account — brief only asks to
+/// connect BWF's own single account per platform). Token fields stay null
+/// until Batch 2's OAuth flow populates them; encrypted at rest once that
+/// lands (see the Batch 2 notes in docs/ARCHITECTURE.md) — never logged,
+/// never sent to the client.
+model PlatformConnection {
+  id       String                   @id @default(cuid())
+  platform MarketingPlatform        @unique
+  status   PlatformConnectionStatus @default(NOT_CONNECTED)
+
+  /// Display-only — e.g. the connected IG handle / FB Page name / YouTube
+  /// channel name / Pinterest account name, so the admin UI can show what's
+  /// connected without a live API call on every page load.
+  accountName String?
+  /// The platform-side id (IG user id / Page id / channel id / Pinterest
+  /// user id) the stored tokens are actually scoped to.
+  accountId   String?
+
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime?
+
+  lastError   String?
+  connectedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  scheduledPosts ScheduledPost[]
+
+  @@map("platform_connections")
+}
+
+enum ScheduledPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  ACTION_REQUIRED
+}
+
+/// One row per (content, platform) — brief §6 is explicit that caption,
+/// title, and publishing time must all be independently settable per
+/// platform for the same uploaded video, so platform-specific fields live
+/// directly here rather than in a shared JSON blob. Only the fields
+/// relevant to `platform` are ever read/written for a given row (e.g.
+/// `boardId` only matters for PINTEREST) — see src/lib/marketing/fields.ts.
+model ScheduledPost {
+  id        String           @id @default(cuid())
+  contentId String
+  /// Restrict, not Cascade — deleting a MarketingContent row must not
+  /// silently wipe out real Publishing History for it (same "referenced
+  /// parent can't be deleted out from under its children" pattern as
+  /// Company/Member — see src/app/admin/(dashboard)/marketing/actions.ts's
+  /// delete guard).
+  content   MarketingContent @relation(fields: [contentId], references: [id], onDelete: Restrict)
+
+  platform     MarketingPlatform
+  connectionId String?
+  connection   PlatformConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  status ScheduledPostStatus @default(DRAFT)
+
+  /// Instagram/Facebook caption, YouTube description, or Pinterest
+  /// description — one field, platform-appropriate label in the UI.
+  caption         String?
+  hashtags        String?
+  /// YouTube video title, or Pinterest pin title.
+  title           String?
+  /// Pinterest only — the Pin's destination link.
+  destinationLink String?
+  /// Pinterest only — which board to pin to.
+  boardId         String?
+  boardName       String?
+
+  /// Stored in UTC; the admin UI collects and displays this in IST (brief
+  /// §7 — "All times should default to IST, with the timezone clearly
+  /// displayed") via a fixed +05:30 offset conversion, not a timezone
+  /// library — IST has no DST, so this doesn't need one.
+  scheduledFor DateTime
+
+  publishedUrl String?
+  lastError    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempts PublishAttempt[]
+
+  @@index([status, scheduledFor])
+  @@index([contentId])
+  @@map("scheduled_posts")
+}
+
+enum PublishAttemptResult {
+  SUCCESS
+  FAILURE
+}
+
+/// Audit trail for every real publish attempt (Batch 3's worker) — exists
+/// so a retry after a failure or a server interruption can check "did this
+/// already succeed?" before calling the platform API again (brief §8:
+/// "must prevent duplicate publishing"), and so Publishing History has a
+/// real per-attempt error message to show, not just the post's current
+/// (possibly stale) status.
+model PublishAttempt {
+  id              String        @id @default(cuid())
+  scheduledPostId String
+  scheduledPost   ScheduledPost @relation(fields: [scheduledPostId], references: [id], onDelete: Cascade)
+
+  result       PublishAttemptResult
+  errorMessage String?
+  publishedUrl String?
+
+  attemptedAt DateTime @default(now())
+
+  @@index([scheduledPostId])
+  @@map("publish_attempts")
+}

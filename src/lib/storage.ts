@@ -59,6 +59,18 @@ export const MEDIA_KINDS = {
     contentTypes: ["video/mp4", "video/webm", "video/quicktime"],
     maxBytes: 200 * 1024 * 1024,
   },
+  /// Marketing module (2026-09-16) — a separate, larger cap from `video`
+  /// above: member/testimonial videos are supporting media, but a marketing
+  /// upload IS the product being published, and needs headroom up to Meta's
+  /// and Pinterest's own stated video-Pin/Reel size ceilings (~1-2GB) rather
+  /// than the 200MB cap sized for a member profile clip. R2 receives this via
+  /// a direct browser PUT (see createPresignedUpload's own comment) so this
+  /// isn't bounded by Vercel's function body-size limits either way.
+  marketingVideo: {
+    folder: "marketing-videos",
+    contentTypes: ["video/mp4", "video/quicktime"],
+    maxBytes: 2 * 1024 * 1024 * 1024,
+  },
 } as const satisfies Record<string, { folder: string; contentTypes: readonly string[]; maxBytes: number }>;
 
 export type MediaKind = keyof typeof MEDIA_KINDS;

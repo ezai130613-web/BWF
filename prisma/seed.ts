@@ -33,6 +33,7 @@ const PERMISSIONS = [
   { key: "points_config:manage", label: "Manage BWF App points/scoring values" },
   { key: "app_activity:view", label: "View BWF App activity (referrals, TYS, 1-2-1s, Power Dates, Conclaves, points)" },
   { key: "roster:manage", label: "Generate chapter Roster Sheet PDFs" },
+  { key: "marketing:manage", label: "Manage social media content, scheduling & publishing" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -58,6 +59,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "points_config:manage",
     "app_activity:view",
     "roster:manage",
+    "marketing:manage",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
@@ -369,6 +371,14 @@ async function main() {
   ] as const;
   for (const activityType of ACTIVITY_TYPES) {
     await db.pointsConfig.upsert({ where: { activityType }, update: {}, create: { activityType, points: 0 } });
+  }
+
+  // Marketing module (2026-09-16) — one row per platform so Connected
+  // Accounts always has all 4 to render (status NOT_CONNECTED until Batch 2's
+  // OAuth flow lands), rather than conjuring rows on first connect.
+  const MARKETING_PLATFORMS = ["INSTAGRAM", "FACEBOOK", "YOUTUBE", "PINTEREST"] as const;
+  for (const platform of MARKETING_PLATFORMS) {
+    await db.platformConnection.upsert({ where: { platform }, update: {}, create: { platform } });
   }
 
   const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
