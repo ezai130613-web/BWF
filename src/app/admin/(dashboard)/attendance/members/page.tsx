@@ -14,20 +14,38 @@ import type { Prisma } from "@/generated/prisma/client";
 export default async function AttendanceMembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; memberId?: string; meetingId?: string; from?: string; to?: string; status?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    chapterId?: string;
+    categoryId?: string;
+    memberId?: string;
+    meetingId?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+  }>;
 }) {
   const scope = await getChapterScope("attendance:manage");
   const params = await searchParams;
 
+  // Chapter filter only makes sense for Super/Central Admin — a Chapter
+  // Admin is already fixed to their own chapter via scope.
+  const requestedChapterId = scope === "ALL" ? params.chapterId : scope;
+
   const memberWhere: Prisma.MemberWhereInput = {
     status: "ACTIVE",
-    ...(scope !== "ALL" ? { chapterId: scope } : {}),
+    ...(requestedChapterId ? { chapterId: requestedChapterId } : {}),
+    ...(params.categoryId ? { categoryId: params.categoryId } : {}),
     ...(params.q ? { name: { contains: params.q, mode: "insensitive" } } : {}),
   };
 
-  const [matches, selectedMember] = await Promise.all([
-    params.memberId ? [] : db.member.findMany({ where: memberWhere, include: { chapter: true }, orderBy: { name: "asc" }, take: 25 }),
+  const [matches, selectedMember, chapters, categories] = await Promise.all([
+    params.memberId
+      ? []
+      : db.member.findMany({ where: memberWhere, include: { chapter: true, category: true }, orderBy: { name: "asc" }, take: 25 }),
     params.memberId ? db.member.findUnique({ where: { id: params.memberId }, include: { chapter: true, category: true } }) : null,
+    scope === "ALL" ? db.chapter.findMany({ orderBy: { name: "asc" } }) : [],
+    db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
   ]);
 
   if (selectedMember && scope !== "ALL" && selectedMember.chapterId !== scope) {
@@ -50,13 +68,40 @@ export default async function AttendanceMembersPage({
 
       {!selectedMember ? (
         <>
-          <form action="/admin/attendance/members" method="GET" className="flex gap-2">
-            <input
-              name="q"
-              defaultValue={params.q}
-              placeholder="Search member by name…"
-              className="w-full max-w-sm rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-            />
+          <form action="/admin/attendance/members" method="GET" className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+              Name
+              <input
+                name="q"
+                defaultValue={params.q}
+                placeholder="Search member by name…"
+                className="w-full min-w-[16rem] rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              />
+            </label>
+            {scope === "ALL" ? (
+              <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+                Chapter
+                <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+                  <option value="">All chapters</option>
+                  {chapters.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+              Category
+              <select name="categoryId" defaultValue={params.categoryId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+                <option value="">All categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
               Search
             </button>
@@ -67,7 +112,9 @@ export default async function AttendanceMembersPage({
               <li key={member.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-neutral-900">{member.name}</p>
-                  <p className="text-xs text-neutral-500">{member.chapter.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {member.chapter.name} · {member.category.name}
+                  </p>
                 </div>
                 <Link
                   href={`/admin/attendance/members?memberId=${member.id}`}
@@ -77,7 +124,7 @@ export default async function AttendanceMembersPage({
                 </Link>
               </li>
             ))}
-            {matches.length === 0 && params.q ? (
+            {matches.length === 0 && (params.q || params.chapterId || params.categoryId) ? (
               <li className="px-4 py-8 text-center text-sm text-neutral-400">No members matched.</li>
             ) : null}
           </ul>
