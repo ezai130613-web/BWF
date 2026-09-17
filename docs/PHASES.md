@@ -3375,10 +3375,6 @@ border (fixed by moving the QR block's default anchor further from the edge). Te
 standing discipline of never scrubbing the audit trail itself.
 
 **Known issues / follow-ups:**
-- **The poster layout is explicitly an initial design**, per the spec's own "until the reference is
-  provided, create a simple initial design" — the client said a reference invitation poster would
-  be supplied separately. Revisit `drawInvitationPoster()`'s layout once that reference arrives,
-  rather than treating the current structure as final.
 - No chief guest in the live database has a `photoUrl` set yet — the with-photo layout was verified
   using a real member's own R2-hosted photo pasted into the invitation's independent photo field
   (proving the pipeline works end-to-end), not an actual chief guest photo, since none exists to
@@ -3387,3 +3383,23 @@ standing discipline of never scrubbing the audit trail itself.
   `requireChapterAccess`/`getChapterScope` pattern already proven for Attendance/Payments/Visitors
   QR, not independently re-verified with a second real Chapter Admin login this session — same
   category of gap flagged for Phases 22/23.
+
+**Addendum, 2026-09-18 (same day) — poster redesign from the client's reference image:** the client
+supplied a reference invitation poster from another networking forum and asked for its alignment
+and icon-driven detail communication specifically, explicitly declining its background event photo
+("chief guest image will come" instead). Redesigned `drawInvitationPoster()`
+(`src/lib/invitations/poster.ts`) to match — brand block top-left, curved gold divider, large
+gradient-gold headline, plain description paragraph, a "Connect · Collaborate · Grow" tagline
+plaque, and a 4-column icon-badge row (Time/Fee/Venue/Date) with hand-drawn vector icons
+(clock/rupee/pin/calendar in gold circular badges) replacing the old stacked plain-text detail
+list — every element maps onto the same `InvitationPosterData` fields as before, so no schema,
+permission, form, or save/download logic changed; only this one file. Two real bugs surfaced by
+rendering actual long-text input (not by lint/typecheck) and were fixed before shipping: the
+icon-row banner inherited a stale ivory fill from an earlier, unrelated text draw instead of its own
+intended dark tint (a missing explicit `fillStyle` before the fill call), and a genuinely long real
+venue address wrapped past a fixed-height banner into the QR code below it — fixed by pre-wrapping
+each column's text to measure real line counts, sizing the banner to that content, and capping any
+column at 3 lines with an ellipsis. Re-verified live (same production build/server, same real
+"Thursday Meeting", plus a deliberately long chief-guest designation and address to stress-test
+wrapping) before and after the fix — the first render visibly showed both bugs, the second didn't.
+This closes the "reference poster" line in `docs/ARCHITECTURE.md`'s Open Decisions table.

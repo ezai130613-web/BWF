@@ -1317,10 +1317,22 @@ spec's own literal ask is a "Download Invitation" button, and the admin already 
 open on the same device to attach the file manually. Revisit only if the client later asks for a
 poster to be shareable as a link rather than an attachment.
 
-**The current poster layout is an explicitly initial design.** The spec itself says so ("I will
-provide a reference invitation poster separately... until the reference is provided, create a
-simple initial design") — treat `drawInvitationPoster()`'s current layout as a placeholder to revise
-once that reference arrives, not as a finished visual spec.
+**Reference poster received 2026-09-18 (same day) — layout redesigned to match it, data model
+untouched.** The client supplied a reference invitation poster from another networking forum (BNI)
+and asked for its alignment/structure and icon-driven detail communication specifically, but
+explicitly *not* its background event photo — "chief guest image will come" instead. Redesigned
+`drawInvitationPoster()` to mirror the reference's composition (brand block top-left, curved gold
+divider, large gradient-gold headline, plain description paragraph, a decorative
+"Connect · Collaborate · Grow" tagline plaque, and a 4-column icon-badge detail row for Time/Fee/
+Venue/Date with hand-drawn vector icons — clock/rupee/pin/calendar — instead of stacked plain text)
+while mapping every element onto the exact same `InvitationPosterData` fields as before; no schema,
+permission, or form change was needed; the type signature `drawInvitationPoster()` exposes didn't
+change either. Two real layout bugs surfaced only by rendering real long-text input and were fixed
+before shipping: the icon-row banner inherited a stale `ivory` fill from earlier text calls instead
+of its own intended dark tint (a missing explicit `fillStyle` before the fill call), and a long,
+real venue address wrapped past a fixed-height banner into the QR code below it — fixed by
+pre-wrapping each column's text to measure real line counts, sizing the banner to fit, and capping
+any column to 3 lines with an ellipsis so an unusually long address can't blow out the layout.
 
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
@@ -1343,7 +1355,7 @@ they aren't lost, with the phase they'd first block:
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
-| Reference invitation poster for the Meeting Invitation Generator's final layout | Phase 24 | Client said a reference poster would be supplied separately; the spec itself says to build a simple initial design until then. `drawInvitationPoster()` (`src/lib/invitations/poster.ts`) is that placeholder — revise its layout once the reference arrives rather than treating it as final. |
+| ~~Reference invitation poster for the Meeting Invitation Generator's final layout~~ | ~~Phase 24~~ | **Resolved 2026-09-18** (same day) — client supplied a reference poster; `drawInvitationPoster()` redesigned to match its alignment/icon-driven detail row, background photo intentionally omitted per the client's own instruction (chief guest photo fills that role instead). See the Phase 24 section above. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
 | ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |
 | ~~Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording~~ | ~~Noted since Phase 10~~ | Built 2026-09-06 (backlog #20), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — `/admin/analytics` and `getAdminAnalytics()` no longer exist. |
