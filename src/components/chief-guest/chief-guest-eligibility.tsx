@@ -46,12 +46,13 @@ export function ChiefGuestEligibility() {
           ))}
         </div>
 
-        <div className="mt-10 max-w-2xl rounded-sm border border-emerald-700 bg-emerald-800/40 p-6 text-sm leading-relaxed text-slate-400">
+        <div className="mt-10 rounded-sm border border-emerald-700 bg-emerald-800/40 p-6 text-sm leading-relaxed text-slate-400">
           <p>
             Chief Guests do not have to belong exclusively to the construction industry —
             applications are open to eligible business leaders from other industries as well.
-            Both existing BWF members and external applicants may apply. All applications are
-            subject to review and approval by BWF management.
+            The Chief Guest program is open to external business leaders only; existing BWF
+            members are not eligible to apply as a Chief Guest. All applications are subject to
+            review and approval by BWF management.
           </p>
         </div>
       </Container>
