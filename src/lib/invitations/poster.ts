@@ -43,6 +43,7 @@ export interface InvitationPosterData {
 export interface InvitationPosterImages {
   guestPhoto: HTMLImageElement | null;
   qrCode: HTMLImageElement | null;
+  logo: HTMLImageElement | null;
 }
 
 export interface InvitationPosterFonts {
@@ -242,15 +243,24 @@ export function drawInvitationPoster(
 
   // ---- TOP BAR: brand block, left-aligned ----
   ctx.textAlign = "left";
+  let brandTextX = 72;
+  if (images.logo) {
+    const logoRadius = 34;
+    const logoCx = 72 + logoRadius;
+    const logoCy = 104;
+    drawCircularImage(ctx, images.logo, logoCx, logoCy, logoRadius);
+    brandTextX = logoCx + logoRadius + 20;
+  }
+
   ctx.fillStyle = GOLD_300;
   ctx.font = `700 30px ${fonts.sans}`;
   ctx.letterSpacing = "3px";
-  ctx.fillText(data.headingLine1.toUpperCase(), 72, 92);
+  ctx.fillText(data.headingLine1.toUpperCase(), brandTextX, 92);
   ctx.letterSpacing = "0px";
 
   ctx.fillStyle = IVORY_100;
   ctx.font = `600 26px ${fonts.sans}`;
-  ctx.fillText(data.chapterLabel, 72, 128);
+  ctx.fillText(data.chapterLabel, brandTextX, 128);
 
   // Curved gold divider beneath the top bar (reference's ribbon swoosh).
   ctx.strokeStyle = GOLD_500;

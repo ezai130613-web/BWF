@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-emerald-700/60 bg-emerald-950/80 backdrop-blur">
       <Container className="flex h-20 items-center justify-between">
-        <Link href="/" className="font-display text-lg tracking-wide text-ivory-100">
+        <Link href="/" className="flex items-center gap-3 font-display text-lg tracking-wide text-ivory-100">
+          <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={40} height={40} className="h-10 w-10" priority />
           Builders World Forum
         </Link>
 

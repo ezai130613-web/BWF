@@ -46,6 +46,7 @@ export function InvitationEditor({
 
   const [guestPhotoImg, setGuestPhotoImg] = useState<HTMLImageElement | null>(null);
   const [qrImg, setQrImg] = useState<HTMLImageElement | null>(null);
+  const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -93,6 +94,21 @@ export function InvitationEditor({
       cancelled = true;
     };
   }, [values.guestPhotoUrl]);
+
+  // BWF logo badge for the top brand block — static asset, loaded once.
+  useEffect(() => {
+    let cancelled = false;
+    loadImage("/images/brand/bwf-logo-512.png")
+      .then((img) => {
+        if (!cancelled) setLogoImg(img);
+      })
+      .catch(() => {
+        /* logo failing to load is non-fatal — poster falls back to text-only brand block */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Visitor registration QR — generated client-side from the same check-in
   // URL /admin/visitors-qr uses, so it always points at the right meeting.
@@ -153,14 +169,14 @@ export function InvitationEditor({
             isComplimentary: values.isComplimentary,
             includeQr: values.includeQr,
           },
-          { guestPhoto: guestPhotoImg, qrCode: qrImg },
+          { guestPhoto: guestPhotoImg, qrCode: qrImg, logo: logoImg },
           fontsRef.current,
         );
       })
       .catch(() => {
         /* fonts failing to load is non-fatal — canvas falls back to its default font */
       });
-  }, [values, guestPhotoImg, qrImg, source.chapterLabel]);
+  }, [values, guestPhotoImg, qrImg, logoImg, source.chapterLabel]);
 
   // Unsaved-edit protection (requirement #10) for a real page close/refresh.
   useEffect(() => {

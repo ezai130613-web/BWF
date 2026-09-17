@@ -14,6 +14,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "Builders World Forum",
   url: SITE_URL,
+  logo: `${SITE_URL}/images/brand/bwf-logo-512.png`,
   description:
     "A private, chapter-based business community for Chennai's construction ecosystem.",
 };

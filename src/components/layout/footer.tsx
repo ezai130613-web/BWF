@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { getContent } from "@/lib/content";
@@ -33,7 +34,10 @@ export async function Footer() {
     <footer className="border-t border-emerald-700/60 bg-emerald-950">
       <Container className="grid gap-12 py-16 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div>
-          <p className="font-display text-lg text-ivory-100">Builders World Forum</p>
+          <div className="flex items-center gap-3">
+            <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={36} height={36} className="h-9 w-9" />
+            <p className="font-display text-lg text-ivory-100">Builders World Forum</p>
+          </div>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-400">
             {content["footer.tagline"] ?? DEFAULT_TAGLINE}
           </p>

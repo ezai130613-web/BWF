@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -82,9 +83,12 @@ export function Sidebar({
 
   return (
     <aside className="flex w-64 flex-shrink-0 flex-col bg-emerald-900 text-ivory-100">
-      <div className="px-6 py-6">
-        <p className="font-display text-base">Builders World Forum</p>
-        <p className="mt-0.5 text-xs text-slate-400">Admin</p>
+      <div className="flex items-center gap-3 px-6 py-6">
+        <Image src="/images/brand/bwf-logo-512.png" alt="" width={32} height={32} className="h-8 w-8 flex-shrink-0" />
+        <div>
+          <p className="font-display text-base">Builders World Forum</p>
+          <p className="mt-0.5 text-xs text-slate-400">Admin</p>
+        </div>
       </div>
 
       <nav className="flex-1 px-3">

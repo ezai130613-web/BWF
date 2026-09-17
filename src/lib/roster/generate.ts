@@ -166,13 +166,23 @@ function drawCaption(doc: PDFKit.PDFDocument, text: string, x: number, y: number
   doc.fillColor(INK).font("Helvetica");
 }
 
-function drawLogoBadge(doc: PDFKit.PDFDocument, x: number, y: number, color: string = GREEN) {
+function drawLogoBadge(doc: PDFKit.PDFDocument, x: number, y: number, logoBuffer: Buffer | null, color: string = GREEN) {
+  let textX = x;
+  if (logoBuffer) {
+    const size = 26;
+    try {
+      doc.image(logoBuffer, x, y - 2, { width: size, height: size, cover: [size, size] as [number, number] });
+      textX = x + size + 8;
+    } catch {
+      /* a corrupt/unreadable logo buffer must never crash the whole PDF */
+    }
+  }
   doc
     .fontSize(9)
     .fillColor(color)
     .font("Helvetica-Bold")
-    .text("BUILDERS WORLD FORUM", x, y, { characterSpacing: 0.4 });
-  doc.fontSize(7).fillColor(color === GREEN ? MUTED : color).font("Helvetica-Oblique").text("Exclusive Forum for Construction Industry", x, y + 12);
+    .text("BUILDERS WORLD FORUM", textX, y, { characterSpacing: 0.4 });
+  doc.fontSize(7).fillColor(color === GREEN ? MUTED : color).font("Helvetica-Oblique").text("Exclusive Forum for Construction Industry", textX, y + 12);
   doc.font("Helvetica").fillColor(INK);
 }
 
@@ -206,7 +216,7 @@ function drawPill(doc: PDFKit.PDFDocument, text: string, cx: number, y: number, 
   return { x, y, width, height };
 }
 
-async function renderCover(doc: PDFKit.PDFDocument, data: RosterData) {
+async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer: Buffer | null) {
   const fullWidth = doc.page.width;
   const width = fullWidth - PAGE_MARGIN * 2;
   let y = 0;
@@ -223,7 +233,7 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData) {
   doc.fillColor(INK).font("Helvetica");
   y += 56;
 
-  drawLogoBadge(doc, PAGE_MARGIN, y);
+  drawLogoBadge(doc, PAGE_MARGIN, y, logoBuffer);
   doc.roundedRect(fullWidth - PAGE_MARGIN - 76, y, 76, 22, 11).fillColor(GREEN).fill();
   doc.fillColor(WHITE).font("Helvetica-Bold").fontSize(10).text("ROSTER", fullWidth - PAGE_MARGIN - 76, y + 6, { width: 76, align: "center" });
   doc.fillColor(INK).font("Helvetica");
@@ -407,7 +417,7 @@ async function renderCoordinators(doc: PDFKit.PDFDocument, data: RosterData) {
 }
 
 /** Reuses the "measure real wrapped height, don't assume a fixed row height" lesson from the old member-export.ts PDF (backlog #16) — but here every row is deliberately the SAME fixed height (exactly 8/page, per the reference's own density), so long text is truncated with an ellipsis rather than wrapped, per the client's own correction: "do not allow a long address/email to push the row height unpredictably." */
-async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
+async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer: Buffer | null) {
   const totalPages = Math.max(1, Math.ceil(data.members.length / MEMBERS_PER_PAGE));
   const width = doc.page.width - PAGE_MARGIN * 2;
   const cardX = PAGE_MARGIN - 10;
@@ -431,7 +441,7 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData) {
     doc.roundedRect(cardX, cardTop, cardWidth, cardBottom - cardTop, 18).fillColor(WHITE).fill();
 
     let y = PAGE_MARGIN + 6;
-    drawLogoBadge(doc, PAGE_MARGIN, y);
+    drawLogoBadge(doc, PAGE_MARGIN, y, logoBuffer);
     doc.font("Helvetica-Bold").fontSize(15).fillColor(INK).text(`ROSTER PAGE - ${pageIndex + 1}`, PAGE_MARGIN, y + 2, { width, align: "right" });
     y += 46;
 
@@ -723,10 +733,11 @@ export async function generateRosterPdf(data: RosterData): Promise<Buffer> {
   });
 
   const visitorFeedbackQr = await fetchImageBuffer(data.visitorFeedbackQrUrl);
+  const logoBuffer = await fetchImageBuffer("/images/brand/bwf-logo-512.png");
 
-  await renderCover(doc, data);
+  await renderCover(doc, data, logoBuffer);
   await renderCoordinators(doc, data);
-  await renderMemberTable(doc, data);
+  await renderMemberTable(doc, data, logoBuffer);
   renderFinalPage(doc, data, visitorFeedbackQr);
 
   doc.end();

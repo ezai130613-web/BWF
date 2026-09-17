@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -26,7 +27,10 @@ export default async function MemberPortalLayout({ children }: { children: React
     <div className="min-h-screen">
       <header className="border-b border-neutral-200 bg-white">
         <div className="flex h-16 items-center justify-between px-8">
-          <p className="font-medium text-neutral-900">Builders World Forum</p>
+          <div className="flex items-center gap-2.5">
+            <Image src="/images/brand/bwf-logo-512.png" alt="" width={28} height={28} className="h-7 w-7" />
+            <p className="font-medium text-neutral-900">Builders World Forum</p>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-neutral-500">{member.name}</span>
             <SignOutButton callbackUrl="/member/login" />

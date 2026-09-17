@@ -3403,3 +3403,51 @@ column at 3 lines with an ellipsis. Re-verified live (same production build/serv
 "Thursday Meeting", plus a deliberately long chief-guest designation and address to stress-test
 wrapping) before and after the fix — the first render visibly showed both bugs, the second didn't.
 This closes the "reference poster" line in `docs/ARCHITECTURE.md`'s Open Decisions table.
+
+---
+
+## Phase 25 — Brand Logo Rollout
+
+**Status:** Complete
+
+**What shipped:** the client supplied BWF's real logo (a circular green house/smiley mark) with
+the instruction to attach it "everywhere applicable — literally everywhere." The source PNG
+(1254×1254, transparent) was saved to `public/images/brand/bwf-logo.png`, with `bwf-logo-512.png`
+and `bwf-logo-180.png` resized copies for web use. No new palette or layout system — this is
+wiring an existing text-only "Builders World Forum" wordmark up with the real mark wherever that
+wordmark already appeared, not a redesign.
+
+- **Browser/tab icons:** `src/app/icon.png` (256px) and `src/app/apple-icon.png` (180px) added
+  (Next's file-convention favicons); `src/app/favicon.ico` regenerated from the logo (16/32/48/64px
+  multi-size .ico via Pillow, since no `.ico` encoder was already in the toolchain).
+- **Public site:** logo added next to the wordmark in `Header` and `Footer`
+  (`src/components/layout/`), and into the site's Organization JSON-LD (`(public)/layout.tsx`'s
+  `logo` field) for SEO/schema purposes.
+- **Auth surfaces:** logo added above the "Builders World Forum" label on both login pages
+  (`admin/login`, `member/login`), both reset-password pages, and the Super/Central Admin
+  "Select Admin Workspace" page — all five shared the same plain-text brand block.
+- **Admin/member chrome:** logo added to the admin `Sidebar` (next to "Builders World Forum /
+  Admin") and the member portal's top header bar (`member/(portal)/layout.tsx`).
+- **Meeting Invitation poster** (`src/lib/invitations/poster.ts`): the top-left brand block (which
+  already drew "BUILDERS WORLD FORUM" + chapter label as text per Phase 24) now draws the real
+  logo as a circular badge to its left, shifting the text right to make room.
+  `InvitationPosterImages` gained a `logo` field; `invitation-editor.tsx` loads it once from the
+  static asset path via the existing `loadImage()` helper (same-origin, so no canvas-tainting
+  proxy needed the way the chief guest's remote photo requires).
+- **Roster Sheet PDF** (`src/lib/roster/generate.ts`): `drawLogoBadge()` (previously a text-only
+  "BUILDERS WORLD FORUM" wordmark used on the cover page and every member-table page header) now
+  draws the logo image first via `doc.image()`, reusing the existing `fetchImageBuffer()` helper
+  against the same static path; the buffer is fetched once in `generateRosterPdf()` and threaded
+  through `renderCover()`/`renderMemberTable()` rather than re-read per page.
+
+**Verification performed:**
+- `npx tsc --noEmit` and `eslint` on every touched file — clean.
+- Ran the app locally (`next dev`) and screenshotted the public homepage (header + footer),
+  `/admin/login`, and `/admin/workspace` via Playwright — logo renders correctly on both light and
+  dark brand blocks.
+- Logged in as the real Super Admin, walked the real Meeting Invitation Generator flow for
+  Chapter 01's live meeting, and screenshotted the generated canvas — the logo badge renders
+  crisply in the poster's top bar. Read-only; no Save/Download was clicked, so no data changed.
+- Ran `generateRosterPdf()` standalone against synthetic roster data (not the real DB) and
+  rendered the resulting PDF's first page to an image — logo renders correctly beside the cover
+  page's wordmark.

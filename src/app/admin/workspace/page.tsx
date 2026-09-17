@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { requireAdminSession } from "@/lib/auth/rbac";
 import { selectWorkspace } from "./actions";
@@ -21,7 +22,8 @@ export default async function WorkspaceSelectPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-2xl">
-        <p className="text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
+        <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={48} height={48} className="h-12 w-12" priority />
+        <p className="mt-3 text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
           Builders World Forum
         </p>
         <h1 className="mt-2 text-xl font-semibold text-neutral-900">Select Admin Workspace</h1>
