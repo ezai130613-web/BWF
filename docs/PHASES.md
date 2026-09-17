@@ -3186,3 +3186,100 @@ safety discipline holds should never be pushed through silently.
   `/admin/payments` was reasoned from the already-proven `requireChapterAccess`/`getChapterScope`
   pattern shared with Members/Meetings/Visitors/Roster, not independently re-verified with a second
   real Chapter Admin login this session — same category of gap Batch 3/13 flagged for Roster.
+
+---
+
+## Phase 23 — Visitor Management System (Visitors QR / Visitors Attendance / Visitors Payment)
+
+**Status:** Complete
+
+**What shipped:** the client's "BWF Visitor Management System" spec (2026-09-18) — three linked
+admin pages mirroring Phase 22's member-facing QR/Attendance/Payment system, but for walk-in
+visitors, deliberately named **Visitors QR**, **Visitors Attendance**, and **Visitors Payment**
+(the client's own instruction, on top of the spec) so they're never confused with the existing
+member-only "QR Codes"/"Attendance"/"Payments" nav entries.
+
+- Schema: three new models — `VisitorProfile` (identity, deduped by normalized `phone` — "verified
+  identifiers... never merge by name alone" — via `normalizePhone()`/`findOrCreateVisitorProfile()`
+  in `src/lib/visitors/manage.ts`), `VisitorAttendance` (one row per profile-at-one-meeting;
+  submitting the public QR form *is* the check-in, since no separate advance-registration step
+  exists yet; `@@unique([meetingId, visitorProfileId])` enforces "no duplicate attendance," same as
+  `Attendance`), and `VisitorPayment` (simpler than the member `Payment` — no
+  `monthsCovered`/`numberOfMonths`, since the spec explicitly says visitor meeting fees need no
+  subscription-month selector). Deliberately **not** a reuse of the existing `Visitor` model, which
+  is a completely different Phase 8 concept (pre-meeting interest/funnel registration, required
+  `categoryId`, a conversion-funnel `status` enum) — "keep visitor records separate from member
+  records" read literally. `Meeting` gained `visitorAttendanceQrToken`/`visitorCheckInOpen`, kept
+  distinct from both the member-only `attendanceQrToken`/`attendanceRegistrationOpen` pair and the
+  unrelated Phase 8 `visitorRegistrationEnabled` field. Migration
+  `20260918001558_visitor_management_system`, applied via the same documented non-interactive
+  `migrate diff` → `db execute` → `migrate resolve --applied` path Phase 22 established (`prisma
+  migrate dev` still doesn't run non-interactively in this environment).
+- **No new permissions** — reuses `attendance:manage` (Visitors QR + Visitors Attendance) and
+  `payments:view`/`payments:approve` (Visitors Payment) exactly as-is. The same admins already do
+  this job for members under the identical rule ("Only Central Admin, Super Admin, or authorised
+  Accounts Team may approve"), so minting parallel visitor-specific permissions would have doubled
+  the permission matrix for no behavioral difference.
+- Public flow: `/visitor-checkin/[token]` (`src/app/(public)/visitor-checkin/[token]/`) — no login,
+  unlike member check-in; chapter/meeting come from the QR token, identity comes entirely from the
+  form (name + phone required, email/company/business-category/description optional, "how did you
+  hear about this meeting" source picker with a conditional inviting-member `<select>` or
+  Other-details field, Yes/No payment declaration with amount/date/proof). Proof upload reuses the
+  existing `paymentProof` media kind (image or PDF) through the public
+  `/api/uploads/public-payment` route, extended to accept an optional `kind` (`image` stays the
+  default so `/visit` and `/apply` are unaffected).
+- Admin: `/admin/visitors-qr` → `/admin/visitors-qr/[meetingId]` (View/Download/Print/Open-
+  registration-link, generated once and reused, same as the member QR page); `/admin/visitors-
+  attendance` (meeting-wise: total registered/checked-in/not-checked-in/member-invited/other-source,
+  filters, mandatory-reason correction) plus `/admin/visitors-attendance/profiles` (visitor-wise
+  history across chapters/meetings, plus a manual "Link to Member" conversion action —
+  deliberately never auto-matched, to avoid silently mislinking two different people's histories);
+  `/admin/visitors-payment` (its own dashboard, kept separate from both Member Payments and
+  Visitors Attendance per the spec, same Approve/Reject-with-reason/Request-Clarification pattern).
+  Excel exports at `/api/admin/exports/visitor-attendance` (one workbook, four sheets: attendance,
+  invitations-by-member, acquisition-sources, conversions) and `/api/admin/exports/visitor-
+  payments`. The Member detail admin page gained a read-only "Visitors Invited" section (unique
+  visitors vs. total visits) — no new scoring logic; `PointsConfig`'s existing `VISITOR`
+  `ActivityType` (entered manually via Roster) stays the only points mechanism, per the spec's
+  "apply performance points only according to existing BWF scoring rules."
+- **Real bug caught only by live verification, not by typecheck/lint/build**: the visitor
+  check-in action originally handled "already checked in" by attempting
+  `visitorAttendance.create()` and catching the unique-constraint violation, then issuing a
+  *second* query (`findUniqueOrThrow`) inside the same interactive transaction to fetch the
+  existing row. Postgres aborts a transaction the instant any statement inside it violates a
+  constraint — catching the error in application code doesn't un-abort it, so that recovery query
+  failed with "current transaction is aborted." Fixed by switching to find-then-create (check for
+  an existing row first, only create if absent), matching the pattern the member `checkIn()` action
+  already used for `Attendance` — the trailing `VisitorPayment` create still uses create-then-catch
+  safely, since it's the transaction's last statement with nothing after it to be poisoned.
+
+**Verification performed:** `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0
+vulnerabilities (no new dependencies). Ran a real production build (`next build && next start`)
+and drove the full flow live with Playwright against the real production database: logged in as
+the real Super Admin, generated a Visitors QR for a real scheduled chapter meeting, opened
+registration, then — signed out — completed a real public visitor check-in with a declared
+payment (a real file uploaded through the browser to R2 via presigned PUT), confirmed a resubmit
+with the same phone number for the same meeting is treated as an already-checked-in no-op (not a
+duplicate row, not an error — this is what caught the transaction-abort bug above), confirmed the
+visit appeared correctly on Visitors Attendance (name/phone/company/category/source/status/
+check-in time), performed a mandatory-reason correction, confirmed Visitors Payment showed it
+Pending Approval and Approve flipped it to Approved with the reviewer recorded, confirmed
+`AuditLog` captured the correction and approval with correct old/new values, and separately
+verified an `INVITED_BY_MEMBER` visit renders correctly under that member's own "Visitors Invited"
+section. All test data (2 visitor profiles, their attendances/payments, matching audit-log rows)
+deleted afterward and the meeting's `visitorCheckInOpen` restored to closed — `visitorAttendanceQrToken`
+kept, since it's permanent by design (same "generate once, reuse forever" rule the member QR
+follows).
+
+**Known issues / follow-ups:**
+- No confirmation email for visitor check-in or payment-status changes — consistent with this
+  project's standing precedent (email is Phase 13's job, picked up piecemeal per-feature only if a
+  later phase explicitly asks).
+- No automated concurrency test (Phase 8's capacity-race discipline) was run against the
+  `VisitorAttendance` unique constraint — a true simultaneous double-submit from the same visitor
+  is much less likely here than the Phase 8 event-capacity race, but revisit if it ever matters in
+  practice.
+- Chapter Admin's chapter-scoped access to the three new pages was reasoned from the same
+  `requireChapterAccess`/`getChapterScope` pattern already proven for Members/Meetings/Attendance/
+  Payments, not independently re-verified with a second real Chapter Admin login this session —
+  same category of gap flagged for Phase 22 and earlier phases.

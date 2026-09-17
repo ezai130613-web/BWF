@@ -1207,6 +1207,68 @@ asked.** No agreed legacy export format exists to build an importer against yet 
 the real input rather than guess the shape" precedent as the old-site-URL-list and domain/DNS-access
 items already tracked in the Open Decisions table below.
 
+### Visitor Management System (2026-09-18 client spec, Phase 23)
+
+**A new `VisitorProfile`/`VisitorAttendance`/`VisitorPayment` trio, not a reuse of the existing
+`Visitor` model.** `Visitor` (Phase 8) is a pre-meeting interest/funnel record from the public
+`/visit` form — required `categoryId`, a conversion-funnel `status` enum (`REGISTERED` →
+`CONVERTED`/`NOT_INTERESTED`/etc.) — a genuinely different concept from "someone who scanned a QR
+at the meeting itself." The new spec's own "keep visitor records separate from member records" is
+read the same way Phase 22 read Attendance/Payment's independence from each other: two things that
+sound similar in English but model different real-world events shouldn't share a table just
+because they're both "about a visitor."
+
+**Scanning the QR *is* the check-in — there's no separate advance-registration step yet.** Unlike
+the member flow (Phase 11 login identifies who's checking in, Phase 22's QR just opens *that*
+door), a walk-in visitor has no account. The QR opens a public, signed-out form
+(`/visitor-checkin/[token]`); submitting it both creates the visitor's record (or reuses one, by
+phone) *and* marks them Present in the same transaction. `VisitorAttendance.status` defaults
+`PRESENT` for exactly this reason — there is currently no meaningful "registered but not yet
+checked in" state to model, so `AttendanceStatus.ABSENT` here means "corrected to absent," not
+"hasn't arrived yet." The spec itself anticipates this changing ("distinguish advance registration
+from actual on-site check-in *if* advance registration is later added") — if that ever happens,
+`VisitorAttendance` would need a real registered/checked-in distinction added, not a new model.
+
+**No visitor-specific permissions were created.** `attendance:manage` and
+`payments:view`/`payments:approve` — the exact same keys Phase 22 already wired up — gate all
+three new pages. The spec's approval rule ("Only Central Admin, Super Admin, or authorised
+Accounts Team") is word-for-word the rule Phase 22 already implemented; minting
+`visitor_attendance:manage` etc. would have doubled the permission matrix for two features with
+identical access rules, rather than the small, real "these are different domains" case Phase 9
+made for `exports:manage` vs `reports:manage`.
+
+**Real bug, caught only by live verification, worth recording because it's a generalizable Prisma/
+Postgres gotcha.** The check-in action originally handled the "already checked in for this
+meeting" case by attempting `visitorAttendance.create()` and catching the resulting unique-
+constraint violation, then issuing a *second* query inside the same `$transaction` callback to
+fetch the pre-existing row. This looked identical in shape to the member `checkIn()` action's own
+payment-idempotency handling (attempt create, catch `P2002`, treat as already-succeeded) — but
+that pattern is only safe when the catch is the transaction's *last* statement. Postgres aborts an
+entire transaction the instant any statement inside it violates a constraint; catching the error
+in JavaScript doesn't un-abort the underlying transaction, so any further query in that same
+transaction fails with "current transaction is aborted, commands ignored until end of transaction
+block" — surfacing here as a generic 500 on every resubmission attempt, not as a helpful "already
+checked in" message. Fixed by switching to find-then-create for `VisitorAttendance` (check for an
+existing row first — same pattern `findOrCreateVisitorProfile()` and the member `checkIn()`
+action's own Attendance-upsert branch already used), so the constraint is never actually hit on
+the expected repeat-visit path. The trailing `VisitorPayment` create keeps the create-then-catch
+shape safely, since nothing runs after it in the transaction. Worth remembering generally: within
+one Prisma interactive transaction, "catch a known constraint violation and keep going" is only
+safe as the very last operation — anywhere earlier, check first instead of catching after.
+
+**Visitor payments are deliberately simpler than member payments.** `VisitorPayment` has no
+`monthsCovered`/`numberOfMonths` — the spec is explicit that "no subscription-month selector is
+needed for visitor meeting fees," since a visitor meeting fee is a one-time amount, not a
+membership-dues concept with coverage periods to track and reconcile.
+
+**Conversion linking (spec §5) is manual, on purpose.** `VisitorProfile.convertedMemberId` is set
+only via an explicit "Link to Member" action on the visitor-wise history page
+(`/admin/visitors-attendance/profiles`) — no phone/email auto-matching was built. Phase 7's
+`findMatchingCompany()` already drew this line for company dedup (formatting-normalization only,
+deliberately not typo-tolerant fuzzy matching) for the same reason: a wrong automatic guess here
+would silently mislink two different people's histories, which is worse than requiring a human to
+click a name.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

@@ -35,6 +35,18 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     orderBy: { createdAt: "desc" },
   });
 
+  // Visitor Management System (2026-09-18), spec §5: "Link each
+  // member-invited visit to the inviting member profile ... distinguish
+  // unique visitors from total visits." Read-only — no scoring logic here,
+  // PointsConfig's existing VISITOR ActivityType (entered via Roster) stays
+  // the actual mechanism for awarding points.
+  const invitedVisits = await db.visitorAttendance.findMany({
+    where: { invitingMemberId: member.id },
+    include: { visitorProfile: true, meeting: true, chapter: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const uniqueVisitorCount = new Set(invitedVisits.map((v) => v.visitorProfileId)).size;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -69,6 +81,39 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       />
 
       <MemberTestimonials memberId={member.id} testimonials={testimonials} />
+
+      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">Visitors Invited</h2>
+          <p className="text-xs text-neutral-500">
+            {uniqueVisitorCount} unique visitor{uniqueVisitorCount === 1 ? "" : "s"} · {invitedVisits.length} total visit
+            {invitedVisits.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        {invitedVisits.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No visitors invited yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-100">
+            {invitedVisits.map((visit) => (
+              <li key={visit.id} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <p className="font-medium text-neutral-900">{visit.visitorProfile.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {visit.chapter.name} · {visit.meeting.title} · {visit.meeting.startsAt.toLocaleDateString("en-IN")}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    visit.status === "PRESENT" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {visit.status === "PRESENT" ? "Present" : "Absent"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

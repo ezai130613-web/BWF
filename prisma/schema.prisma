@@ -200,16 +200,17 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members           Member[]
-  leadership        ChapterLeadership[]
-  chapterAdmins     UserRole[]
-  testimonials      Testimonial[]
-  feedback          Feedback[]
-  applications      MembershipApplication[]
-  meetings          Meeting[]
-  visitors          Visitor[]
-  chiefGuests       ChiefGuest[]
-  rosterAssignments RosterAssignment[]
+  members            Member[]
+  leadership         ChapterLeadership[]
+  chapterAdmins      UserRole[]
+  testimonials       Testimonial[]
+  feedback           Feedback[]
+  applications       MembershipApplication[]
+  meetings           Meeting[]
+  visitors           Visitor[]
+  chiefGuests        ChiefGuest[]
+  rosterAssignments  RosterAssignment[]
+  visitorAttendances VisitorAttendance[]
 
   @@map("chapters")
 }
@@ -374,6 +375,10 @@ model Member {
   profileRevisions  MemberProfileRevision[]
   submittedArticles Blog[]
   testimonials      Testimonial[]
+
+  // Visitor Management System (2026-09-18)
+  invitedVisitorAttendances VisitorAttendance[] @relation("VisitorInvitations")
+  convertedFromVisitors     VisitorProfile[]    @relation("VisitorConversions")
 
   // BWF App in-house build (2026-09-09) — see docs comment above the
   // Referral/ThankYouSlip models below for the full picture.
@@ -840,13 +845,23 @@ model Meeting {
   checkInOpensAt             DateTime?
   checkInClosesAt            DateTime?
 
+  /// Visitor Management System (client spec, 2026-09-18) — a second,
+  /// independent QR token/toggle pair for walk-in visitor check-in, kept
+  /// deliberately distinct from attendanceQrToken/attendanceRegistrationOpen
+  /// above (which are member-only) and from visitorRegistrationEnabled above
+  /// (which belongs to the unrelated Phase 8 pre-meeting /visit interest
+  /// form). See the VisitorAttendance model block for the full rationale.
+  visitorAttendanceQrToken String? @unique
+  visitorCheckInOpen       Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  visitors    Visitor[]
-  roster      Roster?
-  attendances Attendance[]
-  payments    Payment[]
+  visitors           Visitor[]
+  roster             Roster?
+  attendances        Attendance[]
+  payments           Payment[]
+  visitorAttendances VisitorAttendance[]
 
   @@index([chapterId, startsAt])
   @@map("meetings")
@@ -1035,6 +1050,145 @@ model Payment {
   @@index([meetingId])
   @@index([status])
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Visitor Management System (client spec, 2026-09-18) — QR-based walk-in
+// visitor check-in and payment, mirroring the member Attendance/Payment
+// system above but deliberately NOT reusing the Visitor model further up
+// this schema. Visitor (Phase 8) is a pre-meeting interest/funnel record
+// from the public /visit form (required categoryId, a conversion-funnel
+// status enum) — a genuinely different concept from "someone who scanned a
+// QR at the meeting and checked in," per the spec's own "keep visitor
+// records separate from member records." VisitorProfile is the reusable
+// identity (deduped by phone, a verified identifier — never by name alone,
+// per the spec); VisitorAttendance is one row per profile-at-one-meeting,
+// and — since the QR opens the registration form directly with no separate
+// advance-registration step yet — submitting that form *is* the check-in,
+// not a two-step process. VisitorPayment is deliberately simpler than
+// Payment (no monthsCovered/numberOfMonths): the spec explicitly says "no
+// subscription-month selector is needed for visitor meeting fees."
+// ---------------------------------------------------------------------------
+
+model VisitorProfile {
+  id   String @id @default(cuid())
+  name String
+
+  /// Verified dedup identifier (spec: "recognise returning visitors using
+  /// verified identifiers; never merge people by name alone"). Not a unique
+  /// constraint — a phone number could in principle recur across genuinely
+  /// different people — lookup-and-reuse is done in application code.
+  phone String
+
+  email            String?
+  companyName      String?
+  /// Free text ("business category or profession") — distinct from the
+  /// Category model, which is membership-category and doesn't apply to
+  /// visitors.
+  businessCategory String?
+  description      String?
+
+  /// Set only via an explicit admin "Link to Member" action (Visitors
+  /// Attendance → profile history) once a visitor actually joins as a
+  /// member — never auto-matched, since a wrong guess would silently
+  /// mislink two different people's histories.
+  convertedMemberId String?
+  convertedMember   Member? @relation("VisitorConversions", fields: [convertedMemberId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attendances VisitorAttendance[]
+
+  @@index([phone])
+  @@map("visitor_profiles")
+}
+
+enum VisitorSource {
+  INVITED_BY_MEMBER
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  GOOGLE_SEARCH
+  WHATSAPP
+  REFERRAL
+  OTHER
+}
+
+model VisitorAttendance {
+  id String @id @default(cuid())
+
+  visitorProfileId String
+  visitorProfile   VisitorProfile @relation(fields: [visitorProfileId], references: [id], onDelete: Cascade)
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// Denormalized from the meeting at creation time — same convenience the
+  /// existing Visitor model already uses for chapter-scoped filtering.
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Restrict)
+
+  source        VisitorSource
+  /// Populated for OTHER (spec: "allow source details"); also usable as a
+  /// free-text note for any other source if ever needed.
+  sourceDetails String?
+
+  invitingMemberId String?
+  invitingMember   Member? @relation("VisitorInvitations", fields: [invitingMemberId], references: [id], onDelete: SetNull)
+
+  /// Submitting the public form is itself the check-in (no separate
+  /// advance-registration step exists yet) — status starts PRESENT.
+  status      AttendanceStatus @default(PRESENT)
+  checkedInAt DateTime?
+
+  /// Manual-correction audit fields — same shape as Attendance above, same
+  /// "authorised admins may correct with a mandatory reason" requirement.
+  correctedByUserId String?
+  correctionReason  String?
+  correctedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment VisitorPayment?
+
+  /// "Prevent duplicate attendance for the same visitor and meeting" —
+  /// enforced at the database level, same as Attendance's own constraint.
+  @@unique([meetingId, visitorProfileId])
+  @@index([visitorProfileId])
+  @@index([chapterId])
+  @@map("visitor_attendances")
+}
+
+model VisitorPayment {
+  id String @id @default(cuid())
+
+  /// Always created alongside a VisitorAttendance in the same submission —
+  /// unlike the member Payment model, a visitor payment is never declared
+  /// independently of the visit it happened during.
+  visitorAttendanceId String            @unique
+  visitorAttendance   VisitorAttendance @relation(fields: [visitorAttendanceId], references: [id], onDelete: Cascade)
+
+  amountInr         Decimal  @db.Decimal(10, 2)
+  actualPaymentDate DateTime
+
+  /// R2 URL — screenshot, receipt image, or PDF (MEDIA_KINDS.paymentProof).
+  proofUrl String
+
+  status           PaymentApprovalStatus @default(PENDING_APPROVAL)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  reviewRemarks    String?
+
+  /// Same double-submit guard as Payment.idempotencyKey.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("visitor_payments")
 }
 
 // ---------------------------------------------------------------------------

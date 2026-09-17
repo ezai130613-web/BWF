@@ -18,6 +18,12 @@ export function getCheckinUrl(token: string): string {
   return `${base}/member/checkin/${token}`;
 }
 
+/** Visitor Management System (2026-09-18) — the public, signed-out counterpart of getCheckinUrl. */
+export function getVisitorCheckinUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return `${base}/visitor-checkin/${token}`;
+}
+
 /** PNG buffer for View/Download/Print — see /api/admin/qr-codes/[meetingId]. */
 export async function renderQrPng(url: string): Promise<Buffer> {
   return QRCode.toBuffer(url, { type: "png", width: 480, margin: 2 });
