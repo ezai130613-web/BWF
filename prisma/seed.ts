@@ -34,6 +34,9 @@ const PERMISSIONS = [
   { key: "app_activity:view", label: "View BWF App activity (referrals, TYS, 1-2-1s, Power Dates, Conclaves, points)" },
   { key: "roster:manage", label: "Generate chapter Roster Sheet PDFs" },
   { key: "marketing:manage", label: "Manage social media content, scheduling & publishing" },
+  { key: "attendance:manage", label: "Generate meeting QR codes and manage attendance" },
+  { key: "payments:view", label: "View meeting payment submissions" },
+  { key: "payments:approve", label: "Approve, reject, or request clarification on meeting payments" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -60,11 +63,24 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "app_activity:view",
     "roster:manage",
     "marketing:manage",
+    "attendance:manage",
+    "payments:view",
+    // payments:approve is deliberately NOT given to Chapter Admin, even
+    // though it's granted here to Central Admin — the QR/Attendance/Payment
+    // spec is explicit that approval is Central Admin, Super Admin, or an
+    // "explicitly authorised Accounts Team" only, never a chapter role. A
+    // chapter-scoped Accounts Team member would need this permission granted
+    // to their own role via /admin/roles (the existing "explicitly
+    // authorised" mechanism) rather than inheriting it from chapter scoping.
+    "payments:approve",
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
-  // meetings:manage/visitors:manage/roster:manage below (mirrors
-  // members:manage — see requireChapterAccess in src/lib/auth/rbac.ts).
+  // meetings:manage/visitors:manage/roster:manage/attendance:manage/
+  // payments:view below (mirrors members:manage — see requireChapterAccess
+  // in src/lib/auth/rbac.ts). payments:approve is NOT in this scoped set —
+  // see the comment on Central Admin's own grant above; a Chapter Admin can
+  // view their chapter's payment records but never approve/reject them.
   // app_activity:view is scoped the same way
   // — a Chapter Admin sees only Referral/ThankYouSlip/OneToOne/PowerDate/
   // Conclave rows and leaderboard entries touching their own chapter's

@@ -3063,3 +3063,126 @@ and scheduled posts deleted afterward via direct DB query (confirmed zero rows r
   real Pinterest connection (Batch 2/3) to fetch from.
 - No cron worker exists yet — `ScheduledPost` rows past their `scheduledFor` time just sit as
   `SCHEDULED` until Batch 3 adds the polling worker described in `docs/ARCHITECTURE.md`.
+
+---
+
+## Phase 22 — QR Code, Attendance & Payment System
+
+**Status:** Complete
+
+**What shipped:** the client's "BWF Admin Panel: QR Code, Attendance & Payment System" spec
+(2026-09-17), which explicitly supersedes an earlier attendance-only brief. Three linked, separately
+permissioned admin pages, one meeting-specific self-check-in flow, and independent attendance/
+payment records per the spec's own non-negotiables.
+
+- Schema: `Meeting` gained `attendanceQrToken` (unique, generated once and reused), a manual
+  `attendanceRegistrationOpen` toggle, and an optional `checkInOpensAt`/`checkInClosesAt` schedule.
+  New `Attendance` (`@@unique([meetingId, memberId])` — enforces "one record per member per
+  meeting" at the database level; `correctedByUserId`/`correctionReason`/`correctedAt` for the
+  spec's mandatory-reason correction requirement, alongside a full `AuditLog` trail via
+  `logActivity`) and `Payment` (independent of Attendance — nullable `attendanceId` link only,
+  never the reverse; `monthsCovered` as `[{month,year}]` JSON, `amountPaidInr` as a real
+  `Decimal(10,2)` — the first actual money field in this schema, everywhere else money has been
+  display-only text; `idempotencyKey` unique constraint for "prevent duplicate payment submissions
+  from repeated clicks or retries"; `overlapsApprovedCoverage` flag, never an auto-reject).
+  Migration `20260917000000_qr_attendance_payment_system`, applied via the documented non-
+  interactive `migrate diff` → `db execute` → `migrate resolve --applied` path (this environment's
+  `prisma migrate dev` refuses to run non-interactively at all — a different failure mode from the
+  shadow-DB issues recorded earlier in this log, same safe workaround family).
+- New permissions: `attendance:manage` (QR generation + Attendance Management, chapter-scoped via
+  `requireChapterAccess` exactly like `meetings:manage`), `payments:view` (Payment Management,
+  same chapter-scoping — "Chapter admins may view only records permitted by their role"), and
+  `payments:approve` (Approve/Reject/Request Clarification — **blanket-only, deliberately never
+  chapter-scoped**, granted by default only to Super/Central Admin). The spec names a possible
+  "Accounts Team" approver but this app has no such role; rather than inventing a fifth Role (which
+  ripples into `ADMIN_ROLE_KEYS`, the workspace picker, and login role acceptance), "explicitly
+  authorised" is realized the same way every other explicit grant works here — Super Admin assigns
+  `payments:approve` to whichever role needs it via the existing `/admin/roles` permission matrix.
+- `/admin/qr-codes` → `/admin/qr-codes/[meetingId]`: chapter→meeting picker (same pattern as
+  `/admin/roster`), then View (inline `<img>` from a new `/api/admin/qr-codes/[meetingId]` PNG
+  route, via the `qrcode` package), Download (`?download=1` sets `Content-Disposition`), Print (a
+  `window.print()` button plus a scoped `@media print` rule so only the QR area prints), Open
+  Registration Link, and Open/Close Registration + optional check-in window controls.
+- `/admin/attendance` (meeting-wise: expected/Present/Absent/percentage, per-member correction with
+  a mandatory-reason inline form, "Close Meeting & Mark Absentees" which backfills real `ABSENT`
+  rows for every expected member without a check-in — `src/lib/attendance/manage.ts`'s
+  `closeMeetingAttendance()`) and `/admin/attendance/members` (member-wise history, chapter/
+  meeting/member/date-range/status filters, excludes meetings before `Member.joinedAt`). Excel
+  export at `/api/admin/exports/attendance`.
+- `/admin/payments` (summary cards — submitted/approved/pending/rejected value, pending never
+  counted as verified; filters; Approve/Reject-with-reason/Request-Clarification, rendered only for
+  callers holding `payments:approve`) and `/admin/payments/members` (submissions history plus a
+  month-by-month grid distinguishing Approved/Pending/"No approved payment recorded" — never a
+  fabricated "Unpaid," per the spec). Excel export at `/api/admin/exports/payments`.
+- Member check-in: `/member/checkin/[token]` (inside the existing `(portal)` route group, so
+  Phase 11's member auth/role gating and `proxy.ts` redirect-with-`from` apply for free). One
+  `checkIn()` server action, one transaction, covering both spec outcomes: creates the `Attendance`
+  row (or flips a stale backfilled `ABSENT` to `PRESENT` on a genuine late self-check-in, but never
+  overwrites an admin's explicit correction), and — independently — creates the `Payment` row when
+  the member reports one, catching a unique-constraint hit on `idempotencyKey` as "already
+  submitted" rather than an error. New `paymentProof` storage kind (`src/lib/storage.ts`) accepting
+  both image and PDF content types, since the spec's evidence field is "screenshot, receipt or
+  PDF" — the one media kind in this app that isn't single-format.
+- **Deliberate deviation from the spec's literal wording, flagged on the schema and pages
+  themselves**: Step A says to show "a searchable dropdown of members in that chapter," but the
+  same paragraph also requires "existing member login... choosing a name alone is insufficient."
+  Building a second, weaker verification mechanism alongside a dropdown would have satisfied the
+  letter while missing the point. Check-in instead requires the member's existing member-portal
+  login (Phase 11) — the session directly identifies the member, so there is no name-picking step
+  at all; name/category/chapter are read straight from their own `Member` row. Confirmed with the
+  user before building (recommended option, chosen over a shared-kiosk-plus-PIN alternative and
+  over a no-verification dropdown). One real consequence: a member with no portal login yet cannot
+  self-check-in via QR — an admin can still mark them Present/Absent directly from Attendance
+  Management.
+- **Historical Excel migration (spec §5) deliberately deferred**, per the user's own choice when
+  asked — no agreed legacy export format/file exists yet to build against; this app's own long-
+  standing pattern (old site URLs, domain/DNS access, etc.) is to wait for the real input rather
+  than build against a guessed shape.
+
+**Verification performed:** `npm run build`/`lint`/`typecheck` clean; `npm audit` — 0
+vulnerabilities (`qrcode` + `@types/qrcode` added cleanly). Ran a real production build (`next
+build && next start`) and drove the entire flow live with Playwright against the real production
+database — not seed/local data: logged in as the real Super Admin, generated a QR for a real
+scheduled chapter meeting, opened registration, then — in a separate browser context — signed in
+as a member-portal account and completed a real self-check-in (no payment), confirmed the "already
+checked in" branch on a revisit, then submitted a real payment (₹1,500, one month, a real file
+uploaded through the browser to R2 via presigned PUT — not mocked). Confirmed live, back as Super
+Admin: the Attendance page showed the member Present with a real check-in timestamp, the Payments
+page showed the submission Pending Approval, Approve flipped it to Approved with the reviewer
+recorded, and a mandatory-reason correction produced the "(corrected)" badge. Confirmed via direct
+database query that `AuditLog` captured every one of these actions.
+
+**A real incident during this session's own verification, caught and fixed, worth recording
+exactly because it shows the cleanup discipline mattered**: the correction test's blind "click the
+first Correct button" hit the *first row in the real attendance table* rather than the intended
+test member — which, for a real chapter's real member roster sorted alphabetically, was an actual
+board member ("Abi Ramanathan K"), not the throwaway test account. This left one real member
+incorrectly marked Absent on a real meeting with a fake reason for a few minutes. Caught by
+querying the database directly rather than trusting the on-page assertion, and fixed by deleting
+that specific stray `Attendance` row (not the audit log entry, which stays — an accurate record of
+what actually happened, same "never scrub the trail" precedent as the Phase 2 admin-suspend
+incident). Also cleaned up: the test member's own real `Attendance`/`Payment` rows, closed
+registration back to its default state, and restored a real user's password to its original hash
+after a temporary reset for the test login (the temp hash's session was also invalidated via
+`sessionVersion`) — the change was made only after explicit in-conversation approval, since
+altering a real credential (even reversibly) is exactly the kind of action this project's own
+safety discipline holds should never be pushed through silently.
+
+**Known issues / follow-ups:**
+- Historical attendance/payment data migration (spec §5) — not started; needs a real legacy export
+  file before any importer can be built against it, see above.
+- "Exclude meetings before joining or after leaving the chapter" (member-wise attendance view) only
+  half-applies: this schema has no "left the chapter on" date, so a member who has since left their
+  chapter (gone `INACTIVE`) has no exclusion boundary on the far end — only `Member.joinedAt` is
+  enforced as a floor. Revisit if chapter-membership history ever becomes its own tracked concept.
+- No confirmation email is sent for check-in or payment-status changes — consistent with this
+  project's standing precedent (Phase 7/8/9 all deferred email to Phase 13's automation rather than
+  half-building it per-feature), but worth naming since Phase 13 already exists and could pick this
+  up as a small addition rather than a new phase.
+- `payments:approve` has no "Accounts Team" role to grant itself to yet — see the schema note
+  above; the mechanism (grant via `/admin/roles`) is real today, only the named role doesn't exist
+  until the client actually asks for one.
+- Chapter Admin's chapter-scoped access to `/admin/qr-codes`, `/admin/attendance`, and
+  `/admin/payments` was reasoned from the already-proven `requireChapterAccess`/`getChapterScope`
+  pattern shared with Members/Meetings/Visitors/Roster, not independently re-verified with a second
+  real Chapter Admin login this session — same category of gap Batch 3/13 flagged for Roster.

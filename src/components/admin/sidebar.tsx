@@ -19,6 +19,9 @@ const NAV_ITEMS = [
   { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage", workspace: "website" },
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
   { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
+  { href: "/admin/qr-codes", label: "QR Codes", permission: "attendance:manage", workspace: "website" },
+  { href: "/admin/attendance", label: "Attendance", permission: "attendance:manage", workspace: "website" },
+  { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: "website" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
   { href: "/admin/marketing", label: "Marketing", permission: "marketing:manage", workspace: "website" },
   { href: "/admin/testimonials", label: "Testimonials", permission: "testimonials:manage", workspace: "website" },
@@ -53,7 +56,15 @@ export function Sidebar({
     // Chapter Admin holds no global permissions but does get scoped access
     // to Members/Meetings/Visitors within their own chapter (see
     // requireChapterAccess) — show those links for them.
-    const chapterScopedPermissions = ["members:manage", "meetings:manage", "visitors:manage", "app_activity:view", "roster:manage"];
+    const chapterScopedPermissions = [
+      "members:manage",
+      "meetings:manage",
+      "visitors:manage",
+      "app_activity:view",
+      "roster:manage",
+      "attendance:manage",
+      "payments:view",
+    ];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
   }).filter((item) => {

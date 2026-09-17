@@ -1120,6 +1120,93 @@ platform is connected, following the same discipline the old Weekly Report cron 
 project's "never claim a platform is fully integrated until an actual publishing test has
 succeeded" standard (the client's own instruction) both already established.
 
+### QR Code, Attendance & Payment system (2026-09-17 client spec, Phase 22)
+
+**Attendance and Payment are two independent record types, on purpose, per the spec's own
+"non-negotiable."** `Attendance` and `Payment` both link to the same `Member` + `Meeting`, but
+`Payment.attendanceId` is nullable and never the reverse — approving or rejecting a payment must
+never change attendance, and a member who answers "No" to "have you made a payment?" is still
+recorded Present. This mirrors the Visitor/Application separation from Phase 7/8 (interest vs.
+membership are different stages, never one auto-creating the other) — same principle, new pair of
+models.
+
+**Identity verification deliberately replaces the spec's literal "searchable dropdown of members
+in that chapter."** The same paragraph also requires "existing member login... choosing a name
+alone is insufficient" — those two lines pull in different directions. Rather than build a second,
+weaker verification mechanism (a PIN, last-4-digits-of-phone) bolted onto a dropdown, check-in
+lives at `/member/checkin/[token]`, inside the existing `(portal)` route group — Phase 11's member
+login IS the identity check, so there's no name-picking UI at all; name/category/chapter render
+straight from the authenticated member's own row. Confirmed with the user before building (offered
+as the recommended option against a shared-kiosk-plus-PIN alternative and a no-verification
+dropdown; the no-verification option was explicitly flagged as not actually satisfying the spec's
+own "insufficient" line). Consequence, stated plainly on the page and in `docs/PHASES.md`: a member
+with no portal login yet cannot self-check-in via QR — an admin can still record their attendance
+directly.
+
+**One meeting, one QR token, generated once.** `Meeting.attendanceQrToken` (unique, `base64url`
+via `randomBytes(24)`) is written the first time `/admin/qr-codes/[meetingId]` is opened for that
+meeting and never regenerated — "reopening the meeting displays its existing QR rather than
+creating a new one," read literally. The QR image itself is never stored; `/api/admin/qr-codes/
+[meetingId]` renders it on demand from the token via the `qrcode` package (pure JS, no native
+bindings — same "smallest dependency that does the job" call as `exceljs`/`pdfkit` in Phase 9).
+Check-in has its own Open/Close toggle (`attendanceRegistrationOpen`) independent of an optional
+scheduled window (`checkInOpensAt`/`checkInClosesAt`) — deliberately two controls, not one, since
+the spec asks for both "Open/Close Registration controls" and "configurable check-in opening and
+closing times" as separate asks.
+
+**Closing attendance never touches `Meeting.status`.** The spec's "after closure, mark expected
+members without check-in Absent" is implemented as `closeMeetingAttendance()`
+(`src/lib/attendance/manage.ts`) — it backfills real `Attendance` rows (`status: ABSENT`) for every
+chapter member without one yet, and turns off `attendanceRegistrationOpen`, but leaves
+`Meeting.status` alone. `Meeting.status` is already a separately admin-editable field (`/admin/
+meetings/[id]`) that visitor-registration closure (Phase 8) depends on — cascading an attendance
+action into it would silently reach into a control surface this feature has no business touching.
+
+**Absent rows are materialized, not computed lazily.** Unlike `Blog`'s scheduled-visibility pattern
+(Phase 5) or the old Weekly Report's on-demand generation, a member who never checked in only gets
+a real `ABSENT` `Attendance` row once an admin explicitly closes the meeting — before that, "Not
+Checked In" is a display-only state computed from the *absence* of a row, per the spec's own
+"during an active meeting" wording. This matters because the spec's correction requirement
+("mandatory reason and audit log... enforce one attendance record per member per meeting") only
+makes sense against a real row with a real unique constraint to correct, not a computed
+placeholder. A live self-check-in after closure (a genuinely late arrival) flips a backfilled
+`ABSENT` row to `PRESENT` automatically — but never overwrites a row an admin has explicitly
+corrected (`correctedByUserId` set), since a human's deliberate correction outranks a stale
+auto-backfill.
+
+**`payments:approve` is a blanket-only permission, structurally unable to be satisfied by chapter
+scoping — unlike `payments:view`.** The spec restricts approval to "Central Admin, Super Admin or
+explicitly authorised Accounts Team," explicitly excluding Chapter Admin even for their own
+chapter's payments. This app has no "Accounts Team" role (only SUPER_ADMIN/CENTRAL_ADMIN/
+CHAPTER_ADMIN/MEMBER exist — see `prisma/seed.ts`'s `ROLES`), and adding a fifth role would touch
+`ADMIN_ROLE_KEYS`, the two-workspace picker, and login role acceptance for a role nobody has asked
+for by name yet. "Explicitly authorised" is realized with the mechanism this app already has for
+exactly that phrase: Super Admin grants `payments:approve` to whichever role needs it via the
+existing `/admin/roles` permission matrix — real today, just without a role literally named
+"Accounts Team" to point it at.
+
+**Multi-month payments are one row, not N rows.** `Payment.monthsCovered` is `[{month, year}, ...]`
+JSON (same "JSON plus app-level validation" tradeoff as `Blog.faq`/`AuditLog.metadata`), with
+`numberOfMonths` as a separate integer the array's length is validated against at submission time —
+"a single ₹3,000 payment for January–March is ONE transaction," read literally.
+`overlapsApprovedCoverage` is computed once at submission (`hasApprovedOverlap()`, only counting
+already-`APPROVED` payments as real coverage — a pending or rejected submission was never confirmed
+money) and stored as a flag for the reviewer to see, never used to auto-reject.
+
+**Duplicate-submission prevention is a client-generated idempotency key, not a rate limit.** The
+spec's "prevent duplicate payment submissions caused by repeated clicks or retries" needs the
+*same* attempt recognized twice, not merely throttled — a rate limit would also block a second,
+genuinely different payment submitted moments later. `Payment.idempotencyKey` (`crypto.randomUUID()`,
+generated once per form mount) carries a unique constraint; a retried submit hits it and is treated
+as already-succeeded rather than erroring. The whole check-in — Attendance upsert-or-flip plus the
+Payment insert — runs inside one `$transaction`, closing the "partial failure loses a submission"
+gap the spec calls out directly.
+
+**Historical Excel import (spec §5) is out of scope for this phase, by the user's own choice when
+asked.** No agreed legacy export format exists to build an importer against yet — same "wait for
+the real input rather than guess the shape" precedent as the old-site-URL-list and domain/DNS-access
+items already tracked in the Open Decisions table below.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1140,6 +1227,7 @@ they aren't lost, with the phase they'd first block:
 | ~~Real founder/Super Admin credentials~~ | ~~Phase 2~~ | **Resolved 2026-09-06**: real Super Admin (`abiramanathank1@gmail.com`) and two Central Admin accounts created; old placeholder (`admin@bwf.local`) suspended, not deleted. See `docs/PHASES.md`'s Phase 2 follow-ups. |
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
+| Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
 | ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |
 | ~~Admin Analytics (brief §51) is explicitly "Later" per the brief's own wording~~ | ~~Noted since Phase 10~~ | Built 2026-09-06 (backlog #20), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — `/admin/analytics` and `getAdminAnalytics()` no longer exist. |

@@ -71,6 +71,14 @@ export const MEDIA_KINDS = {
     contentTypes: ["video/mp4", "video/quicktime"],
     maxBytes: 2 * 1024 * 1024 * 1024,
   },
+  /// QR Code / Attendance / Payment system (2026-09-17) — the spec's own
+  /// "screenshot, receipt or PDF" wording means this is the one media kind
+  /// in this app that accepts both image and PDF content types at once.
+  paymentProof: {
+    folder: "payment-proofs",
+    contentTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif", "application/pdf"],
+    maxBytes: 10 * 1024 * 1024,
+  },
 } as const satisfies Record<string, { folder: string; contentTypes: readonly string[]; maxBytes: number }>;
 
 export type MediaKind = keyof typeof MEDIA_KINDS;

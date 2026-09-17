@@ -392,6 +392,10 @@ model Member {
   consumersBrought      Consumer[]
   chiefGuestsBrought    MemberChiefGuest[]
 
+  // QR Code / Attendance / Payment system (2026-09-17)
+  attendances Attendance[]
+  payments    Payment[]
+
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
   // metrics, exports, chapter-availability computation).
@@ -822,11 +826,27 @@ model Meeting {
   visitorRegistrationEnabled Boolean       @default(true)
   status                     MeetingStatus @default(SCHEDULED)
 
+  /// QR Code / Attendance / Payment system (client spec, 2026-09-17).
+  /// Generated once on first visit to the QR Code Generation page and never
+  /// regenerated afterward ("reopening the meeting displays its existing QR
+  /// rather than creating a new one") — see src/lib/attendance/qr.ts. Null
+  /// until then.
+  attendanceQrToken String? @unique
+
+  /// Admin Open/Close control (independent of the scheduled window below —
+  /// an admin can close check-in early or reopen it, same "explicit toggle
+  /// plus optional schedule" shape as Meeting.visitorRegistrationEnabled).
+  attendanceRegistrationOpen Boolean   @default(false)
+  checkInOpensAt             DateTime?
+  checkInClosesAt            DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  visitors Visitor[]
-  roster   Roster?
+  visitors    Visitor[]
+  roster      Roster?
+  attendances Attendance[]
+  payments    Payment[]
 
   @@index([chapterId, startsAt])
   @@map("meetings")
@@ -893,6 +913,128 @@ model Visitor {
   @@index([chapterId])
   @@index([categoryId])
   @@map("visitors")
+}
+
+// ---------------------------------------------------------------------------
+// QR Code / Attendance / Payment system (client implementation spec,
+// 2026-09-17) — supersedes the earlier attendance-only instructions.
+// Attendance and payment are deliberately two independent record types
+// linked to the same Member + Meeting, never one derived from the other:
+// approving/rejecting a payment must never change attendance, and a member
+// who declines to report a payment is still marked Present. Reuses the
+// existing Meeting/Member catalog from the Roster Sheet module rather than
+// introducing a parallel registration concept.
+//
+// Identity/verification note (deliberate deviation from the spec's literal
+// "searchable dropdown of members in that chapter" wording): the spec also
+// requires "existing member login... choosing a name alone is insufficient."
+// Rather than building a second, weaker verification mechanism alongside the
+// dropdown, check-in requires the member's existing member-portal login
+// (Phase 11) — the logged-in session directly identifies the member (name,
+// category, chapter all read from their own Member row), so there is no
+// name-picking step at all. See src/app/member/(portal)/checkin/[token]/.
+// A member with no portal login yet cannot self-check-in via QR; an admin
+// can still mark them Present/Absent directly from Attendance Management.
+// ---------------------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model Attendance {
+  id String @id @default(cuid())
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  status      AttendanceStatus
+  checkedInAt DateTime?
+
+  /// Set only when an admin corrects a status after the fact (spec:
+  /// "Authorised admins may correct attendance with a mandatory reason and
+  /// audit log recording who changed what and when"). The full trail lives
+  /// in AuditLog via logActivity(); these are the fast "was this corrected"
+  /// fields the Attendance Management table reads without an extra join.
+  correctedByUserId String?
+  correctionReason  String?
+  correctedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  /// Enforces "one attendance record per member per meeting" at the
+  /// database level, not just in application code.
+  @@unique([meetingId, memberId])
+  @@index([memberId])
+  @@map("attendances")
+}
+
+enum PaymentApprovalStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CLARIFICATION_REQUESTED
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// The Attendance row this was submitted alongside, when known — nullable
+  /// because the spec explicitly allows a payment submitted later, after
+  /// attendance already exists on its own ("allow a later payment submission
+  /// without creating duplicate attendance"). Never the reverse: a payment
+  /// never creates or implies an attendance record.
+  attendanceId String?
+  attendance   Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
+
+  numberOfMonths    Int
+  /// [{ month: 1-12, year: number }, ...], length === numberOfMonths,
+  /// validated at the point of writing — same Json-plus-app-level-validation
+  /// tradeoff as Blog.faq/AuditLog.metadata. Months need not be consecutive.
+  monthsCovered     Json
+  amountPaidInr     Decimal  @db.Decimal(10, 2)
+  actualPaymentDate DateTime
+
+  /// R2 URL — screenshot, receipt image, or PDF (see MEDIA_KINDS.paymentProof
+  /// in src/lib/storage.ts).
+  proofUrl String
+
+  status           PaymentApprovalStatus @default(PENDING_APPROVAL)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  reviewRemarks    String?
+
+  /// True if, at submission time, any covered month overlapped an already-
+  /// APPROVED payment's coverage for this member — surfaced for review, never
+  /// auto-rejected (spec: "do not automatically reject legitimate
+  /// adjustments").
+  overlapsApprovedCoverage Boolean @default(false)
+
+  /// Client-generated once per form render (crypto.randomUUID()) so a
+  /// double-click or a retried request is recognized as the same attempt
+  /// instead of creating a second transaction (spec: "Prevent duplicate
+  /// payment submissions caused by repeated clicks or retries").
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([meetingId])
+  @@index([status])
+  @@map("payments")
 }
 
 // ---------------------------------------------------------------------------
