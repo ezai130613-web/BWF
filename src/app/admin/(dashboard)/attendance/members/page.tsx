@@ -42,7 +42,7 @@ export default async function AttendanceMembersPage({
   const [matches, selectedMember, chapters, categories] = await Promise.all([
     params.memberId
       ? []
-      : db.member.findMany({ where: memberWhere, include: { chapter: true, category: true }, orderBy: { name: "asc" }, take: 25 }),
+      : db.member.findMany({ where: memberWhere, include: { chapter: true, category: true }, orderBy: { name: "asc" }, take: 200 }),
     params.memberId ? db.member.findUnique({ where: { id: params.memberId }, include: { chapter: true, category: true } }) : null,
     scope === "ALL" ? db.chapter.findMany({ orderBy: { name: "asc" } }) : [],
     db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),

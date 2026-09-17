@@ -31,7 +31,7 @@ export default async function PaymentMembersPage({
             },
             include: { chapter: true, category: true },
             orderBy: { name: "asc" },
-            take: 25,
+            take: 200,
           })
         : [],
       scope === "ALL" ? db.chapter.findMany({ orderBy: { name: "asc" } }) : [],
