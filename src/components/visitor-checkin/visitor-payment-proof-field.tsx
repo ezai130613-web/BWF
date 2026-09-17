@@ -3,8 +3,10 @@
 import { useRef, useState } from "react";
 
 /**
- * Visitor Management System (2026-09-18) — light/neutral-themed proof
- * upload for the signed-out public visitor check-in form. Posts to
+ * Visitor Management System (2026-09-18) — dark-themed proof upload for the
+ * signed-out public visitor check-in form (same palette as
+ * PaymentScreenshotField, since this page renders inside the public site's
+ * dark layout, not a light admin/member surface). Posts to
  * /api/uploads/public-payment with kind: "paymentProof" (image or PDF, per
  * the spec) rather than /api/uploads (requires a session) or the plain
  * "image"-only default that route otherwise uses for /visit and /apply.
@@ -44,13 +46,13 @@ export function VisitorPaymentProofField({ name }: { name: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+    <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
       <span>Payment proof (screenshot, receipt, or PDF)</span>
       <input type="hidden" name={name} value={value} />
 
-      {value ? <p className="text-xs font-normal text-emerald-700">Uploaded ✓</p> : null}
+      {value ? <p className="text-xs font-normal text-gold-400">Uploaded ✓</p> : null}
 
-      <label className="w-fit cursor-pointer whitespace-nowrap rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
+      <label className="w-fit cursor-pointer whitespace-nowrap rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm font-medium text-ivory-100 hover:border-gold-500/50">
         {uploading ? "Uploading…" : value ? "Replace file" : "Upload file"}
         <input
           ref={fileInputRef}
@@ -65,7 +67,7 @@ export function VisitorPaymentProofField({ name }: { name: string }) {
         />
       </label>
 
-      {error ? <p className="text-xs font-normal text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs font-normal text-red-400">{error}</p> : null}
     </div>
   );
 }

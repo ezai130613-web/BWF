@@ -25,17 +25,17 @@ export default async function VisitorCheckinPage({ params }: { params: Promise<{
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-10">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Visitor Check-In</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="font-display text-2xl text-ivory-100">Visitor Check-In</h1>
+        <p className="mt-1 text-sm text-slate-400">
           {meeting.title} — {meeting.chapter.name}
         </p>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-slate-500">
           {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
       {!meeting.visitorCheckInOpen ? (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
+        <div className="rounded-sm border border-gold-500/40 p-6 text-center text-sm text-slate-400">
           Visitor check-in for this meeting isn&rsquo;t open right now. Please check with the BWF team.
         </div>
       ) : (
