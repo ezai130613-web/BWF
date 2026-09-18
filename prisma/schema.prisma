@@ -1886,3 +1886,135 @@ model PublishAttempt {
   @@index([scheduledPostId])
   @@map("publish_attempts")
 }
+
+// ---------------------------------------------------------------------------
+// Marketing Portal corrections (2026-09-18 client spec) — Content Calendar
+// planning, and a separate in-house Script Writing workspace (AI chat +
+// saved scripts). See docs/ARCHITECTURE.md's "Marketing Portal corrections"
+// section for how these relate to the existing MarketingContent/ScheduledPost
+// pipeline above.
+// ---------------------------------------------------------------------------
+
+/// Shared "what kind of content is this" list — used by both the Content
+/// Calendar's planning entries and saved Scripts. Deliberately broader/looser
+/// than MarketingPlatform's real-publishing scope (this is planning
+/// metadata, not something a publish worker branches on).
+enum ContentFormat {
+  REEL
+  POST
+  CAROUSEL
+  STORY
+  VIDEO
+  OTHER
+}
+
+/// Wider than MarketingPlatform (adds LinkedIn, and OTHER) — the Content
+/// Calendar is a planning tool for any platform the team might post to, not
+/// only the ones this project has a real direct-API publishing integration
+/// for.
+enum CalendarPlatform {
+  INSTAGRAM
+  FACEBOOK
+  LINKEDIN
+  YOUTUBE
+  OTHER
+}
+
+enum ContentPlanStatus {
+  PLANNED
+  IN_PROGRESS
+  READY
+  SCHEDULED
+  PUBLISHED
+}
+
+/// A real content-planning record the admin creates directly on the Content
+/// Calendar (client spec: "the Content Calendar must function as an actual
+/// content planning and management tool, not merely a visual calendar").
+/// Deliberately independent of MarketingContent/ScheduledPost — this can
+/// exist purely as a future plan before any video is produced or uploaded.
+/// The calendar page also renders real ScheduledPost rows alongside these
+/// (unchanged query), which is how "update the calendar automatically when
+/// content is scheduled" is satisfied without a duplicate record.
+model ContentPlanEntry {
+  id           String            @id @default(cuid())
+  title        String
+  topic        String?
+  contentType  ContentFormat     @default(OTHER)
+  platform     CalendarPlatform  @default(OTHER)
+  /// Planned publishing date+time, stored UTC — same IST-input convention as
+  /// ScheduledPost.scheduledFor (src/lib/marketing/constants.ts).
+  scheduledFor DateTime
+  description  String?
+  assignedTo   String?
+  status       ContentPlanStatus @default(PLANNED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scheduledFor])
+  @@map("content_plan_entries")
+}
+
+enum ScriptStatus {
+  DRAFT
+  FINALISED
+}
+
+/// A saved script from the Script Writing workspace. Distinct from
+/// MarketingContent.script (a short caption/description written alongside an
+/// already-uploaded video) — a MarketingScript is the full script text
+/// itself, produced/iterated on in the AI chat, with no required link to any
+/// uploaded video.
+model MarketingScript {
+  id           String        @id @default(cuid())
+  /// Auto-generated, e.g. "Script 001" (src/lib/marketing/constants.ts pads
+  /// this for display) — never entered by the admin.
+  scriptNumber Int           @default(autoincrement())
+  title        String
+  topic        String?
+  contentType  ContentFormat @default(OTHER)
+  content      String
+  status       ScriptStatus  @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("marketing_scripts")
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+/// One AI chat thread on the Script Writing page. Client spec: "maintain
+/// separate AI chat history and saved scripts" / "saving a script should not
+/// delete or interrupt the original AI conversation" — a MarketingScript
+/// saved from a message here has no FK back to it, by design.
+model AiConversation {
+  id        String   @id @default(cuid())
+  /// Derived from the first user message at creation; not editable — same
+  /// "small free-text label, no dedicated rename UI" precedent as other
+  /// lightweight records in this app.
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AiMessage[]
+
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AiMessageRole
+  content        String
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}

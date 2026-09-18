@@ -1372,6 +1372,102 @@ friendly empty state instead of vanishing when the `ChiefGuest` catalog has zero
 **No Prisma schema changes.** The whole page reads the existing `ChiefGuest` catalog; nothing new
 is written anywhere by this phase.
 
+### Marketing Portal corrections — Content Calendar & Script Writing (2026-09-18 client spec, Phase 28)
+
+**Content Calendar is now a real planning tool, on a new `ContentPlanEntry` model deliberately
+independent of `MarketingContent`/`ScheduledPost`.** The client's spec is explicit that the
+calendar must support creating/editing/duplicating/deleting a plan (title, topic, content type,
+platform, planned date+time, description, assignee, status) for content that may not exist yet —
+a real video/script/schedule shouldn't be a precondition for planning to post about something.
+Rather than bolt planning fields onto `ScheduledPost` (which brief §6-9's real publish pipeline
+already owns, with its own status machine tied to actual API calls), a new model keeps the two
+concerns separate. "Update the calendar automatically when content is scheduled" (the client's own
+requirement) is satisfied for free, not by new sync code: the calendar page renders `ContentPlanEntry`
+rows and real `ScheduledPost` rows on the same grid from two independent queries — scheduling
+something for real already produces a `ScheduledPost` row this page already knew how to query
+(unchanged from Phase 21), so it just shows up. The two are visually distinct (different badge
+colors, `ScheduledPost` entries link to the content's real detail page) rather than merged into one
+record type, since conflating "an intent to plan" with "a real, publish-worker-tracked schedule"
+would blur a distinction the rest of the pipeline (Batch 3's worker, Publishing History) depends on.
+
+**`CalendarPlatform` is a separate, wider enum from `MarketingPlatform`** — it adds LinkedIn and a
+generic "Other," since the calendar is a planning tool for anything the team might post about, not
+gated by which platforms this project has a real direct-API publishing integration for. Same
+reasoning for `ContentFormat` (Reel/Post/Carousel/Story/Video/Other) — planning metadata, not
+something any publish worker branches on, so it's shared between calendar entries and scripts
+rather than needing two near-identical enums.
+
+**Month/week/day views share one server-side query per request** (`calendar/page.tsx`) — the
+visible date range is computed first (plain Y-M-D calendar-day arithmetic, not `Date`-timezone
+math, since these are calendar labels not instants), padded by a day in UTC on each side, then both
+`ContentPlanEntry` and `ScheduledPost` rows in that padded range are bucketed by their real IST
+calendar date in JS — the same "pad the UTC query, bucket by real IST date" technique Phase 21's
+original month-only calendar already used, now shared across all three views instead of being
+copy-pasted per view.
+
+**First real modal/overlay component in this admin** (`src/components/admin/modal.tsx`) — every
+admin surface before this correction was full-page forms/tables (the Phase 1 design-system note
+deliberately skipped Radix for exactly that reason). Clicking a calendar date, and the Script
+Writing page's script editor, both genuinely need an in-place overlay rather than a full page
+navigation, so this is a small hand-built `<dialog>`-style component (portal + Escape-to-close +
+backdrop click), consistent with this project's "smallest thing that does the job, not a new
+dependency" precedent (Playwright, `marked`, `exceljs`/`pdfkit`) — not a reason to reconsider the
+original no-Radix call, since one component doesn't justify a headless-primitives dependency.
+
+**Script Writing is a new page (`/admin/marketing/scripts`), deliberately separate from Content
+Creation** — the client's spec explicitly asks for a standalone AI workspace, not an extension of
+the existing "upload video + write a caption" page. Two new models: `MarketingScript` (a saved
+script — title, auto-generated `scriptNumber` via `@default(autoincrement())` so "Script 001" is
+never hand-entered, content type, full script text, Draft/Finalised status) and
+`AiConversation`/`AiMessage` (chat history). `MarketingScript` has **no FK back to
+`MarketingContent` or to the conversation it was saved from** — the client's spec is explicit that
+saving a script must not interrupt or alter the original conversation, and a script is real
+standalone content in its own right, not necessarily tied to any specific uploaded video.
+
+**OpenAI, not Anthropic — client's explicit instruction ("use the existing secure API
+configuration") plus a working precedent already in this repo.** The now-removed Ask BWF chatbot
+(Phase 12, deleted per the 2026-09-14 correction — see that section above) had already switched
+from Anthropic to OpenAI because the Anthropic account had no billing configured while the OpenAI
+one did; `OPENAI_API_KEY` is a real, working credential already in `.env`. That chatbot's own
+client code was deleted along with the feature, so `src/lib/marketing/openai.ts` is a small fresh
+wrapper (the `openai` npm package was already a `package.json` dependency, unused since the
+chatbot's removal) — not a revival of old code. Every call goes through a Server Action
+(`sendScriptChatMessage` in `scripts/actions.ts`); the key is read from `process.env` server-side
+only and never reaches a Client Component, satisfying the client's "never expose API credentials in
+frontend code." No streaming — every other AI-adjacent and form-submission flow in this codebase
+already uses non-streaming Server Actions returning a full new state (`useActionState`), and adding
+a streaming/Edge-runtime path for just this one feature wasn't worth the inconsistency. A full,
+authoritative message list is returned and re-rendered after each send (same "server data is the
+source of truth, not local optimism" precedent `ScheduleComposer` already established in Phase 21)
+rather than trusting client-side optimistic state.
+
+**Access control is `marketing:manage`, the same permission gating the rest of the Marketing
+Portal** — not a new, narrower permission. The client's spec asks that Script Writing be
+"accessible only to authorised administrators," and every marketing page already enforces exactly
+that (Super/Central Admin only, via the third workspace's own gating — Phase 27). Introducing a
+second marketing-scoped permission key with no described difference in who should hold it would
+add a distinction the brief never asks for; `requirePermission("marketing:manage")` is checked in
+the page and independently inside every Server Action in `scripts/actions.ts` (not just relied on
+via the page not being linked from anywhere), matching this codebase's standing rule that RBAC
+checks belong at the action, not just the route.
+
+**Content Creation and Scheduling were only renamed, not restructured** — the client's brief calls
+these out as pure renames ("retain all existing features... do not remove or unnecessarily
+redesign anything"), so only the on-page `<h1>` and the sidebar label changed for each
+(`/admin/marketing/create`, `/admin/marketing/schedule`); their components, actions, and data model
+are untouched. "Preview the content before scheduling" (the Scheduling page's one net-new
+requirement) is satisfied by what already existed rather than a new preview panel: the content
+detail page (`library/[id]/page.tsx`) already renders the thumbnail/video link and saved
+script/caption directly above the `ScheduleComposer` used to actually schedule it — the same page,
+not a second copy.
+
+**Sidebar order matches the client's exact list, with `Connected Accounts` kept as an unlisted 8th
+item, not removed.** The client's "Final Marketing Portal Navigation" names exactly 7 pages in
+order; `Connected Accounts` (Phase 21's OAuth-groundwork page) isn't one of them, but nothing in the
+brief says to remove it, and doing so would drop real, still-relevant functionality outside this
+correction's stated scope. Read literally, "reflects the revised page names and order" applies to
+the 7 pages actually named — `Connected Accounts` stays, appended after them.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

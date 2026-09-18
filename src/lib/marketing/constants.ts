@@ -1,4 +1,11 @@
-import type { MarketingPlatform, ScheduledPostStatus } from "@/generated/prisma/client";
+import type {
+  CalendarPlatform,
+  ContentFormat,
+  ContentPlanStatus,
+  MarketingPlatform,
+  ScheduledPostStatus,
+  ScriptStatus,
+} from "@/generated/prisma/client";
 
 /**
  * Marketing module (2026-09-16 client brief) — platform metadata shared
@@ -119,4 +126,62 @@ export function toIstDateTimeInputs(date: Date): { date: string; time: string } 
   }).formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
+// --- Content Calendar & Script Writing (2026-09-18 client correction) ------
+
+export const CONTENT_FORMATS: readonly ContentFormat[] = ["REEL", "POST", "CAROUSEL", "STORY", "VIDEO", "OTHER"];
+
+export const CONTENT_FORMAT_LABELS: Record<ContentFormat, string> = {
+  REEL: "Reel",
+  POST: "Post",
+  CAROUSEL: "Carousel",
+  STORY: "Story",
+  VIDEO: "Video",
+  OTHER: "Other",
+};
+
+export const CALENDAR_PLATFORMS: readonly CalendarPlatform[] = ["INSTAGRAM", "FACEBOOK", "LINKEDIN", "YOUTUBE", "OTHER"];
+
+export const CALENDAR_PLATFORM_LABELS: Record<CalendarPlatform, string> = {
+  INSTAGRAM: "Instagram",
+  FACEBOOK: "Facebook",
+  LINKEDIN: "LinkedIn",
+  YOUTUBE: "YouTube",
+  OTHER: "Other",
+};
+
+export const CONTENT_PLAN_STATUSES: readonly ContentPlanStatus[] = ["PLANNED", "IN_PROGRESS", "READY", "SCHEDULED", "PUBLISHED"];
+
+export const CONTENT_PLAN_STATUS_LABELS: Record<ContentPlanStatus, string> = {
+  PLANNED: "Planned",
+  IN_PROGRESS: "In Progress",
+  READY: "Ready",
+  SCHEDULED: "Scheduled",
+  PUBLISHED: "Published",
+};
+
+export const CONTENT_PLAN_STATUS_BADGE_CLASSES: Record<ContentPlanStatus, string> = {
+  PLANNED: "bg-neutral-100 text-neutral-600",
+  IN_PROGRESS: "bg-amber-50 text-amber-700",
+  READY: "bg-purple-50 text-purple-700",
+  SCHEDULED: "bg-blue-50 text-blue-700",
+  PUBLISHED: "bg-emerald-50 text-emerald-700",
+};
+
+export const SCRIPT_STATUSES: readonly ScriptStatus[] = ["DRAFT", "FINALISED"];
+
+export const SCRIPT_STATUS_LABELS: Record<ScriptStatus, string> = {
+  DRAFT: "Draft",
+  FINALISED: "Finalised",
+};
+
+export const SCRIPT_STATUS_BADGE_CLASSES: Record<ScriptStatus, string> = {
+  DRAFT: "bg-neutral-100 text-neutral-600",
+  FINALISED: "bg-emerald-50 text-emerald-700",
+};
+
+/** "Script 001" style display — never entered by the admin, see MarketingScript.scriptNumber. */
+export function formatScriptNumber(n: number): string {
+  return `Script ${String(n).padStart(3, "0")}`;
 }

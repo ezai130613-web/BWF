@@ -26,7 +26,7 @@ export default async function MarketingSchedulePage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Scheduling & Posting</h1>
+          <h1 className="text-xl font-semibold text-neutral-900">Scheduling</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Pick a piece of content to select platforms, write per-platform captions, and choose publishing times.
           </p>

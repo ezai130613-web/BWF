@@ -68,8 +68,8 @@ export default async function WorkspaceSelectPage() {
             >
               <p className="text-base font-semibold text-neutral-900">Marketing Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
-                Content Calendar, Script Writing &amp; Content Creation, Scheduling &amp; Posting,
-                Content Library, Publishing History &amp; Connected Accounts.
+                Content Calendar, Content Creation, Scheduling, Script Writing, Content Library,
+                Publishing History &amp; Connected Accounts.
               </p>
             </button>
           </form>

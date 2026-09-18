@@ -3594,3 +3594,64 @@ afterward via direct DB query (confirmed zero rows remaining).
 **Known issues / follow-ups:** none new beyond Phase 21's own carried-forward list (Batches 2-3 —
 OAuth connect flows and the cron publish worker — still blocked on the client registering the
 Meta/Google/Pinterest developer apps per Phase 21's walkthrough).
+
+---
+
+## Phase 28 — Marketing Portal corrections: Content Calendar & Script Writing (2026-09-18 client spec)
+
+**Status:** Complete.
+
+**What shipped:**
+- **Content Calendar** (`/admin/marketing/calendar`) rebuilt from a read-only month grid into a
+  real content-planning tool, on a new `ContentPlanEntry` model: title, topic, content type
+  (Reel/Post/Carousel/Story/Video/Other), platform (Instagram/Facebook/LinkedIn/YouTube/Other),
+  planned date+time, description, assigned team member, and status
+  (Planned/In Progress/Ready/Scheduled/Published). A prominent "+ Add Content" button and a
+  hover "+" on every empty date both open the same create form pre-filled with that date; clicking
+  an existing entry opens it for editing, with Duplicate and Delete alongside Save. Month/Week/Day
+  view toggles and Prev/Next/Today navigation are real, sharing one range query + IST-bucketing
+  pass across all three. Real `ScheduledPost` rows (Phase 21's actual scheduling pipeline) render
+  on the same grid, visually distinct, so scheduling something for real still shows up here
+  automatically — see docs/ARCHITECTURE.md's new section for why these are deliberately two
+  independent record types rather than one.
+- **Content Creation** (`/admin/marketing/create`) and **Scheduling** (`/admin/marketing/schedule`)
+  — pure renames of Phase 21/27's existing "Script Writing & Content Creation" and "Scheduling &
+  Posting" pages, per the client's explicit "retain all existing features... do not remove or
+  unnecessarily redesign anything." No component/action/schema changes to either.
+- **Script Writing** (`/admin/marketing/scripts`) — a brand new page, an in-house AI workspace
+  separate from Content Creation: a ChatGPT-style multi-turn chat (OpenAI, via a Server Action only
+  — `src/lib/marketing/openai.ts` — the API key never reaches the browser) backed by new
+  `AiConversation`/`AiMessage` models, with a chat-history sidebar (reopen and continue any past
+  conversation; "+ New chat" starts a fresh one without losing old ones). Below it, "My Scripts" —
+  a new `MarketingScript` model (auto-numbered "Script 001" style via `@default(autoincrement())`,
+  title, topic, content type, full script text, Draft/Finalised status) with search/filter, a
+  "+ Create New Script" button, and click-to-edit/duplicate/delete on any saved script. Every AI
+  reply has a "Save as Script" button that opens the same script editor pre-filled with that
+  reply's text — saving never touches or interrupts the original conversation. Gated by the same
+  `marketing:manage` permission as the rest of the Marketing Portal (Super/Central Admin only),
+  enforced in the page and independently in every Server Action.
+- First real modal/overlay component in this admin (`src/components/admin/modal.tsx`) — used by
+  both the calendar's create/edit form and the script editor. See docs/ARCHITECTURE.md for why this
+  doesn't reopen the earlier no-Radix decision.
+- Sidebar reordered/renamed to the client's exact list — Dashboard, Content Calendar, Content
+  Creation, Scheduling, Script Writing, Content Library, Publishing History — with Connected
+  Accounts kept as an unlisted 8th item (not named in the client's list, but nothing asked for its
+  removal either; see docs/ARCHITECTURE.md). The workspace picker's Marketing Admin card
+  description was also updated to match (was still describing the pre-correction page names).
+
+**Verification performed:** `npm run typecheck`/`lint`/`build` all clean. Full real dev-server
+Playwright run, logged in as Super Admin: confirmed the sidebar's exact 8-item order; confirmed the
+Content Creation/Scheduling headings read correctly; on the Content Calendar, created a real entry,
+confirmed it rendered on the grid with its title and status color, edited its status and confirmed
+the badge updated, duplicated it (confirmed the "(Copy)" row appeared), deleted both, and toggled
+Month/Week/Day + Prev/Next without errors. On Script Writing, sent a real chat message and got back
+a real OpenAI reply (no configuration error), used "Save as Script" to create a real script,
+confirmed it appeared in My Scripts as "Script 001," edited its title and confirmed the change
+persisted, exercised the search box, started a new chat, and confirmed the original conversation
+was still reachable from the history list with its messages intact. Confirmed Content
+Library/Publishing History still render unchanged (no regressions from the sidebar/schema changes).
+All test data (calendar entries, the script, the conversation and its messages) deleted afterward —
+confirmed zero rows remaining in all four new tables via a direct DB check.
+
+**Known issues / follow-ups:** none new. Phase 21's Batches 2-3 (OAuth connect flows, the cron
+publish worker) remain the only open marketing-module follow-up, unrelated to this correction.
