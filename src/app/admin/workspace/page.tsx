@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { requireAdminSession } from "@/lib/auth/rbac";
+import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { selectWorkspace } from "./actions";
 
 /**
@@ -19,10 +19,15 @@ export default async function WorkspaceSelectPage() {
   const selectWebsite = selectWorkspace.bind(null, "website");
   const selectPerformance = selectWorkspace.bind(null, "performance");
   const selectMarketing = selectWorkspace.bind(null, "marketing");
+  const selectAccounts = selectWorkspace.bind(null, "accounts");
+  // Phase 29 — Super Admin (and anyone else granted accounts:view) gets the
+  // Accounts workspace too; Central Admin does not by default.
+  const permissions = await getUserPermissionKeys(session.user.id);
+  const canSeeAccounts = permissions.has("accounts:view");
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-3xl">
         <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={48} height={48} className="h-12 w-12" priority />
         <p className="mt-3 text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
           Builders World Forum
@@ -33,7 +38,7 @@ export default async function WorkspaceSelectPage() {
           sidebar.
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           <form action={selectWebsite}>
             <button
               type="submit"
@@ -73,6 +78,21 @@ export default async function WorkspaceSelectPage() {
               </p>
             </button>
           </form>
+
+          {canSeeAccounts ? (
+            <form action={selectAccounts}>
+              <button
+                type="submit"
+                className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+              >
+                <p className="text-base font-semibold text-neutral-900">Accounts</p>
+                <p className="mt-1.5 text-sm text-neutral-600">
+                  Complete payment history across all chapters — member and visitor payments, who
+                  paid, purpose, pending approvals, approve/reject &amp; Excel export.
+                </p>
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
     </main>

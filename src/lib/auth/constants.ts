@@ -1,6 +1,14 @@
 /** Roles allowed through the admin login flow — kept in one place since
  * both the OTP-request route and the NextAuth authorize() callback need it. */
-export const ADMIN_ROLE_KEYS: string[] = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"];
+export const ADMIN_ROLE_KEYS: string[] = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN", "ACCOUNTS"];
+
+/** Phase 29 — an Accounts Department login with no other admin role. They
+ * never see the workspace picker or the main dashboard: their whole admin
+ * is the Accounts workspace (/admin/accounts). Pure role check so proxy.ts
+ * can call it straight off the JWT without a DB round-trip. */
+export function isAccountsOnly(roles: string[]): boolean {
+  return roles.includes("ACCOUNTS") && !roles.some((role) => ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"].includes(role));
+}
 
 /** Roles allowed through the member login flow (brief §12) — deliberately
  * disjoint from ADMIN_ROLE_KEYS, mirroring how Chapter Admin holds no

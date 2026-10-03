@@ -12,6 +12,7 @@ const ROLES = [
   { key: "CENTRAL_ADMIN", label: "Central Admin", description: "BWF management." },
   { key: "CHAPTER_ADMIN", label: "Chapter Admin", description: "Scoped to one chapter via UserRole.chapterId." },
   { key: "MEMBER", label: "Member", description: "Member self-service portal (added in Phase 11)." },
+  { key: "ACCOUNTS", label: "Accounts Department", description: "Payment records across all chapters — view, approve & reject (added in Phase 29)." },
 ] as const;
 
 const PERMISSIONS = [
@@ -38,6 +39,8 @@ const PERMISSIONS = [
   { key: "payments:view", label: "View meeting payment submissions" },
   { key: "payments:approve", label: "Approve, reject, or request clarification on meeting payments" },
   { key: "invitations:manage", label: "Generate meeting invitation posters" },
+  { key: "accounts:view", label: "Access the Accounts workspace (combined payment ledger)" },
+  { key: "contact_requests:view", label: "View vendor contact-detail requests from member profiles" },
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -67,14 +70,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "attendance:manage",
     "payments:view",
     "invitations:manage",
-    // payments:approve is deliberately NOT given to Chapter Admin, even
-    // though it's granted here to Central Admin — the QR/Attendance/Payment
-    // spec is explicit that approval is Central Admin, Super Admin, or an
-    // "explicitly authorised Accounts Team" only, never a chapter role. A
-    // chapter-scoped Accounts Team member would need this permission granted
-    // to their own role via /admin/roles (the existing "explicitly
-    // authorised" mechanism) rather than inheriting it from chapter scoping.
-    "payments:approve",
+    "contact_requests:view",
+    // payments:approve is deliberately NOT given to Central Admin (Phase 29,
+    // client decision 2026-10-03): approval is Super Admin + Accounts
+    // Department only. Central Admin keeps payments:view. The existing grant
+    // on already-seeded databases is revoked by migration
+    // 20261003000000_accounts_panel_vendor_contact_requests, since this seed
+    // only ever adds role-permission rows, never removes them.
   ],
   // Chapter Admin's access is scoped per-chapter (UserRole.chapterId), not a
   // blanket permission — enforced by requireChapterAccess(), same as
@@ -92,6 +94,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // content like Blog/Testimonial submissions.
   CHAPTER_ADMIN: [],
   MEMBER: [],
+  // Phase 29 — Accounts Department: payment records across every chapter
+  // (blanket payments:view, never chapter-scoped) plus approve/reject. No
+  // other admin area — every other page's own permission check forbids them.
+  ACCOUNTS: ["accounts:view", "payments:view", "payments:approve"],
 };
 
 // Placeholder names — real chapter names/locations are an open decision

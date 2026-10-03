@@ -10,7 +10,11 @@ import { cn } from "@/lib/utils";
 // Super/Central Admin — Chapter Admin's nav ignores this entirely (see the
 // filter below), since their access is scoped identically across both
 // workspaces already and splitting it would hide half of what they can do.
-const NAV_ITEMS = [
+// Phase 29 — an item may list several workspaces (the two payment pages live
+// in both Member Performance Admin and the Accounts workspace).
+type Workspace = "website" | "performance" | "marketing" | "accounts";
+
+const NAV_ITEMS: { href: string; label: string; permission: string | null; workspace: Workspace | Workspace[] }[] = [
   { href: "/admin", label: "Dashboard", permission: null, workspace: "website" },
   { href: "/admin/chapters", label: "Chapters", permission: "chapters:manage", workspace: "website" },
   { href: "/admin/companies", label: "Companies", permission: "companies:manage", workspace: "website" },
@@ -19,13 +23,16 @@ const NAV_ITEMS = [
   { href: "/admin/applications", label: "Applications", permission: "applications:manage", workspace: "website" },
   { href: "/admin/meetings", label: "Meetings", permission: "meetings:manage", workspace: "website" },
   { href: "/admin/visitors", label: "Visitors", permission: "visitors:manage", workspace: "website" },
+  { href: "/admin/contact-requests", label: "Vendor Contact Requests", permission: "contact_requests:view", workspace: "website" },
   { href: "/admin/roster", label: "Roster Sheets", permission: "roster:manage", workspace: "performance" },
   { href: "/admin/qr-codes", label: "QR Codes", permission: "attendance:manage", workspace: "performance" },
   { href: "/admin/attendance", label: "Attendance", permission: "attendance:manage", workspace: "performance" },
-  { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: "performance" },
+  { href: "/admin/accounts", label: "All Payments", permission: "accounts:view", workspace: "accounts" },
+  { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: ["performance", "accounts"] },
+  { href: "/admin/payments/members", label: "Member-wise Payments", permission: "accounts:view", workspace: "accounts" },
   { href: "/admin/visitors-qr", label: "Visitors QR", permission: "attendance:manage", workspace: "performance" },
   { href: "/admin/visitors-attendance", label: "Visitors Attendance", permission: "attendance:manage", workspace: "performance" },
-  { href: "/admin/visitors-payment", label: "Visitors Payment", permission: "payments:view", workspace: "performance" },
+  { href: "/admin/visitors-payment", label: "Visitors Payment", permission: "payments:view", workspace: ["performance", "accounts"] },
   { href: "/admin/invitations", label: "Meeting Invitations", permission: "invitations:manage", workspace: "performance" },
   { href: "/admin/blogs", label: "Blog", permission: "blogs:manage", workspace: "website" },
   { href: "/admin/marketing", label: "Dashboard", permission: "marketing:manage", workspace: "marketing" },
@@ -46,19 +53,29 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "Users", permission: "users:manage", workspace: "website" },
   { href: "/admin/roles", label: "Roles & Permissions", permission: "roles:manage", workspace: "website" },
   { href: "/admin/activity", label: "Activity Log", permission: "audit_log:view", workspace: "website" },
-] as const;
+];
+
+const WORKSPACE_LABELS: Record<Workspace, string> = {
+  website: "Website Admin",
+  performance: "Member Performance Admin",
+  marketing: "Marketing Admin",
+  accounts: "Accounts",
+};
 
 export function Sidebar({
   userName,
   permissions,
   isChapterAdmin,
   workspace,
+  canSwitchWorkspace,
 }: {
   userName: string;
   permissions: Set<string>;
   isChapterAdmin: boolean;
   /** null for Chapter Admin (workspace-agnostic) or before a Super/Central Admin has picked one yet. */
-  workspace: "website" | "performance" | "marketing" | null;
+  workspace: Workspace | null;
+  /** false for an Accounts-only login — they have exactly one workspace. */
+  canSwitchWorkspace: boolean;
 }) {
   const pathname = usePathname();
 
@@ -77,6 +94,7 @@ export function Sidebar({
       "attendance:manage",
       "payments:view",
       "invitations:manage",
+      "contact_requests:view",
     ];
     if (isChapterAdmin && chapterScopedPermissions.includes(item.permission)) return true;
     return false;
@@ -85,7 +103,7 @@ export function Sidebar({
     // NAV_ITEMS comment above) — only Super/Central Admin get filtered to
     // their chosen workspace.
     if (isChapterAdmin || !workspace) return true;
-    return item.workspace === workspace;
+    return Array.isArray(item.workspace) ? item.workspace.includes(workspace) : item.workspace === workspace;
   });
 
   return (
@@ -120,10 +138,15 @@ export function Sidebar({
         <p className="truncate text-sm text-ivory-200">{userName}</p>
         {!isChapterAdmin && workspace ? (
           <p className="mt-1 text-xs text-slate-400">
-            {workspace === "website" ? "Website Admin" : workspace === "performance" ? "Member Performance Admin" : "Marketing Admin"} ·{" "}
-            <Link href="/admin/workspace" className="underline hover:text-ivory-100">
-              Switch workspace
-            </Link>
+            {WORKSPACE_LABELS[workspace]}
+            {canSwitchWorkspace ? (
+              <>
+                {" "}·{" "}
+                <Link href="/admin/workspace" className="underline hover:text-ivory-100">
+                  Switch workspace
+                </Link>
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
-import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS } from "@/lib/auth/constants";
+import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS, isAccountsOnly } from "@/lib/auth/constants";
 
 // Next.js 16 renamed `middleware.ts` -> `proxy.ts` (same behavior, defaults
 // to the Node.js runtime now, which is what lets this safely wrap
@@ -46,6 +46,12 @@ export default auth((request) => {
     // half of what they can already do today, so they never see this and
     // the cookie is simply never checked for them. Role is available
     // directly on the JWT, no DB round-trip needed for this check.
+    // Phase 29 — an Accounts Department login has exactly one workspace, so
+    // the dashboard and the picker both just send them straight to it.
+    if (hasAdminRole && isAccountsOnly(roles) && (pathname === "/admin" || pathname === "/admin/workspace")) {
+      return NextResponse.redirect(new URL("/admin/accounts", request.nextUrl.origin));
+    }
+
     const needsWorkspaceChoice = roles.includes("SUPER_ADMIN") || roles.includes("CENTRAL_ADMIN");
     const isWorkspacePicker = pathname === "/admin/workspace";
     if (hasAdminRole && needsWorkspaceChoice && !isAdminPublicAuthPage && !isWorkspacePicker) {

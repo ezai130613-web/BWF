@@ -30,6 +30,7 @@ export function ChangeUserRoleForm({
       >
         <option value="CENTRAL_ADMIN">Central Admin</option>
         <option value="CHAPTER_ADMIN">Chapter Admin</option>
+        <option value="ACCOUNTS">Accounts Department</option>
         <option value="SUPER_ADMIN">Super Admin</option>
       </select>
 

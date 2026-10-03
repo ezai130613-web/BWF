@@ -6,8 +6,8 @@ import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
 
 /**
- * Spec: "Only Central Admin, Super Admin, or authorised Accounts Team may
- * approve or reject." Reuses the exact payments:approve permission the
+ * Phase 29: only Super Admin and the Accounts Department may approve or
+ * reject (Central Admin's grant was revoked, see prisma/seed.ts). Reuses the exact payments:approve permission the
  * member-facing Payment Management page already gates on — same rule, same
  * people, see the plan's own reasoning for not minting a visitor-specific
  * permission. Rejecting or leaving a payment pending never touches the
@@ -51,5 +51,6 @@ export async function reviewVisitorPayment(
   });
 
   revalidatePath("/admin/visitors-payment");
+  revalidatePath("/admin/accounts");
   return { error: undefined, success: true };
 }

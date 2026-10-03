@@ -3655,3 +3655,73 @@ confirmed zero rows remaining in all four new tables via a direct DB check.
 
 **Known issues / follow-ups:** none new. Phase 21's Batches 2-3 (OAuth connect flows, the cron
 publish worker) remain the only open marketing-module follow-up, unrelated to this correction.
+
+---
+
+## Phase 29 — Accounts Panel + Vendor Contact Pop-up (2026-10-03 client request)
+
+**Status:** Complete.
+
+**Client decisions (asked before building):** Accounts Department can approve/reject; approval is
+Super Admin + Accounts only (Central Admin's right removed); Accounts sees all chapters; "pending"
+means submitted-but-not-yet-approved; the pop-up gates phone, WhatsApp **and** email; the
+requester's details are remembered on their device.
+
+**What shipped:**
+- **New `ACCOUNTS` role ("Accounts Department")** — creatable from `/admin/users` like any admin.
+  Holds `accounts:view` + `payments:view` + `payments:approve` (all blanket, never chapter-scoped).
+  Logs in at `/admin/login` and lands straight on the Accounts workspace; no workspace picker, no
+  main dashboard, every other admin page returns 403.
+- **`payments:approve` revoked from Central Admin** — via a one-time `DELETE` in migration
+  `20261003000000_accounts_panel_vendor_contact_requests` (the seed only adds grants, so editing
+  `ROLE_PERMISSIONS` alone wouldn't have removed it from the live DB). Central Admin keeps view access.
+- **Accounts workspace** (4th workspace; Super Admin sees its card on the picker, Central Admin
+  doesn't): **All Payments** (`/admin/accounts`) — member + visitor payments across all chapters in
+  one ledger: paid-on/submitted dates, who paid (member/visitor, chapter, phone), purpose
+  ("Membership fee — Sep 2026, Oct 2026" / "Visitor meeting fee", plus meeting), amount, status,
+  reviewer + date + remarks, proof link, inline Approve/Reject/Request Clarification. Summary cards
+  (Total / Approved / Pending count+value / Rejected), filters (type, status, chapter, payer
+  name/phone, payment-date range), "Show pending only" shortcut, Excel export with the same filters
+  (`/api/admin/exports/accounts`). The existing Payments, Member-wise Payments and Visitors Payment
+  pages are also in this workspace (they stay in Member Performance too).
+- **Vendor contact pop-up** — phone/WhatsApp/email removed from public member profiles' HTML and
+  JSON-LD. A "View contact details" button opens a pop-up (name, phone required; email,
+  requirement optional); on submit the member's name, phone, WhatsApp and email appear. The device
+  is remembered (httpOnly cookie) so later clicks on any member reveal instantly, each still logged.
+  New `VendorContactRequest` model and a **Vendor Contact Requests** admin page
+  (`/admin/contact-requests`, Website Admin workspace; Super/Central see all, Chapter Admin sees
+  their chapter's members).
+- **Pre-existing leak fixed:** `/visit` and `/visit/[meetingId]` were serialising every active
+  member's full record (phone/WhatsApp/email) into the public page payload for the inviting-member
+  dropdown; both now select only `id`/`name`.
+
+**Verification performed:** `npm run typecheck`/`lint`/`build` clean. Migration applied via the
+documented `db execute` → `migrate resolve --applied` path, seed re-run; confirmed in the live DB
+that `payments:approve` is held by exactly SUPER_ADMIN + ACCOUNTS. Real production build
+(`next start`, on port 3100 since 3000 was occupied) driven by Playwright against the live DB with
+clearly-labelled temporary data (a test company/member, one member payment, one visitor payment,
+temporary Accounts and Central Admin logins — no real user's password was touched): **35/35
+checks passed**, including profile and `/visit` HTML containing no member phone/email, invalid
+phone rejected with typed values preserved, reveal after submit, remembered-device reveal with no
+pop-up, Accounts landing/sidebar/redirects, approve and reject-with-reason from the ledger, pending
+filter, Excel export, Accounts getting 403 on Members/Users/Attendance/Contact Requests, Central
+Admin seeing no Accounts card, getting 403 on `/admin/accounts`, seeing no Approve buttons, and
+seeing the contact request with its requirement. All test data, contact requests made against the
+real member used for testing, matching audit-log rows and both temporary logins were deleted
+afterwards (confirmed zero rows remaining).
+
+**Two real bugs caught only by the live run:**
+1. After a validation error the pop-up wiped everything the visitor had typed — React 19 resets a
+   form after its action runs. The action now echoes the submitted values back as `defaultValue`s.
+2. The 24-hour duplicate-collapse applied to typed submissions too, so a second enquiry to the
+   same member (with a new requirement) was silently merged into the first and its text lost.
+   Collapse now applies only to remembered-device repeat clicks.
+
+**Known issues / follow-ups:**
+- Changing an existing admin's role (e.g. to Accounts) takes effect on their next login — the role
+  list lives on the JWT, a pre-existing behaviour shared by every role change, not new here.
+- The member (vendor) isn't notified of an enquiry — not requested; easy to add via Phase 13's
+  email automation if wanted.
+- Search engines no longer see member phone/email in structured data (an accepted consequence of
+  the gate).
+- HawkScan DAST scan not run — no `hawk` runtime or `HAWK_API_KEY` in this environment.

@@ -401,6 +401,9 @@ model Member {
   attendances Attendance[]
   payments    Payment[]
 
+  // Phase 29 — public "View contact details" pop-up requests for this member.
+  contactRequests VendorContactRequest[]
+
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
   // metrics, exports, chapter-availability computation).
@@ -2017,4 +2020,30 @@ model AiMessage {
 
   @@index([conversationId])
   @@map("ai_messages")
+}
+
+/// Phase 29 — one row per "View contact details" request on a public member
+/// (vendor) profile. Phone/WhatsApp/email are no longer rendered on the
+/// public page at all; they're only returned by the reveal Server Action
+/// after the requester has filled this in. Deliberately its own narrow record,
+/// not a revival of the general `Lead` model the client removed in Phase 20.
+model VendorContactRequest {
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  requesterName  String
+  requesterPhone String
+  requesterEmail String?
+  requirement    String?
+
+  /// True when the details were reused from this device's earlier
+  /// submission (remember-me cookie) rather than typed into the pop-up again.
+  reusedFromDevice Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([createdAt])
+  @@map("vendor_contact_requests")
 }

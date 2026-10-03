@@ -2,9 +2,9 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { requireAdminSession } from "@/lib/auth/rbac";
+import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 
-export type AdminWorkspace = "website" | "performance" | "marketing";
+export type AdminWorkspace = "website" | "performance" | "marketing" | "accounts";
 
 const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
   website: "/admin",
@@ -16,6 +16,8 @@ const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
   // Marketing portal (2026-09-18) — has its own real Dashboard page, unlike
   // Performance above.
   marketing: "/admin/marketing",
+  // Phase 29 — Accounts Department workspace (combined payment ledger).
+  accounts: "/admin/accounts",
 };
 
 /**
@@ -25,7 +27,11 @@ const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
  * workspace" in the sidebar re-visits this page to change it.
  */
 export async function selectWorkspace(workspace: AdminWorkspace) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
+  if (workspace === "accounts") {
+    const permissions = await getUserPermissionKeys(session.user.id);
+    if (!permissions.has("accounts:view")) redirect("/admin/workspace");
+  }
 
   // No `secure` flag — unlike the session cookie, this carries no sensitive
   // value (just a UI preference), so there's nothing to protect by

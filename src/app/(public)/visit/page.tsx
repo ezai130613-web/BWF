@@ -20,7 +20,9 @@ export default async function VisitPage({
   const [chapters, categories, members, content] = await Promise.all([
     db.chapter.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
     db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    db.member.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    // Only id/name — a full Member row would serialise every member's
+    // phone/email into this public page (Phase 29 contact gate).
+    db.member.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     getContent([
       "payment.qrCodeUrl",
       "payment.bankAccountName",

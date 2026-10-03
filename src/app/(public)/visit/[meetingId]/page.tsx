@@ -30,6 +30,8 @@ export default async function VisitMeetingPage({ params }: { params: Promise<{ m
     db.member.findMany({
       where: { chapterId: meeting.chapterId, status: "ACTIVE" },
       orderBy: { name: "asc" },
+      // Only id/name — see /visit/page.tsx (Phase 29 contact gate).
+      select: { id: true, name: true },
     }),
   ]);
 

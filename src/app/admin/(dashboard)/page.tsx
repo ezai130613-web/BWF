@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isAccountsOnly } from "@/lib/auth/constants";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { getDashboardMetrics } from "@/lib/dashboard/metrics";
 import { DATE_RANGE_PRESETS, resolveDateRange } from "@/lib/dashboard/date-range";
@@ -27,6 +29,9 @@ export default async function AdminDashboardPage({
   searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }) {
   const session = await requireAdminSession();
+  // proxy.ts already redirects here, this is the backstop — the global
+  // metrics below are not something an Accounts-only login should see.
+  if (isAccountsOnly(session.user.roles)) redirect("/admin/accounts");
   const isChapterAdmin = session.user.roles.includes("CHAPTER_ADMIN");
   const chapterId = session.user.chapterId ?? null;
 

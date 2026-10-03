@@ -1193,7 +1193,8 @@ CHAPTER_ADMIN/MEMBER exist — see `prisma/seed.ts`'s `ROLES`), and adding a fif
 for by name yet. "Explicitly authorised" is realized with the mechanism this app already has for
 exactly that phrase: Super Admin grants `payments:approve` to whichever role needs it via the
 existing `/admin/roles` permission matrix — real today, just without a role literally named
-"Accounts Team" to point it at.
+"Accounts Team" to point it at. *(Superseded by Phase 29: a real `ACCOUNTS` role now exists, and
+Central Admin no longer holds `payments:approve` — see the Accounts workspace section below.)*
 
 **Multi-month payments are one row, not N rows.** `Payment.monthsCovered` is `[{month, year}, ...]`
 JSON (same "JSON plus app-level validation" tradeoff as `Blog.faq`/`AuditLog.metadata`), with
@@ -1467,6 +1468,74 @@ order; `Connected Accounts` (Phase 21's OAuth-groundwork page) isn't one of them
 brief says to remove it, and doing so would drop real, still-relevant functionality outside this
 correction's stated scope. Read literally, "reflects the revised page names and order" applies to
 the 7 pages actually named — `Connected Accounts` stays, appended after them.
+
+### Accounts workspace & vendor contact gate (2026-10-03 client request, Phase 29)
+
+**`ACCOUNTS` is a real fifth role, not a permission grant on an existing one.** Phase 22 deferred
+this until the client asked for an Accounts Department by name; they now have. Its own login
+(username/password via `/admin/users`, same as every admin) holds exactly `accounts:view`,
+`payments:view` and `payments:approve` — blanket, never chapter-scoped, per the client's "all
+chapters payment related information." Adding it touched exactly what Phase 22 predicted:
+`ADMIN_ROLE_KEYS` (so it can log into `/admin` at all), `ADMIN_ASSIGNABLE_ROLES` + both user forms,
+and the workspace machinery.
+
+**Approval is Super Admin + Accounts only (client decision).** Central Admin's `payments:approve`
+was revoked. The seed only ever *adds* role-permission rows, so removing a grant from
+`ROLE_PERMISSIONS` alone would do nothing on an already-seeded database — the revoke lives in
+migration `20261003000000_accounts_panel_vendor_contact_requests` as a one-time `DELETE`. Central
+Admin keeps `payments:view`. Super Admin can still re-grant it via `/admin/roles`; neither the
+seed nor the migration will fight that later.
+
+**Accounts is a fourth workspace, but an Accounts-only login never chooses it.**
+`isAccountsOnly(roles)` (`src/lib/auth/constants.ts`, a pure JWT-role check so `proxy.ts` can call
+it without a DB hit) sends such a login from `/admin` and `/admin/workspace` straight to
+`/admin/accounts`; the layout forces `workspace = "accounts"` regardless of cookie, and the sidebar
+hides "Switch workspace". Super Admin gets an Accounts card on the picker (gated on `accounts:view`,
+so Central Admin doesn't). Sidebar items can now list several workspaces — Payments and Visitors
+Payment appear in both Member Performance and Accounts rather than being moved, so nothing the
+Performance side relied on disappears. The main dashboard page (`/admin`) was the only admin page
+with no permission check at all (it relied on every admin role being entitled to global metrics) —
+it now redirects Accounts-only logins as a backstop to `proxy.ts`.
+
+**The ledger merges at read time; the tables stay separate.** `src/lib/accounts/ledger.ts` maps
+`Payment` and `VisitorPayment` into one row shape (payer, member/visitor, chapter, purpose, amount,
+status, reviewer) for `/admin/accounts` and its Excel export — Phase 22/23's "keep visitor payment
+records separate" rule is about storage and workflow, not about whether Accounts may see both in one
+list. "Purpose" is derived, not a new field: "Membership fee — <covered months>" or "Visitor
+meeting fee", the only two payment kinds this app records. Approve/Reject reuse the exact existing
+`reviewPayment`/`reviewVisitorPayment` actions and components — no second approval code path.
+"Pending" means submitted-but-not-approved (Pending Approval + Clarification Requested), confirmed
+with the client; the existing member-wise grid's "No approved payment recorded" remains the only
+non-payment view, still never labelled "Unpaid".
+
+**Vendor contact details are gated server-side, not hidden client-side.** Phone, WhatsApp and
+email were removed from the member profile's HTML *and* its `LocalBusiness` JSON-LD — hiding them
+visually while leaving them in source/structured data would make the pop-up decorative. The page
+only knows *whether* contact details exist; the values come back only from `revealVendorContact` /
+`submitVendorContactRequest` (`src/app/(public)/members/[slug]/contact-actions.ts`), each of which
+writes a `VendorContactRequest` row first. The page stays statically cacheable (no `cookies()` read
+at render). Website, address and Maps link stay public (the client named phone/WhatsApp/email only).
+Accepted trade-off: search engines no longer see `telephone`/`email` in the structured data.
+
+**Remember-me stores a record id, never contact data.** After one real submission, an httpOnly
+`bwf_contact_requester` cookie (~6 months) holds that `VendorContactRequest.id` (a cuid — forging it
+means guessing one). Later clicks on any vendor reuse the stored requester details and log a new
+request flagged `reusedFromDevice`; repeat clicks on the *same* vendor within 24h collapse into one
+row. A typed-in pop-up submission is always its own row, since it may carry a new requirement.
+Rate-limited per IP (10 submissions / 40 reveals per hour) so the gate can't be scripted into a
+directory scrape.
+
+**A narrow `VendorContactRequest` model, deliberately not the removed `Lead` system.** The client
+removed the general Leads pipeline in Phase 20 as a duplicate of Visitors/Applications. This is a
+read-only record of one specific event (who asked for which member's details), viewable at
+`/admin/contact-requests` (`contact_requests:view`: Super/Central blanket, Chapter Admin scoped to
+their chapter's members) — no status workflow, no cross-source rollup.
+
+**Gating exposed a pre-existing leak, now fixed.** `/visit` and `/visit/[meetingId]` loaded full
+`Member` rows and passed them to the client-side `VisitorRegisterForm`, which serialised every
+active member's phone/WhatsApp/email into the public page payload even though the form only renders
+names. Both now `select: { id, name }`. Any future public page passing member data to a client
+component must select fields explicitly for the same reason.
 
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 

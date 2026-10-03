@@ -7,7 +7,7 @@ import { hashPassword, newPasswordSchema } from "@/lib/auth/password";
 import { requirePermission, requireRecentAuth } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 
-const ADMIN_ASSIGNABLE_ROLES = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"] as const;
+const ADMIN_ASSIGNABLE_ROLES = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN", "ACCOUNTS"] as const;
 
 const createUserSchema = z
   .object({

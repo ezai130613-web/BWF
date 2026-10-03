@@ -6,13 +6,11 @@ import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
 
 /**
- * Spec: "Only Central Admin, Super Admin or explicitly authorised Accounts
- * Team can Approve, Reject (reason required) or Request Clarification."
- * payments:approve is a blanket-only permission (granted by default to
- * Central/Super Admin, see prisma/seed.ts) — never satisfied by Chapter
- * Admin's chapter scoping, unlike payments:view. An "Accounts Team" member
- * gets this the same way any other explicit grant works in this app: Super
- * Admin assigns the permission to their role via /admin/roles.
+ * Approve, Reject (reason required) or Request Clarification. Phase 29
+ * (client decision, 2026-10-03): only Super Admin and the Accounts
+ * Department hold payments:approve by default — Central Admin no longer
+ * does (see prisma/seed.ts). It's a blanket-only permission, never satisfied
+ * by Chapter Admin's chapter scoping, unlike payments:view.
  */
 export async function reviewPayment(
   paymentId: string,
@@ -52,5 +50,6 @@ export async function reviewPayment(
 
   revalidatePath("/admin/payments");
   revalidatePath("/admin/payments/members");
+  revalidatePath("/admin/accounts");
   return { error: undefined, success: true };
 }
