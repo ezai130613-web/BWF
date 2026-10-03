@@ -20,13 +20,13 @@ export function SubmitArticleForm({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-6">
+    <form action={formAction} className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Title
         <input
           name="title"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -34,7 +34,7 @@ export function SubmitArticleForm({ categories }: { categories: Category[] }) {
         <textarea
           name="excerpt"
           rows={2}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -43,7 +43,7 @@ export function SubmitArticleForm({ categories }: { categories: Category[] }) {
           name="content"
           rows={12}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -51,7 +51,7 @@ export function SubmitArticleForm({ categories }: { categories: Category[] }) {
         <select
           name="categoryId"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         >
           <option value="">Select…</option>
           {categories.map((c) => (
@@ -69,7 +69,7 @@ export function SubmitArticleForm({ categories }: { categories: Category[] }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Submitting…" : "Submit for review"}
         </button>

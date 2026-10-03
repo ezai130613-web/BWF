@@ -24,6 +24,7 @@ const FIELD_ORDER: (keyof MemberProfileFields)[] = [
   "website",
   "address",
   "googleMapsUrl",
+  "locationLabel",
   "instagramUrl",
   "linkedinUrl",
   "facebookUrl",
@@ -56,6 +57,9 @@ export function ReviewProfileRevisionForm({
   return (
     <form action={formAction} className="flex flex-col gap-6 rounded-lg border border-amber-300 bg-amber-50/40 p-6">
       <input type="hidden" name="revisionId" value={revisionId} />
+      {/* Coordinates travel with the location label — not hand-editable here. */}
+      <input type="hidden" name="latitude" value={String(proposed.latitude ?? "")} />
+      <input type="hidden" name="longitude" value={String(proposed.longitude ?? "")} />
       <h2 className="text-sm font-semibold text-neutral-900">Pending edit request</h2>
 
       <div className="grid gap-4 sm:grid-cols-2">

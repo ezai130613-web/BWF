@@ -75,3 +75,44 @@ export async function sendEmail(input: SendEmailInput) {
 export function isEmailProviderConfigured() {
   return process.env.EMAIL_PROVIDER === "resend" && !!process.env.EMAIL_API_KEY;
 }
+
+export type BatchSendResult = { ok: true } | { ok: false; error: string };
+
+const RESEND_BATCH_LIMIT = 100;
+
+/**
+ * Many separate emails (one per recipient — nobody sees anyone else's
+ * address) in as few provider calls as possible (2026-10-03, meeting
+ * reminders). Resend's batch endpoint takes up to 100 messages per call,
+ * which also stays well inside its per-second rate limit for a whole
+ * chapter. Never throws: each input gets its own result, in order.
+ */
+export async function sendEmailBatch(inputs: Omit<SendEmailInput, "attachments">[]): Promise<BatchSendResult[]> {
+  if (!isEmailProviderConfigured()) {
+    inputs.forEach(sendViaConsole);
+    return inputs.map(() => ({ ok: true }));
+  }
+
+  const from = process.env.EMAIL_FROM_ADDRESS ?? "Builders World Forum <no-reply@bwf.example>";
+  const results: BatchSendResult[] = [];
+  for (let i = 0; i < inputs.length; i += RESEND_BATCH_LIMIT) {
+    const chunk = inputs.slice(i, i + RESEND_BATCH_LIMIT);
+    try {
+      const res = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.EMAIL_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(chunk.map((m) => ({ from, to: m.to, subject: m.subject, text: m.text }))),
+      });
+      if (!res.ok) {
+        const error = `Resend batch failed (${res.status}): ${(await res.text()).slice(0, 300)}`;
+        results.push(...chunk.map(() => ({ ok: false as const, error })));
+      } else {
+        results.push(...chunk.map(() => ({ ok: true as const })));
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Network error";
+      results.push(...chunk.map(() => ({ ok: false as const, error })));
+    }
+  }
+  return results;
+}

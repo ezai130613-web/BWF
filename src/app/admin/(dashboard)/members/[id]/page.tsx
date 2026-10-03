@@ -61,7 +61,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
       <MemberPortalAccess
         memberId={member.id}
-        linkedUser={member.user ? { email: member.user.email, status: member.user.status } : null}
+        memberStatus={member.status}
+        linkedUser={member.user ? { email: member.user.email, username: member.user.username, status: member.user.status, mustChangePassword: member.user.mustChangePassword } : null}
       />
 
       {pendingRevision ? (

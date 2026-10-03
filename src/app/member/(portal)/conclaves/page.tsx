@@ -1,6 +1,9 @@
+import { UsersRound } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { getPickerMembers } from "@/lib/members/picker";
 import { RecordConclaveForm } from "@/components/member/record-conclave-form";
+import { Card, EmptyState, PageHeader, formatShortDate } from "@/components/member/ui";
 
 export default async function MemberConclavesPage() {
   const { member } = await requireMemberProfile();
@@ -10,49 +13,50 @@ export default async function MemberConclavesPage() {
       where: {
         OR: [{ organizedByMemberId: member.id }, { participants: { some: { memberId: member.id } } }],
       },
-      include: { organizedByMember: true, participants: { include: { member: true } } },
+      include: {
+        organizedByMember: { select: { name: true } },
+        participants: { include: { member: { select: { name: true } } } },
+      },
       orderBy: { metAt: "desc" },
     }),
-    db.member.findMany({ where: { status: "ACTIVE", id: { not: member.id } }, orderBy: { name: "asc" } }),
+    getPickerMembers(member.id),
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Conclaves</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Three or more BWF members meeting together outside the regular chapter meeting.
-        </p>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold text-neutral-900">Your Conclaves ({conclaves.length})</h2>
-        <div className="mt-3 flex flex-col gap-3">
-          {conclaves.map((c) => {
-            const allMembers = [c.organizedByMember, ...c.participants.map((p) => p.member)];
-            return (
-              <div key={c.id} className="rounded-lg border border-neutral-200 bg-white p-4">
-                <p className="text-sm text-neutral-900">
-                  {allMembers.map((m) => m.name).join(", ")}
-                </p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {c.metAt.toLocaleDateString()}
-                  {c.location ? ` · ${c.location}` : ""}
-                  {c.organizedByMemberId === member.id ? " · Organized by you" : ""}
-                </p>
-                {c.notes ? <p className="mt-2 text-sm text-neutral-600">{c.notes}</p> : null}
-              </div>
-            );
-          })}
-          {conclaves.length === 0 ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-400">
-              No Conclaves recorded yet.
-            </div>
-          ) : null}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={UsersRound}
+        title="Conclaves"
+        description="Three or more BWF members meeting together outside the regular chapter meeting."
+      />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <RecordConclaveForm members={members} />
+        </div>
+        <div className="xl:col-span-2">
+          <Card title={`Your Conclaves (${conclaves.length})`}>
+            {conclaves.length === 0 ? (
+              <EmptyState message="No Conclaves recorded yet." />
+            ) : (
+              <ul className="flex flex-col divide-y divide-neutral-100">
+                {conclaves.map((c) => (
+                  <li key={c.id} className="py-3 first:pt-0 last:pb-0">
+                    <p className="text-sm font-medium text-neutral-900">
+                      {[c.organizedByMember, ...c.participants.map((p) => p.member)].map((m) => m.name).join(", ")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      {formatShortDate(c.metAt)}
+                      {c.location ? ` · ${c.location}` : ""}
+                      {c.organizedByMemberId === member.id ? " · Organised by you" : ""}
+                    </p>
+                    {c.notes ? <p className="mt-1 text-sm text-neutral-600">{c.notes}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
       </div>
-
-      <RecordConclaveForm members={members} />
     </div>
   );
 }

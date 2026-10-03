@@ -9,6 +9,8 @@ declare module "next-auth" {
       chapterId: string | null;
       /** Unix ms timestamp the current JWT was issued — used for step-up re-auth checks. */
       authTime: number;
+      /** Member still on bulk-issued temporary credentials — must finish /member/activate first. */
+      mustActivate: boolean;
     }) | undefined;
   }
 }
@@ -21,5 +23,8 @@ declare module "next-auth/jwt" {
     sessionVersion?: number;
     issuedAt?: number;
     revoked?: boolean;
+    longLived?: boolean;
+    lastSeenAt?: number;
+    mustActivate?: boolean;
   }
 }

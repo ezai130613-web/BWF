@@ -40,6 +40,12 @@ export const memberProfileFieldsSchema = z.object({
   videoUrl: optionalText(),
   photos: optionalText(),
   videos: optionalText(),
+  // 2026-10-03 — coordinates from a Google Places selection (hidden inputs
+  // set by LocationPickerField). Blank = leave unchanged, same as the text
+  // fields above.
+  locationLabel: optionalText(),
+  latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
+  longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
 });
 
 export type MemberProfileFields = z.infer<typeof memberProfileFieldsSchema>;
@@ -70,6 +76,9 @@ export const MEMBER_PROFILE_FIELD_LABELS: Record<keyof MemberProfileFields, stri
   videoUrl: "Video URL",
   photos: "Photo gallery",
   videos: "Video gallery",
+  locationLabel: "Business location",
+  latitude: "Latitude",
+  longitude: "Longitude",
 };
 
 /** Parses a JSON-encoded GalleryEntry[] string (from a hidden form input, same technique as Blog.faq) into the array Prisma's Json column expects, dropping any entry with a blank url. Returns undefined for an empty/blank input so an untouched gallery field doesn't wipe existing data. */
@@ -86,6 +95,8 @@ export function normalizeMemberProfileFields(data: MemberProfileFields) {
     ...data,
     email: data.email || undefined,
     yearsInBusiness: data.yearsInBusiness === "" ? undefined : data.yearsInBusiness,
+    latitude: data.latitude === "" ? undefined : data.latitude,
+    longitude: data.longitude === "" ? undefined : data.longitude,
     photos: parseGalleryEntries(data.photos),
     videos: parseGalleryEntries(data.videos),
   };

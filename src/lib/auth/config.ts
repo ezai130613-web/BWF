@@ -4,15 +4,23 @@ import { db } from "@/lib/db";
 import { authorizeLogin } from "@/lib/auth/login";
 import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS } from "@/lib/auth/constants";
 
+/** Standard session: expires after 8 hours without activity (the original
+ * baseline, brief §55/§56). Every admin session is standard. */
+const STANDARD_IDLE_MS = 8 * 60 * 60 * 1000;
+/** Member "Keep me signed in on this device" (2026-10-03): 30 days without
+ * activity. Not infinite — still revocable at any time through
+ * sessionVersion ("Sign out of all devices", suspension, password change). */
+const LONG_LIVED_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
-    // Baseline per brief §55/§56 — shared by both the admin and member
-    // (Phase 11) login surfaces. Admins don't get a shorter session than
-    // members here; Super Admin's extra protection is the separate
-    // requireRecentAuth() step-up check for specific high-risk actions, not
-    // a shorter blanket session.
-    maxAge: 8 * 60 * 60,
+    // The cookie/JWT ceiling is the long-lived member session; the jwt()
+    // callback below enforces the shorter 8-hour idle limit on every
+    // standard (all admin, and non-"keep me signed in" member) session.
+    // Super Admin's extra protection is still the separate
+    // requireRecentAuth() step-up check for high-risk actions.
+    maxAge: LONG_LIVED_MAX_AGE_SECONDS,
   },
   pages: {
     signIn: "/admin/login",
@@ -33,11 +41,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "member-login",
       name: "Member login",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
+        remember: { label: "Keep me signed in", type: "text" },
       },
       async authorize(credentials) {
-        return authorizeLogin(credentials?.email, credentials?.password, MEMBER_ROLE_KEYS);
+        return authorizeLogin(credentials?.email, credentials?.password, MEMBER_ROLE_KEYS, {
+          allowUsername: true,
+          longLived: credentials?.remember === "true",
+        });
       },
     }),
   ],
@@ -49,7 +61,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.roles = (user as { roles: string[] }).roles;
         token.chapterId = (user as { chapterId: string | null }).chapterId;
         token.sessionVersion = (user as { sessionVersion: number }).sessionVersion;
+        token.longLived = (user as { longLived?: boolean }).longLived ?? false;
         token.issuedAt = Date.now();
+        token.lastSeenAt = Date.now();
         return token;
       }
 
@@ -77,7 +91,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!dbUser || dbUser.status !== "ACTIVE" || dbUser.sessionVersion !== token.sessionVersion) {
           token.revoked = true;
         }
+        // Read fresh every request (not frozen at sign-in) so finishing
+        // /member/activate releases the portal immediately.
+        token.mustActivate = Boolean(dbUser?.mustChangePassword);
       }
+
+      // Idle timeout for standard sessions. Tokens issued before this field
+      // existed have no lastSeenAt — start the clock now rather than
+      // treating them as expired.
+      const now = Date.now();
+      const lastSeenAt = typeof token.lastSeenAt === "number" ? token.lastSeenAt : now;
+      if (!token.longLived && now - lastSeenAt > STANDARD_IDLE_MS) token.revoked = true;
+      token.lastSeenAt = now;
 
       return token;
     },
@@ -93,6 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.roles = (token.roles as string[]) ?? [];
         session.user.chapterId = (token.chapterId as string | null | undefined) ?? null;
         session.user.authTime = (token.issuedAt as number) ?? 0;
+        session.user.mustActivate = Boolean(token.mustActivate);
       }
 
       return session;

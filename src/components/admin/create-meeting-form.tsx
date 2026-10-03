@@ -60,7 +60,7 @@ export function CreateMeetingForm({
         </select>
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Date &amp; time
+        Date &amp; time (IST)
         <input
           name="startsAt"
           type="datetime-local"
@@ -137,6 +137,11 @@ export function CreateMeetingForm({
           rows={3}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
+      </label>
+      <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 sm:col-span-2">
+        <input type="checkbox" name="reminderEnabled" defaultChecked className="h-4 w-4" />
+        Send member reminder 2 days before meeting
+        <span className="font-normal text-neutral-500">— emails this chapter&rsquo;s members who have an email address</span>
       </label>
 
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}

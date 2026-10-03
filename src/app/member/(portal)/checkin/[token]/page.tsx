@@ -45,7 +45,7 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-neutral-500">Name</dt>

@@ -14,10 +14,14 @@ export function LoginForm({
   providerId,
   defaultRedirectTo,
   forgotPasswordUrl,
+  memberVariant = false,
 }: {
   providerId: string;
   defaultRedirectTo: string;
   forgotPasswordUrl: string;
+  /** Member portal (2026-10-03): accepts a temporary username as well as an
+   * email, offers "Keep me signed in", and uses the green portal styling. */
+  memberVariant?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,6 +29,7 @@ export function LoginForm({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -37,6 +42,7 @@ export function LoginForm({
       const result = await signIn(providerId, {
         email,
         password,
+        ...(memberVariant ? { remember: remember ? "true" : "false" } : {}),
         redirect: false,
       });
 
@@ -44,7 +50,9 @@ export function LoginForm({
         setError(
           result.code === "account-locked"
             ? "Too many failed attempts. Try again later."
-            : "Invalid email or password.",
+            : memberVariant
+              ? "Invalid username/email or password."
+              : "Invalid email or password.",
         );
         return;
       }
@@ -58,17 +66,23 @@ export function LoginForm({
     }
   }
 
+  const inputClass = memberVariant
+    ? "rounded-lg border border-neutral-300 px-3.5 py-2.5 text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+    : "rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-neutral-900 focus:outline-none";
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Email
+        {memberVariant ? "Email or username" : "Email"}
         <input
-          type="email"
-          autoComplete="email"
+          type={memberVariant ? "text" : "email"}
+          autoComplete={memberVariant ? "username" : "email"}
+          autoCapitalize="none"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          placeholder={memberVariant ? "you@company.com or BWF001" : undefined}
+          className={inputClass}
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -79,14 +93,29 @@ export function LoginForm({
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className={inputClass}
         />
       </label>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {memberVariant ? (
+        <label className="flex items-center gap-2 text-sm text-neutral-700">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="h-4 w-4 rounded border-neutral-300 accent-emerald-800"
+          />
+          Keep me signed in on this device
+        </label>
+      ) : null}
+      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        className={
+          memberVariant
+            ? "rounded-lg bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+            : "rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        }
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

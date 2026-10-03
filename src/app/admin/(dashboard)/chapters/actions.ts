@@ -52,6 +52,16 @@ const updateSchema = z.object({
   meetingVenue: z.string().optional(),
   meetingAddress: z.string().optional(),
   googleMapsUrl: z.string().optional(),
+  meetingWeekday: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : Number(v)))
+    .refine((v) => v === null || (Number.isInteger(v) && v >= 0 && v <= 6), "Pick a valid meeting day"),
+  meetingTime: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || null)
+    .refine((v) => v === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Meeting time must be HH:MM"),
 });
 
 export async function updateChapter(_prevState: { error?: string } | undefined, formData: FormData) {
@@ -61,8 +71,12 @@ export async function updateChapter(_prevState: { error?: string } | undefined, 
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
   const { chapterId, ...data } = parsed.data;
+  // Checkbox group — Object.fromEntries above would keep only the last one.
+  const meetingWeeksOfMonth = [...new Set(formData.getAll("meetingWeeksOfMonth").map(Number))]
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 5)
+    .sort((a, b) => a - b);
 
-  await db.chapter.update({ where: { id: chapterId }, data });
+  await db.chapter.update({ where: { id: chapterId }, data: { ...data, meetingWeeksOfMonth } });
 
   await logActivity({
     userId: session.user.id,

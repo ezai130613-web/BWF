@@ -4,13 +4,10 @@ import { useActionState, useState } from "react";
 import { updateMeeting } from "@/app/admin/(dashboard)/meetings/actions";
 import { QuickAddChiefGuestForm } from "@/components/admin/quick-add-chief-guest-form";
 import type { Meeting } from "@/generated/prisma/client";
+import { toIstDateTimeLocal } from "@/lib/ist";
 
 const initialState: { error?: string } = {};
 
-function toLocalInputValue(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 export function EditMeetingForm({
   meeting,
@@ -57,11 +54,11 @@ export function EditMeetingForm({
         </select>
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Date &amp; time
+        Date &amp; time (IST)
         <input
           name="startsAt"
           type="datetime-local"
-          defaultValue={toLocalInputValue(meeting.startsAt)}
+          defaultValue={toIstDateTimeLocal(meeting.startsAt)}
           required
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
@@ -143,6 +140,11 @@ export function EditMeetingForm({
       <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 sm:col-span-2">
         <input type="checkbox" name="visitorRegistrationEnabled" defaultChecked={meeting.visitorRegistrationEnabled} className="h-4 w-4" />
         Allow online visitor registration for this meeting
+      </label>
+      <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 sm:col-span-2">
+        <input type="checkbox" name="reminderEnabled" defaultChecked={meeting.reminderEnabled} className="h-4 w-4" />
+        Send member reminder 2 days before meeting
+        <span className="font-normal text-neutral-500">— emails this chapter&rsquo;s members who have an email address</span>
       </label>
 
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}

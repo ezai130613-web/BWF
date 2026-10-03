@@ -38,12 +38,22 @@ const STEP_LABELS: Record<StepNumber, string> = {
   7: "Download PDF",
 };
 
-function snapshotFor(chiefGuestIds: string[], openCategoryIds: string[], notesEnabled: boolean, members: { id: string; score: number }[]) {
+type OrderMode = "AUTO" | "MANUAL";
+
+function snapshotFor(
+  chiefGuestIds: string[],
+  openCategoryIds: string[],
+  notesEnabled: boolean,
+  orderMode: OrderMode,
+  members: { id: string; score: number }[],
+) {
   return JSON.stringify({
     chiefGuestIds: [...chiefGuestIds].sort(),
     openCategoryIds: [...openCategoryIds].sort(),
     notesEnabled,
-    members: members.map((m) => `${m.id}:${m.score}`).sort(),
+    orderMode,
+    // Order-sensitive only in manual mode — in auto mode Save re-ranks anyway.
+    members: orderMode === "MANUAL" ? members.map((m) => `${m.id}:${m.score}`) : members.map((m) => `${m.id}:${m.score}`).sort(),
   });
 }
 
@@ -60,19 +70,20 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
   const [members, setMembers] = useState<RosterWizardMember[]>(data.allOtherMembers);
   const [openCategoryIds, setOpenCategoryIds] = useState<string[]>(data.selectedOpenCategoryIds);
   const [notesEnabled, setNotesEnabled] = useState(data.notesEnabled);
+  const [orderMode, setOrderMode] = useState<OrderMode>(data.orderMode);
 
   const [isSaved, setIsSaved] = useState(data.isSaved);
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
-    snapshotFor(data.selectedChiefGuestIds, data.selectedOpenCategoryIds, data.notesEnabled, data.allOtherMembers),
+    snapshotFor(data.selectedChiefGuestIds, data.selectedOpenCategoryIds, data.notesEnabled, data.orderMode, data.allOtherMembers),
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
 
-  const currentSnapshot = snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, members);
+  const currentSnapshot = snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, members);
   const dirty = currentSnapshot !== savedSnapshot;
   const canDownload = isSaved && !dirty;
 
-  const preview = useMemo(() => rankedByScore(members), [members]);
+  const preview = useMemo(() => (orderMode === "AUTO" ? rankedByScore(members) : members), [members, orderMode]);
 
   function toggleChiefGuest(id: string) {
     setChiefGuestIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -87,6 +98,30 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
     setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, score } : m)));
   }
 
+  /** Any hand re-ordering is a manual override — kept as-is on Save. */
+  function moveMember(memberId: string, toIndex: number) {
+    setMembers((prev) => {
+      const from = prev.findIndex((m) => m.id === memberId);
+      const target = Math.min(Math.max(0, toIndex), prev.length - 1);
+      if (from === -1 || from === target) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(target, 0, moved);
+      return next;
+    });
+    setOrderMode("MANUAL");
+  }
+
+  function refreshFromPoints() {
+    setMembers((prev) => prev.map((m) => ({ ...m, score: m.systemPoints })));
+  }
+
+  /** Back to the auto-generated ranking: sort by score now and on every Save. */
+  function useAutoRanking() {
+    setMembers((prev) => rankedByScore(prev));
+    setOrderMode("AUTO");
+  }
+
   function handleSave() {
     setError(undefined);
     startTransition(async () => {
@@ -95,16 +130,17 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
         chiefGuestIds,
         openCategoryIds,
         notesEnabled,
+        orderMode,
         members: members.map((m) => ({ memberId: m.id, score: m.score })),
       });
       if (result.error) {
         setError(result.error);
         return;
       }
-      const ranked = rankedByScore(members);
-      setMembers(ranked);
+      const saved = orderMode === "AUTO" ? rankedByScore(members) : members;
+      setMembers(saved);
       setIsSaved(true);
-      setSavedSnapshot(snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, ranked));
+      setSavedSnapshot(snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, saved));
     });
   }
 
@@ -143,6 +179,10 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
           onToggleChiefGuest={toggleChiefGuest}
           members={members}
           onScoreChange={updateScore}
+          orderMode={orderMode}
+          onMove={moveMember}
+          onRefreshFromPoints={refreshFromPoints}
+          onUseAutoRanking={useAutoRanking}
         />
       ) : null}
 
@@ -160,6 +200,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
           meetingDate={meetingDate}
           chiefGuestIds={chiefGuestIds}
           rankedMembers={preview}
+          orderMode={orderMode}
           openCategoryIds={openCategoryIds}
           notesEnabled={notesEnabled}
         />
@@ -199,6 +240,14 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function OrderModeBadge({ mode }: { mode: OrderMode }) {
+  return mode === "AUTO" ? (
+    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Auto-generated ranking</span>
+  ) : (
+    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Manual override</span>
   );
 }
 
@@ -249,13 +298,22 @@ function ManageMembersStep({
   onToggleChiefGuest,
   members,
   onScoreChange,
+  orderMode,
+  onMove,
+  onRefreshFromPoints,
+  onUseAutoRanking,
 }: {
   data: RosterWizardData;
   chiefGuestIds: string[];
   onToggleChiefGuest: (id: string) => void;
   members: RosterWizardMember[];
   onScoreChange: (memberId: string, value: string) => void;
+  orderMode: OrderMode;
+  onMove: (memberId: string, toIndex: number) => void;
+  onRefreshFromPoints: () => void;
+  onUseAutoRanking: () => void;
 }) {
+  const editedCount = members.filter((m) => m.score !== m.systemPoints).length;
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -286,10 +344,31 @@ function ManageMembersStep({
       <RoleCards title="4. Coordinators" entries={data.coordinators} />
 
       <div>
-        <h3 className="text-sm font-semibold text-neutral-900">5. All Other Members</h3>
-        <p className="mt-1 text-xs text-neutral-500">
-          Edit scores, not serial numbers — ranking recalculates automatically when you Save Roster.
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-sm font-semibold text-neutral-900">5. All Other Members</h3>
+          <OrderModeBadge mode={orderMode} />
+        </div>
+        <p className="mt-1 max-w-3xl text-xs text-neutral-500">
+          {orderMode === "AUTO"
+            ? "Auto-generated ranking: scores start from each member's overall points and the order is re-ranked by score (highest first) when you Save Roster. Moving a member or changing a serial number switches to a manual override."
+            : "Manual override: the order below is kept exactly as you arranged it when you Save Roster — scores no longer re-rank it. Switch back to auto ranking at any time."}
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onRefreshFromPoints}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+          >
+            Reset all scores to overall points{editedCount ? ` (${editedCount} edited)` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={onUseAutoRanking}
+            className="rounded-md border border-emerald-700 px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50"
+          >
+            {orderMode === "AUTO" ? "Re-rank by score now" : "Return to auto ranking"}
+          </button>
+        </div>
         <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
@@ -298,13 +377,54 @@ function ManageMembersStep({
                 <th className="px-3 py-2 font-medium">Member Details</th>
                 <th className="px-3 py-2 font-medium">Category</th>
                 <th className="px-3 py-2 font-medium">Give &amp; Ask</th>
+                <th className="px-3 py-2 font-medium">Overall points</th>
                 <th className="px-3 py-2 font-medium">Score</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {members.map((m, i) => (
                 <tr key={m.id}>
-                  <td className="px-3 py-2 align-top text-neutral-500">{i + 1}</td>
+                  <td className="px-3 py-2 align-top text-neutral-500">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={members.length}
+                        aria-label={`Serial number for ${m.name}`}
+                        defaultValue={i + 1}
+                        key={`${m.id}-${i}`}
+                        onBlur={(e) => {
+                          const n = Math.trunc(Number(e.target.value));
+                          if (Number.isFinite(n) && n >= 1 && n - 1 !== i) onMove(m.id, n - 1);
+                          else e.target.value = String(i + 1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        }}
+                        className="w-14 rounded-md border border-neutral-300 px-1.5 py-1 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                      />
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          aria-label={`Move ${m.name} up`}
+                          disabled={i === 0}
+                          onClick={() => onMove(m.id, i - 1)}
+                          className="px-1 text-xs leading-none text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Move ${m.name} down`}
+                          disabled={i === members.length - 1}
+                          onClick={() => onMove(m.id, i + 1)}
+                          className="px-1 text-xs leading-none text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 align-top">
                     <MemberDetails m={m} />
                   </td>
@@ -312,20 +432,24 @@ function ManageMembersStep({
                   <td className="px-3 py-2 align-top text-neutral-400">
                     <span className="inline-block h-8 w-28 rounded border border-dashed border-neutral-300" aria-hidden />
                   </td>
+                  <td className="px-3 py-2 align-top text-neutral-600">{m.systemPoints}</td>
                   <td className="px-3 py-2 align-top">
                     <input
                       type="number"
                       min={0}
                       value={m.score}
                       onChange={(e) => onScoreChange(m.id, e.target.value)}
-                      className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                      className={`w-20 rounded-md border px-2 py-1 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none ${
+                        m.score !== m.systemPoints ? "border-amber-400 bg-amber-50" : "border-neutral-300"
+                      }`}
                     />
+                    {m.score !== m.systemPoints ? <p className="mt-0.5 text-[11px] text-amber-700">Edited</p> : null}
                   </td>
                 </tr>
               ))}
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-neutral-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-sm text-neutral-500">
                     No other active members in this chapter yet.
                   </td>
                 </tr>
@@ -417,6 +541,7 @@ function ReviewStep({
   meetingDate,
   chiefGuestIds,
   rankedMembers,
+  orderMode,
   openCategoryIds,
   notesEnabled,
 }: {
@@ -426,6 +551,7 @@ function ReviewStep({
   meetingDate: string;
   chiefGuestIds: string[];
   rankedMembers: RosterWizardMember[];
+  orderMode: OrderMode;
   openCategoryIds: string[];
   notesEnabled: boolean;
 }) {
@@ -450,7 +576,10 @@ function ReviewStep({
       <RoleCards title="Coordinators" entries={data.coordinators} />
 
       <div>
-        <h3 className="text-sm font-semibold text-neutral-900">All Other Members — ranked</h3>
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-sm font-semibold text-neutral-900">All Other Members — {orderMode === "AUTO" ? "ranked by score" : "manual order"}</h3>
+          <OrderModeBadge mode={orderMode} />
+        </div>
         <p className="mt-1 text-xs text-neutral-500">This is the order Save Roster will persist and the PDF will print.</p>
         <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 bg-white">
           <table className="w-full text-left text-sm">

@@ -115,7 +115,8 @@ async function ProfileHistory({
   const [attendances, convertedMember, members] = await Promise.all([
     db.visitorAttendance.findMany({
       where,
-      include: { meeting: true, chapter: true, invitingMember: { select: { name: true } }, payment: true },
+      // No payment details here — payments are Accounts-only (2026-10-03).
+      include: { meeting: true, chapter: true, invitingMember: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     profile.convertedMemberId
@@ -170,7 +171,6 @@ async function ProfileHistory({
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Attendance</th>
               <th className="px-4 py-3 font-medium">Inviter / Source</th>
-              <th className="px-4 py-3 font-medium">Payment</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
@@ -183,12 +183,11 @@ async function ProfileHistory({
                 <td className="px-4 py-3 text-neutral-600">
                   {a.source === "INVITED_BY_MEMBER" ? a.invitingMember?.name ?? "—" : SOURCE_LABELS[a.source]}
                 </td>
-                <td className="px-4 py-3 text-neutral-600">{a.payment ? `₹${a.payment.amountInr} — ${a.payment.status}` : "—"}</td>
               </tr>
             ))}
             {attendances.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-neutral-400">
                   No visits recorded.
                 </td>
               </tr>

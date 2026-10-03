@@ -1,72 +1,106 @@
 /**
- * Meeting Invitation Generator (client spec, 2026-09-18) — the single shared
- * drawing routine used for both the live preview canvas and the downloaded
- * PNG (spec §6: "use the same rendering source for preview and export
- * wherever practical"). Pure canvas drawing code, no DOM/React dependencies,
- * so it can run identically against a visible preview canvas or an
- * off-screen one.
+ * Meeting Invitation Generator — the single shared drawing routine used for
+ * both the live preview canvas and the downloaded PNG (spec §6: "use the
+ * same rendering source for preview and export"). Pure canvas code, no
+ * DOM/React dependencies.
  *
- * Brand: premium green (client correction, 2026-09-18 — not the brief's
- * original blue), matching the existing admin's emerald/gold palette
- * (src/components/admin/sidebar.tsx).
+ * Layout (2026-10-03): a faithful recreation of the client's own reference
+ * invitation ("Chennai Chapter-2 Meeting Invitation"), which is now the
+ * pattern for every invite — light faceted background, centred logo +
+ * wordmark + script tagline, a rounded green panel over a blurred photo
+ * with the eyebrow line, mixed-weight headline and a lime "Chief Guests"
+ * pill, up to three chief-guest cards overlapping the panel's lower edge,
+ * the "What's in it for you?" row, a white details card (date/time/venue
+ * with icons, website, QR + caption), the phone row with a "Call for
+ * Registration" pill, and the lime registration-fee bar.
  *
- * Layout (2026-09-18 revision): restyled after a reference poster the client
- * supplied from another networking forum — dramatic centered headline,
- * plain descriptive paragraph, an icon-labeled detail row (time/fee/venue/
- * date, each in a circular gold badge) instead of stacked plain text, and a
- * decorative tagline plaque, all on the same dark/gold premium palette. No
- * background photo (the client's own instruction — the chief guest photo
- * fills that role instead) and no data fields were added: every element
- * below maps onto the exact same InvitationPosterData shape as before.
+ * Everything is laid out in the reference's own 900×1600 coordinate space
+ * and scaled up for export, so positions can be read straight off it.
  */
 
-export const POSTER_WIDTH = 1600;
-export const POSTER_HEIGHT = 2000;
+const DESIGN_WIDTH = 900;
+const DESIGN_HEIGHT = 1600;
+const SCALE = 1.5;
+export const POSTER_WIDTH = DESIGN_WIDTH * SCALE;
+export const POSTER_HEIGHT = DESIGN_HEIGHT * SCALE;
+
+export const MAX_INVITATION_GUESTS = 3;
+
+export interface InvitationGuest {
+  name: string;
+  designation: string;
+  organisation: string;
+  /** Small line under the organisation, e.g. "Builders & Contractors". */
+  organisationNote: string;
+  photoUrl: string;
+}
 
 export interface InvitationPosterData {
-  headingLine1: string;
-  headingLine2: string;
-  chapterLabel: string;
-  guestName: string;
-  guestDesignation: string;
-  guestOrganisation: string;
+  eyebrow: string;
+  headline: string;
+  guests: InvitationGuest[];
   whyAttendText: string;
   dateLabel: string;
   timeLabel: string;
   venueLabel: string;
   addressLabel: string;
+  websiteLabel: string;
+  contactPhones: string;
+  ctaText: string;
   feeLabel: string;
+  feeNote: string;
   isComplimentary: boolean;
   includeQr: boolean;
+  qrCaption: string;
 }
 
 export interface InvitationPosterImages {
-  guestPhoto: HTMLImageElement | null;
+  /** Same order/length as data.guests; null where a guest has no photo. */
+  guestPhotos: (HTMLImageElement | null)[];
   qrCode: HTMLImageElement | null;
   logo: HTMLImageElement | null;
+  background: HTMLImageElement | null;
 }
 
 export interface InvitationPosterFonts {
-  display: string;
   sans: string;
+  script: string;
 }
 
-// Same design tokens as src/app/globals.css's `@theme` block (the ones the
-// rest of /admin already renders with via bg-emerald-900/text-gold-300
-// Tailwind utilities) — kept as literal hex here since canvas fillStyle
-// can't read CSS custom properties.
-const EMERALD_950 = "#03110c";
-const EMERALD_900 = "#0a2118";
-const GOLD_300 = "#e4cd9c";
-const GOLD_400 = "#d8b879";
-const GOLD_500 = "#c9a063";
-const IVORY_100 = "#f4eee1";
+// Reference palette — BWF green family.
+const GREEN = "#1f9d48";
+const GREEN_TEXT = "#1a9440";
+const GREEN_DEEP = "#127a35";
+const LIME = "#8cc63f";
+const LIME_SOFT = "#d6edb4";
+const INK = "#1d1d1d";
+const INK_SOFT = "#3a3a3a";
+const WHITE = "#ffffff";
+const PAGE_BG = "#ededed";
+
+// Headline words drawn in regular weight (the reference's "FOR" / "AND").
+const CONNECTOR_WORDS = new Set(["FOR", "AND", "OF", "THE", "WITH", "TO", "IN", "AT", "ON", "&", "A", "AN", "BY"]);
+
+function font(fonts: InvitationPosterFonts, weight: number, size: number) {
+  return `${weight} ${size}px ${fonts.sans}`;
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+function fillRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, color: string) {
+  ctx.fillStyle = color;
+  roundRectPath(ctx, x, y, w, h, r);
+  ctx.fill();
+}
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
-
   for (const word of words) {
     const attempt = current ? `${current} ${word}` : word;
     if (ctx.measureText(attempt).width > maxWidth && current) {
@@ -80,144 +114,350 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
-/** Draws text centered on centerX and returns the y just below the last line. */
-function drawWrappedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  centerX: number,
-  startY: number,
-  maxWidth: number,
-  lineHeight: number,
-): number {
-  const lines = wrapText(ctx, text, maxWidth);
-  lines.forEach((line, i) => ctx.fillText(line, centerX, startY + i * lineHeight));
-  return startY + lines.length * lineHeight;
-}
-
-function drawCircularImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, radius: number) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-
-  const size = Math.min(img.naturalWidth, img.naturalHeight);
-  const sx = (img.naturalWidth - size) / 2;
-  const sy = (img.naturalHeight - size) / 2;
-  ctx.drawImage(img, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
-  ctx.restore();
-}
-
-function fillRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
-  ctx.beginPath();
-  if (typeof ctx.roundRect === "function") {
-    ctx.roundRect(x, y, width, height, radius);
-  } else {
-    ctx.rect(x, y, width, height);
+/** Shrinks the font until `text` fits `maxWidth`; returns the size used. */
+function fitFont(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, text: string, weight: number, size: number, maxWidth: number, min = 9) {
+  let s = size;
+  ctx.font = font(fonts, weight, s);
+  while (s > min && ctx.measureText(text).width > maxWidth) {
+    s -= 0.5;
+    ctx.font = font(fonts, weight, s);
   }
-  ctx.fill();
+  return s;
 }
 
-/** Small ornamental line-with-diamond divider, matching the reference poster's headline flourish. */
-function drawFlourishDivider(ctx: CanvasRenderingContext2D, cx: number, y: number, width = 220) {
-  ctx.strokeStyle = GOLD_500;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - width / 2, y);
-  ctx.lineTo(cx - 14, y);
-  ctx.moveTo(cx + 14, y);
-  ctx.lineTo(cx + width / 2, y);
-  ctx.stroke();
+function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) t = t.slice(0, -1);
+  return `${t.trimEnd()}…`;
+}
 
+/** Draws an image covering the box (centre-cropped, biased towards the top for portraits). */
+function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, focusY = 0.5) {
+  const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+  const sw = w / scale;
+  const sh = h / scale;
+  const sx = (img.naturalWidth - sw) / 2;
+  const sy = (img.naturalHeight - sh) * focusY;
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+// ---------------------------------------------------------------------------
+// Background
+// ---------------------------------------------------------------------------
+
+function drawPageBackground(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = PAGE_BG;
+  ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+
+  // Soft faceted geometry, as in the reference — large translucent planes.
+  const facets: [number, number][][] = [
+    [[0, 0], [380, 0], [0, 300]],
+    [[520, 0], [900, 0], [900, 260]],
+    [[900, 380], [620, 620], [900, 860]],
+    [[0, 560], [260, 820], [0, 1040]],
+    [[0, 1180], [340, 1600], [0, 1600]],
+    [[900, 1120], [560, 1600], [900, 1600]],
+    [[260, 0], [620, 0], [450, 180]],
+  ];
+  const tones = ["rgba(255,255,255,0.55)", "rgba(255,255,255,0.45)", "rgba(210,210,210,0.35)", "rgba(255,255,255,0.4)", "rgba(220,220,220,0.4)", "rgba(255,255,255,0.5)", "rgba(230,230,230,0.35)"];
+  facets.forEach((pts, i) => {
+    ctx.fillStyle = tones[i % tones.length];
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (const [px, py] of pts.slice(1)) ctx.lineTo(px, py);
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Brand block
+// ---------------------------------------------------------------------------
+
+function drawBrand(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, logo: HTMLImageElement | null) {
+  const cx = DESIGN_WIDTH / 2;
+  if (logo) ctx.drawImage(logo, cx - 62, 56, 124, 124);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  const word = "BUILDERS WORLD FORUM";
+  ctx.font = font(fonts, 700, 25);
+  if ("letterSpacing" in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "0.5px";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = GREEN_DEEP;
+  ctx.strokeText(word, cx, 199);
+  ctx.fillStyle = "#3fb64a";
+  ctx.fillText(word, cx, 199);
+  if ("letterSpacing" in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "0px";
+
+  ctx.font = `700 16px ${fonts.script}`;
+  ctx.fillStyle = INK;
+  ctx.fillText("Exclusive Forum for Construction Industry", cx, 221);
+}
+
+// ---------------------------------------------------------------------------
+// Green panel
+// ---------------------------------------------------------------------------
+
+const PANEL = { x: 58, y: 260, w: 784, h: 570, r: 30 };
+
+function drawPanel(ctx: CanvasRenderingContext2D, background: HTMLImageElement | null) {
   ctx.save();
-  ctx.translate(cx, y);
-  ctx.rotate(Math.PI / 4);
-  ctx.fillStyle = GOLD_500;
-  ctx.fillRect(-6, -6, 12, 12);
+  roundRectPath(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r);
+  ctx.clip();
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+
+  if (background && typeof document !== "undefined") {
+    // Cheap, portable blur: draw tiny, then scale back up with smoothing
+    // (ctx.filter isn't supported in every browser the admins use).
+    const small = document.createElement("canvas");
+    small.width = 72;
+    small.height = Math.round((72 * PANEL.h) / PANEL.w);
+    const sctx = small.getContext("2d");
+    if (sctx) {
+      drawCover(sctx, background, 0, 0, small.width, small.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(small, PANEL.x - 10, PANEL.y - 10, PANEL.w + 20, PANEL.h + 20);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const overlay = ctx.createLinearGradient(0, PANEL.y, 0, PANEL.y + PANEL.h);
+  overlay.addColorStop(0, "rgba(34,160,72,0.84)");
+  overlay.addColorStop(0.55, "rgba(38,165,74,0.70)");
+  overlay.addColorStop(1, "rgba(30,150,66,0.80)");
+  ctx.fillStyle = overlay;
+  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
   ctx.restore();
 }
 
-// ---- Detail-row icons — hand-drawn vector glyphs (not emoji) so they render
-// as consistent gold line-art across every browser, matching the reference
-// poster's monochrome icon style. ----
+/** Headline with connector words in regular weight, other words bold, wrapped and centred. */
+function drawHeadline(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, text: string, top: number, maxWidth: number) {
+  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+  let size = 40;
+  let lines: string[][] = [];
+  const widthOf = (w: string) => {
+    ctx.font = font(fonts, CONNECTOR_WORDS.has(w) ? 500 : 700, size);
+    return ctx.measureText(w).width;
+  };
+  const space = () => size * 0.28;
 
-function drawClockIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.62, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx, cy - r * 0.34);
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + r * 0.28, cy - r * 0.06);
-  ctx.stroke();
+  // Shrink until it fits in 3 lines.
+  for (; size >= 26; size -= 1) {
+    lines = [];
+    let line: string[] = [];
+    let lineWidth = 0;
+    for (const w of words) {
+      const ww = widthOf(w);
+      const next = line.length ? lineWidth + space() + ww : ww;
+      if (next > maxWidth && line.length) {
+        lines.push(line);
+        line = [w];
+        lineWidth = ww;
+      } else {
+        line.push(w);
+        lineWidth = next;
+      }
+    }
+    if (line.length) lines.push(line);
+    if (lines.length <= 3) break;
+  }
+
+  const lineHeight = size * 1.15;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = WHITE;
+  lines.forEach((line, i) => {
+    const total = line.reduce((sum, w, j) => sum + widthOf(w) + (j ? space() : 0), 0);
+    let x = DESIGN_WIDTH / 2 - total / 2;
+    const y = top + size + i * lineHeight;
+    ctx.textAlign = "left";
+    for (const w of line) {
+      ctx.font = font(fonts, CONNECTOR_WORDS.has(w) ? 500 : 700, size);
+      ctx.fillText(w, x, y);
+      x += ctx.measureText(w).width + space();
+    }
+  });
+  return top + size + (lines.length - 1) * lineHeight;
 }
 
-function drawRupeeIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, sansFont: string) {
-  ctx.save();
-  ctx.font = `700 ${Math.round(r * 1.05)}px ${sansFont}`;
+function drawPill(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, text: string, cx: number, cy: number) {
+  ctx.font = font(fonts, 600, 22);
+  const w = ctx.measureText(text).width + 44;
+  fillRoundRect(ctx, cx - w / 2, cy - 23, w, 46, 23, LIME);
+  ctx.fillStyle = WHITE;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("₹", cx, cy + r * 0.05);
-  ctx.restore();
+  ctx.fillText(text, cx, cy + 1);
+  ctx.textBaseline = "alphabetic";
 }
 
-function drawPinIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  const width = r * 0.62;
-  const topY = cy - r * 0.55;
-  const bottomY = cy + r * 0.6;
-  ctx.beginPath();
-  ctx.moveTo(cx, bottomY);
-  ctx.bezierCurveTo(cx - width, bottomY - r * 0.55, cx - width, topY, cx, topY);
-  ctx.bezierCurveTo(cx + width, topY, cx + width, bottomY - r * 0.55, cx, bottomY);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx, topY + r * 0.38, r * 0.2, 0, Math.PI * 2);
-  ctx.stroke();
+// ---------------------------------------------------------------------------
+// Chief guest cards
+// ---------------------------------------------------------------------------
+
+function initialsOf(name: string) {
+  return name
+    .split(/\s+/)
+    .filter((p) => /[A-Za-z]/.test(p))
+    .slice(0, 2)
+    .map((p) => p.replace(/[^A-Za-z]/g, "")[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
-function drawCalendarIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  const width = r * 1.15;
-  const height = r * 1.0;
-  const x = cx - width / 2;
-  const y = cy - height / 2 + r * 0.08;
-  ctx.strokeRect(x, y, width, height);
+function drawGuestCards(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, guests: InvitationGuest[], photos: (HTMLImageElement | null)[]) {
+  const count = Math.min(guests.length, MAX_INVITATION_GUESTS);
+  if (count === 0) return;
+  const cardW = 245;
+  const gap = 10;
+  const total = count * cardW + (count - 1) * gap;
+  const startX = DESIGN_WIDTH / 2 - total / 2;
+  const photoTop = 646;
+  const photoH = 204;
+  const cardTop = 800;
+  const cardBottom = 966;
+
+  for (let i = 0; i < count; i++) {
+    const g = guests[i];
+    const x = startX + i * (cardW + gap);
+
+    // White info card (its top hides behind the panel's lower edge + photo).
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.06)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    fillRoundRect(ctx, x, cardTop, cardW, cardBottom - cardTop, 18, WHITE);
+    ctx.restore();
+
+    // Lime photo frame.
+    const px = x + 12;
+    const pw = cardW - 24;
+    fillRoundRect(ctx, px, photoTop, pw, photoH, 18, LIME);
+    const photo = photos[i];
+    if (photo) {
+      ctx.save();
+      roundRectPath(ctx, px + 3, photoTop + 3, pw - 6, photoH - 3, 16);
+      ctx.clip();
+      drawCover(ctx, photo, px + 3, photoTop + 3, pw - 6, photoH - 3, 0.2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.font = font(fonts, 700, 64);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(initialsOf(g.name) || "CG", px + pw / 2, photoTop + photoH / 2);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    const cx = x + cardW / 2;
+    const maxText = cardW - 24;
+    ctx.textAlign = "center";
+
+    fitFont(ctx, fonts, g.name, 600, 19, maxText);
+    ctx.fillStyle = GREEN_TEXT;
+    ctx.fillText(truncate(ctx, g.name, maxText), cx, 883);
+
+    if (g.designation) {
+      fitFont(ctx, fonts, g.designation, 400, 13.5, maxText);
+      ctx.fillStyle = INK_SOFT;
+      ctx.fillText(truncate(ctx, g.designation, maxText), cx, 904);
+    }
+    if (g.organisation) {
+      fitFont(ctx, fonts, g.organisation, 600, 16, maxText);
+      ctx.fillStyle = INK;
+      ctx.fillText(truncate(ctx, g.organisation, maxText), cx, g.organisationNote ? 937 : 943);
+    }
+    if (g.organisationNote) {
+      fitFont(ctx, fonts, g.organisationNote, 500, 10.5, maxText);
+      ctx.fillStyle = INK_SOFT;
+      ctx.fillText(truncate(ctx, g.organisationNote, maxText), cx, 953);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Icons (vector, green)
+// ---------------------------------------------------------------------------
+
+function iconCalendar(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = GREEN;
+  fillRoundRect(ctx, x - 11, y - 9, 22, 19, 3, GREEN);
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(x - 8, y - 2, 16, 1.6);
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(x - 7, y - 13, 3, 6);
+  ctx.fillRect(x + 4, y - 13, 3, 6);
+}
+
+function iconClock(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = GREEN;
   ctx.beginPath();
-  ctx.moveTo(x, y + height * 0.32);
-  ctx.lineTo(x + width, y + height * 0.32);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + width * 0.24, y - height * 0.14);
-  ctx.lineTo(x + width * 0.24, y + height * 0.14);
-  ctx.moveTo(x + width * 0.76, y - height * 0.14);
-  ctx.lineTo(x + width * 0.76, y + height * 0.14);
-  ctx.stroke();
-  ctx.fillStyle = GOLD_400;
-  ctx.beginPath();
-  ctx.arc(cx, y + height * 0.66, r * 0.08, 0, Math.PI * 2);
+  ctx.arc(x, y, 11, 0, Math.PI * 2);
   ctx.fill();
-}
-
-/** The circular gold-ring badge every detail-row icon sits inside, matching the reference poster's icon treatment. */
-function drawIconBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, diameter: number, draw: (r: number) => void) {
-  const r = diameter / 2;
-  ctx.save();
-  ctx.fillStyle = EMERALD_950;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = GOLD_500;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.strokeStyle = GOLD_300;
-  ctx.fillStyle = GOLD_300;
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = WHITE;
+  ctx.lineWidth = 2.2;
   ctx.lineCap = "round";
-  draw(r * 0.62);
+  ctx.beginPath();
+  ctx.moveTo(x, y - 6);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + 4.5, y + 3);
+  ctx.stroke();
+}
+
+function iconPin(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = GREEN;
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 9, Math.PI, 0);
+  ctx.quadraticCurveTo(x + 9, y + 3, x, y + 13);
+  ctx.quadraticCurveTo(x - 9, y + 3, x - 9, y - 4);
+  ctx.fill();
+  ctx.fillStyle = WHITE;
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 3.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Handset outline from the Lucide "phone" glyph (24×24 viewBox), filled.
+const PHONE_PATH =
+  "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z";
+
+function iconPhone(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = GREEN;
+  ctx.beginPath();
+  ctx.arc(x, y, 17, 0, Math.PI * 2);
+  ctx.fill();
+  if (typeof Path2D === "undefined") return;
+  ctx.save();
+  ctx.translate(x - 9.5, y - 9.5);
+  ctx.scale(0.8, 0.8);
+  ctx.fillStyle = WHITE;
+  ctx.fill(new Path2D(PHONE_PATH));
   ctx.restore();
 }
+
+/** Text with ordinal suffixes ("25th") drawn as superscript, left-aligned at x. */
+function drawWithOrdinals(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, text: string, x: number, y: number, size: number, maxWidth: number) {
+  const s = fitFont(ctx, fonts, text, 400, size, maxWidth);
+  const parts = text.split(/(\d+)(st|nd|rd|th)\b/i);
+  let cursor = x;
+  ctx.textAlign = "left";
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue;
+    const isSuffix = i % 3 === 2;
+    ctx.font = font(fonts, 400, isSuffix ? s * 0.6 : s);
+    ctx.fillText(part, cursor, isSuffix ? y - s * 0.38 : y);
+    cursor += ctx.measureText(part).width;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 
 export function drawInvitationPoster(
   ctx: CanvasRenderingContext2D,
@@ -225,245 +465,166 @@ export function drawInvitationPoster(
   images: InvitationPosterImages,
   fonts: InvitationPosterFonts,
 ) {
-  const w = POSTER_WIDTH;
-  const h = POSTER_HEIGHT;
+  ctx.save();
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx.clearRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
 
-  ctx.clearRect(0, 0, w, h);
+  drawPageBackground(ctx);
+  drawBrand(ctx, fonts, images.logo);
+  drawPanel(ctx, images.background);
 
-  // Background: deep emerald gradient, full bleed, slightly darker at top
-  // and bottom for a vignette-like depth (reference poster's dark corners).
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, EMERALD_950);
-  bg.addColorStop(0.45, EMERALD_900);
-  bg.addColorStop(1, EMERALD_950);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.textBaseline = "alphabetic";
-
-  // ---- TOP BAR: brand block, left-aligned ----
-  ctx.textAlign = "left";
-  let brandTextX = 72;
-  if (images.logo) {
-    const logoRadius = 34;
-    const logoCx = 72 + logoRadius;
-    const logoCy = 104;
-    drawCircularImage(ctx, images.logo, logoCx, logoCy, logoRadius);
-    brandTextX = logoCx + logoRadius + 20;
-  }
-
-  ctx.fillStyle = GOLD_300;
-  ctx.font = `700 30px ${fonts.sans}`;
-  ctx.letterSpacing = "3px";
-  ctx.fillText(data.headingLine1.toUpperCase(), brandTextX, 92);
-  ctx.letterSpacing = "0px";
-
-  ctx.fillStyle = IVORY_100;
-  ctx.font = `600 26px ${fonts.sans}`;
-  ctx.fillText(data.chapterLabel, brandTextX, 128);
-
-  // Curved gold divider beneath the top bar (reference's ribbon swoosh).
-  ctx.strokeStyle = GOLD_500;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, 168);
-  ctx.quadraticCurveTo(w / 2, 200, w, 156);
-  ctx.stroke();
-
+  // Eyebrow
   ctx.textAlign = "center";
+  ctx.fillStyle = WHITE;
+  fitFont(ctx, fonts, data.eyebrow.toUpperCase(), 600, 23, 720);
+  ctx.fillText(data.eyebrow.toUpperCase(), DESIGN_WIDTH / 2, 316);
 
-  // ---- HEADLINE ----
-  let y = 300;
-  const headlineGrad = ctx.createLinearGradient(0, y - 90, 0, y + 20);
-  headlineGrad.addColorStop(0, "#f6e9c4");
-  headlineGrad.addColorStop(0.55, GOLD_300);
-  headlineGrad.addColorStop(1, GOLD_500);
-  ctx.fillStyle = headlineGrad;
-  ctx.font = `700 92px ${fonts.display}`;
-  y = drawWrappedText(ctx, data.headingLine2.toUpperCase(), w / 2, y, w - 180, 98);
+  const headlineBottom = drawHeadline(ctx, fonts, data.headline, 352, 680);
 
-  y += 40;
-  drawFlourishDivider(ctx, w / 2, y);
-  y += 60;
-
-  // ---- DESCRIPTION (Why Attend BWF?) ----
-  if (data.whyAttendText) {
-    ctx.fillStyle = IVORY_100;
-    ctx.font = `400 32px ${fonts.sans}`;
-    y = drawWrappedText(ctx, data.whyAttendText, w / 2, y, w - 300, 44);
+  const guestCount = Math.min(data.guests.length, MAX_INVITATION_GUESTS);
+  if (guestCount > 0) {
+    drawPill(ctx, fonts, guestCount === 1 ? "Chief Guest" : "Chief Guests", DESIGN_WIDTH / 2, Math.max(540, headlineBottom + 46));
+    drawGuestCards(ctx, fonts, data.guests, images.guestPhotos);
   }
-  y += 50;
 
-  // ---- CHIEF GUEST ----
-  const photoRadius = 130;
-  if (images.guestPhoto) {
-    const photoCenterY = y + photoRadius;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(w / 2, photoCenterY, photoRadius + 8, 0, Math.PI * 2);
-    ctx.strokeStyle = GOLD_500;
-    ctx.lineWidth = 6;
-    ctx.stroke();
-    ctx.restore();
-    drawCircularImage(ctx, images.guestPhoto, w / 2, photoCenterY, photoRadius);
-    y = photoCenterY + photoRadius + 55;
+  // "What's in it for you?"
+  const rowY = 1030;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = LIME;
+  fillRoundRect(ctx, 58, rowY, 784, 96, 12, "rgba(255,255,255,0.35)");
+  roundRectPath(ctx, 59, rowY + 1, 782, 94, 12);
+  ctx.stroke();
+  fillRoundRect(ctx, 72, rowY + 13, 280, 70, 4, LIME);
+  ctx.fillStyle = WHITE;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  fitFont(ctx, fonts, "What’s in it for you?", 600, 23, 255);
+  ctx.fillText("What’s in it for you?", 212, rowY + 49);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = INK;
+  ctx.textAlign = "left";
+  let whySize = 20;
+  let whyLines: string[] = [];
+  for (; whySize >= 13; whySize -= 0.5) {
+    ctx.font = font(fonts, 400, whySize);
+    whyLines = wrapText(ctx, data.whyAttendText, 445);
+    if (whyLines.length <= 3) break;
+  }
+  const whyLineH = whySize * 1.35;
+  const whyTop = rowY + 48 - ((whyLines.length - 1) * whyLineH) / 2 + whySize * 0.35;
+  whyLines.slice(0, 3).forEach((l, i) => ctx.fillText(l, 377, whyTop + i * whyLineH));
+
+  // Details card
+  const card = { x: 58, y: 1157, w: 784, h: 224 };
+  fillRoundRect(ctx, card.x, card.y, card.w, card.h, 18, WHITE);
+  const hasQr = data.includeQr && images.qrCode;
+  const textMax = hasQr ? 470 : 700;
+  ctx.fillStyle = INK;
+  iconCalendar(ctx, 99, 1192);
+  ctx.fillStyle = INK;
+  drawWithOrdinals(ctx, fonts, data.dateLabel || "Date to be announced", 130, 1199, 20, textMax);
+  iconClock(ctx, 99, 1238);
+  ctx.fillStyle = INK;
+  drawWithOrdinals(ctx, fonts, data.timeLabel || "Time to be announced", 130, 1245, 20, textMax);
+  iconPin(ctx, 99, 1283);
+  ctx.fillStyle = INK;
+  const venue = [data.venueLabel, data.addressLabel].filter(Boolean).join(", ") || "Venue to be announced";
+  ctx.font = font(fonts, 400, 20);
+  const venueLines = wrapText(ctx, venue, textMax);
+  if (venueLines.length > 1) {
+    ctx.font = font(fonts, 400, 17);
+    const two = wrapText(ctx, venue, textMax);
+    ctx.fillText(two[0], 130, 1282);
+    ctx.fillText(truncate(ctx, two.slice(1).join(" "), textMax), 130, 1303);
   } else {
-    y += 10;
+    ctx.fillText(venue, 130, 1291);
+  }
+  if (data.websiteLabel) {
+    fitFont(ctx, fonts, data.websiteLabel, 400, 23, textMax + 30);
+    ctx.fillStyle = GREEN_TEXT;
+    ctx.fillText(data.websiteLabel, 88, 1353);
+  }
+  if (hasQr && images.qrCode) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(images.qrCode, 640, 1184, 140, 140);
+    ctx.imageSmoothingEnabled = true;
+    ctx.fillStyle = INK;
+    ctx.textAlign = "center";
+    fitFont(ctx, fonts, data.qrCaption, 400, 17.5, 210);
+    ctx.fillText(data.qrCaption, 710, 1356);
   }
 
-  if (data.guestName) {
-    ctx.fillStyle = IVORY_100;
-    ctx.font = `700 46px ${fonts.display}`;
-    y = drawWrappedText(ctx, data.guestName, w / 2, y, w - 320, 54);
+  // Phone row + CTA
+  if (data.contactPhones) {
+    iconPhone(ctx, 76, 1442);
+    ctx.fillStyle = INK;
+    ctx.textAlign = "left";
+    fitFont(ctx, fonts, data.contactPhones, 400, 21, data.ctaText ? 480 : 740);
+    ctx.fillText(data.contactPhones, 103, 1450);
+  }
+  if (data.ctaText) {
+    ctx.font = font(fonts, 500, 20.5);
+    const ctaW = Math.max(220, ctx.measureText(data.ctaText).width + 50);
+    fillRoundRect(ctx, 842 - ctaW, 1414, ctaW, 54, 27, GREEN);
+    ctx.fillStyle = WHITE;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(data.ctaText, 842 - ctaW / 2, 1442);
+    ctx.textBaseline = "alphabetic";
+  }
 
-    const subtitleParts = [data.guestDesignation, data.guestOrganisation].filter(Boolean).join(", ");
-    if (subtitleParts) {
-      ctx.fillStyle = GOLD_300;
-      ctx.font = `400 28px ${fonts.sans}`;
-      y = drawWrappedText(ctx, subtitleParts, w / 2, y + 18, w - 360, 36);
+  // Fee bar
+  fillRoundRect(ctx, 61, 1497, 779, 58, 10, LIME_SOFT);
+  const segments: { text: string; weight: number; color: string; scale: number }[] = data.isComplimentary
+    ? [
+        { text: "Registration: ", weight: 400, color: INK, scale: 1 },
+        { text: "Complimentary", weight: 700, color: GREEN_TEXT, scale: 1.05 },
+        ...(data.feeNote ? [{ text: ` ${data.feeNote}`, weight: 400, color: INK, scale: 1 }] : []),
+      ]
+    : data.feeLabel
+      ? [
+          { text: "Registration Fee: ", weight: 400, color: INK, scale: 1 },
+          { text: data.feeLabel, weight: 700, color: GREEN_TEXT, scale: 1.05 },
+          ...splitFeeNote(data.feeNote),
+        ]
+      : [];
+  if (segments.length) {
+    let size = 27;
+    const measure = () =>
+      segments.reduce((sum, seg) => {
+        ctx.font = font(fonts, seg.weight, size * seg.scale);
+        return sum + ctx.measureText(seg.text).width;
+      }, 0);
+    while (size > 14 && measure() > 740) size -= 0.5;
+    let x = DESIGN_WIDTH / 2 - measure() / 2;
+    ctx.textAlign = "left";
+    for (const seg of segments) {
+      ctx.font = font(fonts, seg.weight, size * seg.scale);
+      ctx.fillStyle = seg.color;
+      ctx.fillText(seg.text, x, 1536);
+      x += ctx.measureText(seg.text).width;
     }
   }
-  y += 50;
 
-  // ---- TAGLINE PLAQUE (decorative, matching the reference's CTA banner) ----
-  const plaqueHeight = 130;
-  ctx.fillStyle = "rgba(244,238,225,0.06)";
-  fillRoundedRect(ctx, 130, y, w - 260, plaqueHeight, 18);
-  ctx.strokeStyle = GOLD_500;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(130, y, w - 260, plaqueHeight);
-
-  ctx.fillStyle = GOLD_300;
-  ctx.font = `600 24px ${fonts.sans}`;
-  ctx.letterSpacing = "4px";
-  ctx.fillText("CONNECT  ·  COLLABORATE  ·  GROW", w / 2, y + 52);
-  ctx.letterSpacing = "0px";
-
-  ctx.fillStyle = IVORY_100;
-  ctx.font = `italic 500 32px ${fonts.display}`;
-  ctx.fillText("Be Part of Something Bigger!", w / 2, y + 98);
-
-  y += plaqueHeight + 60;
-
-  // ---- ICON DETAIL ROW: Time · Fee · Venue · Date ----
-  const feeText = data.isComplimentary ? "Complimentary Entry" : data.feeLabel;
-  type DetailColumn = { icon: (cx: number, cy: number, r: number) => void; lines: string[] };
-  const allColumns: DetailColumn[] = [
-    { icon: (cx: number, cy: number, r: number) => drawClockIcon(ctx, cx, cy, r), lines: [data.timeLabel].filter(Boolean) },
-    { icon: (cx: number, cy: number, r: number) => drawRupeeIcon(ctx, cx, cy, r, fonts.sans), lines: [feeText].filter(Boolean) },
-    {
-      icon: (cx: number, cy: number, r: number) => drawPinIcon(ctx, cx, cy, r),
-      lines: [data.venueLabel, data.addressLabel].filter(Boolean),
-    },
-    { icon: (cx: number, cy: number, r: number) => drawCalendarIcon(ctx, cx, cy, r), lines: [data.dateLabel].filter(Boolean) },
-  ];
-  const columns = allColumns.filter((col) => col.lines.length > 0);
-
-  if (columns.length > 0) {
-    const badgeDiameter = 108;
-    const colWidth = (w - 120) / columns.length;
-    const labelLineHeight = 30;
-    const maxLinesPerColumn = 3; // bounds banner height regardless of how long a pasted venue/address is
-
-    const primaryFont = `700 27px ${fonts.sans}`;
-    const secondaryFont = `400 22px ${fonts.sans}`;
-
-    // Wrap (and cap) each column's text before drawing, so the banner can be
-    // sized to fit real content instead of a fixed guess — an earlier fixed-
-    // height version let a long address wrap past the box into the QR below.
-    const resolvedColumns = columns.map((col) => {
-      const entries: { text: string; primary: boolean }[] = [];
-      col.lines.forEach((line, li) => {
-        ctx.font = li === 0 ? primaryFont : secondaryFont;
-        for (const wrapped of wrapText(ctx, line, colWidth - 40)) entries.push({ text: wrapped, primary: li === 0 });
-      });
-      if (entries.length > maxLinesPerColumn) {
-        const kept = entries.slice(0, maxLinesPerColumn);
-        const last = kept[maxLinesPerColumn - 1];
-        ctx.font = last.primary ? primaryFont : secondaryFont;
-        let text = last.text;
-        while (ctx.measureText(`${text}…`).width > colWidth - 40 && text.length > 1) {
-          text = text.slice(0, -1).trimEnd();
-        }
-        kept[maxLinesPerColumn - 1] = { ...last, text: `${text}…` };
-        return kept;
-      }
-      return entries;
-    });
-
-    const maxLines = Math.max(...resolvedColumns.map((entries) => entries.length), 1);
-    const bannerHeight = badgeDiameter + 60 + maxLines * labelLineHeight + 30;
-
-    ctx.fillStyle = "rgba(3,17,12,0.55)";
-    fillRoundedRect(ctx, 60, y, w - 120, bannerHeight, 24);
-    ctx.strokeStyle = GOLD_500;
-    ctx.lineWidth = 1.5;
-    if (typeof ctx.roundRect === "function") {
-      ctx.beginPath();
-      ctx.roundRect(60, y, w - 120, bannerHeight, 24);
-      ctx.stroke();
-    }
-
-    const badgeCy = y + 40 + badgeDiameter / 2;
-
-    columns.forEach((col, i) => {
-      const colCx = 60 + colWidth * i + colWidth / 2;
-      drawIconBadge(ctx, colCx, badgeCy, badgeDiameter, (r) => col.icon(colCx, badgeCy, r));
-
-      let labelY = badgeCy + badgeDiameter / 2 + 44;
-      for (const entry of resolvedColumns[i]) {
-        ctx.fillStyle = entry.primary ? IVORY_100 : GOLD_300;
-        ctx.font = entry.primary ? primaryFont : secondaryFont;
-        ctx.fillText(entry.text, colCx, labelY);
-        labelY += labelLineHeight;
-      }
-
-      // Vertical divider between columns.
-      if (i > 0) {
-        ctx.strokeStyle = "rgba(201,160,99,0.4)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(60 + colWidth * i, y + 24);
-        ctx.lineTo(60 + colWidth * i, y + bannerHeight - 24);
-        ctx.stroke();
-      }
-    });
-
-    y += bannerHeight + 50;
-  }
-
-  // ---- QR CODE ----
-  if (data.includeQr && images.qrCode) {
-    const qrSize = 200;
-    const qrY = y;
-    ctx.fillStyle = IVORY_100;
-    ctx.fillRect(w / 2 - qrSize / 2 - 14, qrY - 14, qrSize + 28, qrSize + 28);
-    ctx.drawImage(images.qrCode, w / 2 - qrSize / 2, qrY, qrSize, qrSize);
-
-    ctx.fillStyle = GOLD_300;
-    ctx.font = `600 26px ${fonts.sans}`;
-    ctx.fillText("Scan to Register", w / 2, qrY + qrSize + 46);
-    y = qrY + qrSize + 46;
-  }
-
-  // ---- CLOSING TAGLINE ----
-  ctx.fillStyle = GOLD_300;
-  ctx.font = `600 22px ${fonts.sans}`;
-  ctx.letterSpacing = "2px";
-  ctx.fillText("GREAT CONNECTIONS. ENDLESS OPPORTUNITIES.", w / 2, h - 76);
-  ctx.letterSpacing = "0px";
-
-  ctx.fillStyle = IVORY_100;
-  ctx.font = `italic 500 30px ${fonts.display}`;
-  ctx.fillText("See You There!", w / 2, h - 38);
+  ctx.restore();
 }
 
-/** Loads an image and resolves once decoded — rejects on failure so callers can show a clear error rather than silently drawing nothing (requirement #9). */
+/** "+ GST 18% only (Including Breakfast)" → green "+ GST 18%" then ink " only (…)", as in the reference. */
+function splitFeeNote(note: string) {
+  if (!note) return [];
+  const match = /^(\s*\+?\s*GST\s*\d+%?)(.*)$/i.exec(note);
+  if (!match) return [{ text: ` ${note.trim()}`, weight: 400, color: INK, scale: 1 }];
+  return [
+    { text: match[1].trimStart().startsWith("+") ? match[1].trimStart() : ` ${match[1].trim()}`, weight: 400, color: GREEN_TEXT, scale: 0.85 },
+    ...(match[2] ? [{ text: match[2], weight: 400, color: INK, scale: 1 }] : []),
+  ];
+}
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Could not load image: ${src}`));
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
     img.src = src;
   });
 }

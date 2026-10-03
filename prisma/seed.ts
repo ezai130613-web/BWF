@@ -44,6 +44,8 @@ const PERMISSIONS = [
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
+  // Super Admin holds every permission, payments included (client, 2026-10-03:
+  // "Super admin can have the access and should be able to change access").
   SUPER_ADMIN: PERMISSIONS.map((p) => p.key),
   // Brief §10 — Central Admin manages members/companies/chapters/categories/
   // blogs/testimonials/content, but not other admin accounts or roles/
@@ -68,7 +70,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "roster:manage",
     "marketing:manage",
     "attendance:manage",
-    "payments:view",
+    // payments:view removed 2026-10-03 — payments belong to Accounts + Super
+    // Admin; Super Admin can re-grant it from Roles & Permissions.
     "invitations:manage",
     "contact_requests:view",
     // payments:approve is deliberately NOT given to Central Admin (Phase 29,

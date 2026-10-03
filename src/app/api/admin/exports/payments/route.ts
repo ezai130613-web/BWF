@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getChapterScope } from "@/lib/auth/rbac";
+import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthsCovered } from "@/lib/attendance/manage";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 
 /** Spec §5: "Export payments by chapter, meeting, member, payment date, covered month and approval status. Include secure proof references, not embedded sensitive screenshots." */
 export async function GET(request: Request) {
-  const scope = await getChapterScope("payments:view");
+  const scope = await getPaymentsScope();
   const { searchParams } = new URL(request.url);
 
   const requestedChapterId = searchParams.get("chapterId");

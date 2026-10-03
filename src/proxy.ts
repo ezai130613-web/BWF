@@ -70,8 +70,20 @@ export default auth((request) => {
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (hasMemberRole && isMemberPublicAuthPage) {
+    // 2026-10-03 — a member signed in with bulk-issued temporary
+    // credentials must verify an email and set a private password before
+    // anything else in the portal. requireMemberProfile() enforces the same
+    // rule server-side; this is the fast-path redirect.
+    const isActivatePage = pathname === "/member/activate";
+    const mustActivate = Boolean(request.auth?.user?.mustActivate);
+    if (hasMemberRole && mustActivate && !isActivatePage) {
+      return NextResponse.redirect(new URL("/member/activate", request.nextUrl.origin));
+    }
+    if (hasMemberRole && !mustActivate && isActivatePage) {
       return NextResponse.redirect(new URL("/member", request.nextUrl.origin));
+    }
+    if (hasMemberRole && isMemberPublicAuthPage) {
+      return NextResponse.redirect(new URL(mustActivate ? "/member/activate" : "/member", request.nextUrl.origin));
     }
   }
 

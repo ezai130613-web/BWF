@@ -1,5 +1,7 @@
 "use client";
 
+import { LocationPickerField } from "@/components/maps/location-picker-field";
+
 import { useActionState } from "react";
 import { submitProfileRevision } from "@/app/member/(portal)/profile/actions";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
@@ -28,14 +30,14 @@ function Field({
           name={name}
           rows={3}
           defaultValue={defaultValue ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         />
       ) : (
         <input
           name={name}
           type={type}
           defaultValue={defaultValue ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none"
         />
       )}
     </label>
@@ -57,7 +59,7 @@ export function RequestProfileEditForm({ member }: { member: Member }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-8">
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Personal</h2>
         <Field label="Name" name="name" defaultValue={member.name} />
         <Field label="Designation" name="designation" defaultValue={member.designation} />
@@ -65,7 +67,7 @@ export function RequestProfileEditForm({ member }: { member: Member }) {
         <MediaUploadField label="Photo" name="photoUrl" kind="image" defaultValue={member.photoUrl} />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Business profile</h2>
         <Field label="Services" name="services" defaultValue={member.services} textarea />
         <Field label="Specialisations" name="specialisations" defaultValue={member.specialisations} textarea />
@@ -77,7 +79,7 @@ export function RequestProfileEditForm({ member }: { member: Member }) {
         <Field label="Clientele" name="clientele" defaultValue={member.clientele} textarea />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Contact</h2>
         <Field label="Email" name="email" type="email" defaultValue={member.email} />
         <Field label="Phone" name="phone" defaultValue={member.phone} />
@@ -85,9 +87,10 @@ export function RequestProfileEditForm({ member }: { member: Member }) {
         <Field label="Website" name="website" type="url" defaultValue={member.website} />
         <Field label="Address" name="address" defaultValue={member.address} />
         <Field label="Google Maps URL" name="googleMapsUrl" type="url" defaultValue={member.googleMapsUrl} />
+        <LocationPickerField defaultLabel={member.locationLabel} defaultLat={member.latitude} defaultLng={member.longitude} />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Social & media</h2>
         <Field label="Instagram URL" name="instagramUrl" type="url" defaultValue={member.instagramUrl} />
         <Field label="LinkedIn URL" name="linkedinUrl" type="url" defaultValue={member.linkedinUrl} />
@@ -108,7 +111,7 @@ export function RequestProfileEditForm({ member }: { member: Member }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Submitting…" : "Submit for review"}
         </button>

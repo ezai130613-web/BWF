@@ -19,10 +19,11 @@ export default async function RolesPage() {
       <div>
         <h1 className="text-xl font-semibold text-neutral-900">Roles & Permissions</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Only Super Admin and Central Admin are functional roles today — Chapter Admin and
-          Member exist as reference data but have no scoped enforcement yet (that lands with
-          the Chapter model in Phase 3, and the member portal in Phase 11). Super Admin&rsquo;s
-          permissions are fixed and can&rsquo;t be edited here, to avoid an accidental lockout.
+          Tick a box to grant a permission to a role, untick to remove it — changes apply on each
+          user&rsquo;s next sign-in. Payment permissions are held by Accounts Department and Super
+          Admin by default; granting &ldquo;View meeting payment submissions&rdquo; to Chapter Admin shows
+          them only their own chapter. Super Admin&rsquo;s own permissions are fixed and can&rsquo;t be
+          edited here, to avoid an accidental lockout.
         </p>
       </div>
 

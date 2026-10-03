@@ -59,6 +59,9 @@ export async function requireMemberSession() {
 /** requireMemberSession() plus the Member row their login is linked to — the shape every /member/(portal) page actually needs. */
 export async function requireMemberProfile() {
   const session = await requireMemberSession();
+  // Temporary bulk-issued credentials: nothing in the portal (pages or
+  // Server Actions) is usable until /member/activate is finished.
+  if (session.user.mustActivate) redirect("/member/activate");
   const member = await db.member.findUnique({ where: { userId: session.user.id } });
   // Login exists but its Member link was removed (e.g. admin revoked
   // access) — treat as signed out rather than crashing on a null profile.
@@ -131,4 +134,20 @@ export async function getChapterScope(globalPermissionKey: string): Promise<"ALL
   }
 
   forbidden();
+}
+
+/**
+ * Payment records (2026-10-03 client decisions): Accounts Department and
+ * Super Admin by default; Super Admin can grant `payments:view` to any other
+ * role from Roles & Permissions. Unlike getChapterScope(), a Chapter Admin
+ * gets nothing without that explicit grant — and with it, only their own
+ * chapter. Same return shape as getChapterScope().
+ */
+export async function getPaymentsScope(): Promise<"ALL" | string> {
+  const session = await requirePermission("payments:view");
+  const roles = session.user.roles;
+  const globalRole = roles.some((r) => ["SUPER_ADMIN", "CENTRAL_ADMIN", "ACCOUNTS"].includes(r));
+  if (!globalRole && roles.includes("CHAPTER_ADMIN") && session.user.chapterId) return session.user.chapterId;
+  if (!globalRole) forbidden();
+  return "ALL";
 }

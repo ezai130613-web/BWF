@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getChapterScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateMeetingForm } from "@/components/admin/create-meeting-form";
+import { ReminderBadge } from "@/components/admin/reminder-badge";
+import { formatIstDateTime } from "@/lib/ist";
+import { reminderScheduledFor } from "@/lib/meetings/reminders";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-emerald-50 text-emerald-700",
@@ -22,6 +25,7 @@ export default async function MeetingsPage({
   const { chapterId: preselectChapterId } = await searchParams;
 
   const session = await requireAdminSession();
+  const now = new Date();
   const permissions = await getUserPermissionKeys(session.user.id);
   const canManageChiefGuests = permissions.has("chief_guests:manage");
 
@@ -41,11 +45,19 @@ export default async function MeetingsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Meetings</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Chapter meetings that visitors can register to attend online (brief §21/§23).
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">Meetings</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Chapter meetings that visitors can register to attend online (brief §21/§23). Times are IST.
+          </p>
+        </div>
+        <Link
+          href="/admin/meetings/generate"
+          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+        >
+          Create Next Month&rsquo;s Meetings
+        </Link>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
@@ -56,6 +68,7 @@ export default async function MeetingsPage({
               <th className="px-4 py-3 font-medium">Chapter</th>
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Visitors</th>
+              <th className="px-4 py-3 font-medium">Member reminder</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -65,8 +78,17 @@ export default async function MeetingsPage({
               <tr key={m.id}>
                 <td className="px-4 py-3 text-neutral-900">{m.title}</td>
                 <td className="px-4 py-3 text-neutral-600">{m.chapter.name}</td>
-                <td className="px-4 py-3 text-neutral-600">{m.startsAt.toLocaleString()}</td>
+                <td className="px-4 py-3 text-neutral-600">{formatIstDateTime(m.startsAt)}</td>
                 <td className="px-4 py-3 text-neutral-600">{m._count.visitors}</td>
+                <td className="px-4 py-3">
+                  <ReminderBadge
+                    enabled={m.reminderEnabled}
+                    status={m.reminderStatus}
+                    scheduledFor={formatIstDateTime(reminderScheduledFor(m.startsAt))}
+                    meetingStatus={m.status}
+                    isPast={m.startsAt < now}
+                  />
+                </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[m.status]}`}>
                     {m.status}
@@ -81,7 +103,7 @@ export default async function MeetingsPage({
             ))}
             {meetings.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-neutral-400">
                   No meetings yet.
                 </td>
               </tr>

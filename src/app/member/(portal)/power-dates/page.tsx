@@ -1,6 +1,13 @@
+import { Rocket } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { getPickerMembers } from "@/lib/members/picker";
 import { RecordPowerDateForm } from "@/components/member/record-power-date-form";
+import { Card, DataTable, PageHeader, formatShortDate, tdClass } from "@/components/member/ui";
+
+function contact(p: { externalContactName: string; externalContactCompany: string | null }) {
+  return p.externalContactCompany ? `${p.externalContactName} (${p.externalContactCompany})` : p.externalContactName;
+}
 
 export default async function MemberPowerDatesPage() {
   const { member } = await requireMemberProfile();
@@ -8,98 +15,53 @@ export default async function MemberPowerDatesPage() {
   const [hosted, joined, members] = await Promise.all([
     db.powerDate.findMany({
       where: { hostMemberId: member.id },
-      include: { participantMember: true },
+      include: { participantMember: { select: { name: true } } },
       orderBy: { metAt: "desc" },
     }),
     db.powerDate.findMany({
       where: { participantMemberId: member.id },
-      include: { hostMember: true },
+      include: { hostMember: { select: { name: true } } },
       orderBy: { metAt: "desc" },
     }),
-    db.member.findMany({ where: { status: "ACTIVE", id: { not: member.id } }, orderBy: { name: "asc" } }),
+    getPickerMembers(member.id),
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Power Dates</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          A BWF member takes one or more fellow members to meet their own external business
-          connection.
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">Hosted by you ({hosted.length})</h2>
-          <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Fellow Member</th>
-                  <th className="px-4 py-3 font-medium">External Contact</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {hosted.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 text-neutral-900">{p.participantMember.name}</td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      {p.externalContactName}
-                      {p.externalContactCompany ? ` · ${p.externalContactCompany}` : ""}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-500">{p.metAt.toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {hosted.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
-                      No Power Dates hosted yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={Rocket}
+        title="Power Dates"
+        description="A BWF member takes one or more fellow members to meet their own external business connection — opening doors for each other."
+      />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <RecordPowerDateForm members={members} />
         </div>
-
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">You were brought along ({joined.length})</h2>
-          <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Host</th>
-                  <th className="px-4 py-3 font-medium">External Contact</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
+        <div className="flex flex-col gap-6 xl:col-span-2">
+          <Card title={`You hosted (${hosted.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["Brought", "External contact", "Date"]} empty={hosted.length === 0 ? "No Power Dates hosted yet." : null}>
+              {hosted.map((p) => (
+                <tr key={p.id}>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>{p.participantMember.name}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{contact(p)}</td>
+                  <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(p.metAt)}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {joined.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 text-neutral-900">{p.hostMember.name}</td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      {p.externalContactName}
-                      {p.externalContactCompany ? ` · ${p.externalContactCompany}` : ""}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-500">{p.metAt.toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {joined.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
-                      No Power Dates yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </DataTable>
+          </Card>
+          <Card title={`You joined (${joined.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["Host", "External contact", "Date"]} empty={joined.length === 0 ? "No Power Dates joined yet." : null}>
+              {joined.map((p) => (
+                <tr key={p.id}>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>{p.hostMember.name}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{contact(p)}</td>
+                  <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(p.metAt)}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </Card>
         </div>
       </div>
-
-      <RecordPowerDateForm members={members} />
     </div>
   );
 }

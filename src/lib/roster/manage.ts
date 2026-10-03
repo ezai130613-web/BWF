@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { getOpenCategories } from "@/lib/chapters/availability";
+import { getLeaderboard } from "@/lib/points/score";
 
 /**
  * Roster Sheet interactive management (2026-09-16 correction) — data loading
@@ -54,6 +55,8 @@ export type RosterWizardMember = {
   categoryName: string;
   photoUrl: string | null;
   score: number;
+  /** Live overall activity points (src/lib/points/score.ts) — the system value the score defaults to. */
+  systemPoints: number;
 };
 
 export type RosterWizardData = {
@@ -77,6 +80,7 @@ export type RosterWizardData = {
 
   notesEnabled: boolean;
   isSaved: boolean;
+  orderMode: "AUTO" | "MANUAL";
 };
 
 /**
@@ -158,43 +162,33 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     orderBy: { joinedAt: "asc" },
   });
 
-  // Score carry-forward (client decision, 2026-09-16): a member's score on a
-  // brand-new roster starts from their most recent OTHER scored meeting in
-  // this same chapter, not a hard reset to 0. Fetched and reduced to
-  // "first (most recent) hit per member" in JS — same "fine at this scale"
-  // precedent as findMatchingCompany (company fuzzy-match, Phase 7) — a
-  // two-hop relation sort (RosterScore -> Roster -> Meeting.startsAt) isn't
-  // something a single Prisma orderBy can express cleanly, so this sorts in
-  // JS instead of forcing an awkward query.
-  const priorScoreRows = members.length
-    ? await db.rosterScore.findMany({
-        where: {
-          memberId: { in: members.map((m) => m.id) },
-          roster: { meetingId: { not: meetingId }, meeting: { chapterId: meeting.chapterId } },
-        },
-        include: { roster: { include: { meeting: true } } },
-      })
-    : [];
-  priorScoreRows.sort((a, b) => b.roster.meeting.startsAt.getTime() - a.roster.meeting.startsAt.getTime());
-  const priorScoreByMember = new Map<string, { score: number; order: number }>();
-  for (const row of priorScoreRows) {
-    if (!priorScoreByMember.has(row.memberId)) priorScoreByMember.set(row.memberId, { score: row.score, order: row.order });
-  }
+  // Scores come from each member's live overall activity points
+  // (2026-10-03 correction — replaces the earlier carry-forward from the
+  // previous meeting's roster). One batched leaderboard query for the whole
+  // chapter, not one per member.
+  const leaderboard = await getLeaderboard(members.map((m) => m.id));
+  const pointsByMember = new Map(leaderboard.map((row) => [row.memberId, row.total]));
 
   const existingScoreByMember = new Map((existingRoster?.scores ?? []).map((s) => [s.memberId, s]));
   const maxExistingOrder = existingRoster?.scores.length ? Math.max(...existingRoster.scores.map((s) => s.order)) : -1;
 
+  // A brand-new roster starts auto-ranked by points (stable, so ties keep
+  // joinedAt order). Reopening a saved roster keeps its saved positions
+  // and scores — including any manual edits — appending members who are
+  // new since that save.
+  const autoRank = new Map(
+    [...members]
+      .map((m, idx) => ({ id: m.id, idx, points: pointsByMember.get(m.id) ?? 0 }))
+      .sort((a, b) => b.points - a.points || a.idx - b.idx)
+      .map((m, rank) => [m.id, rank]),
+  );
+
   const membersWithOrder = members.map((m, idx) => {
     const existing = existingScoreByMember.get(m.id);
-    const prior = priorScoreByMember.get(m.id);
-    const score = existing?.score ?? prior?.score ?? 0;
-    // Reopening an already-saved roster: keep this member's saved position,
-    // or append after everyone else if they're new since that save. Never
-    // saved yet: fall back to joinedAt order (today's PDF default) —
-    // "previous relative order" isn't meaningful before a first save has
-    // ever happened.
-    const order = existing ? existing.order : existingRoster ? maxExistingOrder + 1 + idx : idx;
-    return { id: m.id, name: m.name, designation: m.designation, company: m.company.name, email: m.email, phone: m.phone, categoryName: m.category.name, photoUrl: m.photoUrl, score, order };
+    const systemPoints = pointsByMember.get(m.id) ?? 0;
+    const score = existing?.score ?? systemPoints;
+    const order = existing ? existing.order : existingRoster ? maxExistingOrder + 1 + idx : autoRank.get(m.id)!;
+    return { id: m.id, name: m.name, designation: m.designation, company: m.company.name, email: m.email, phone: m.phone, categoryName: m.category.name, photoUrl: m.photoUrl, score, systemPoints, order };
   });
   membersWithOrder.sort((a, b) => a.order - b.order);
   const allOtherMembers: RosterWizardMember[] = membersWithOrder.map((m) => ({
@@ -207,6 +201,7 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     categoryName: m.categoryName,
     photoUrl: m.photoUrl,
     score: m.score,
+    systemPoints: m.systemPoints,
   }));
 
   const selectedChiefGuestIds = existingRoster
@@ -246,5 +241,6 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
 
     notesEnabled: existingRoster?.notesEnabled ?? false,
     isSaved: Boolean(existingRoster?.savedAt),
+    orderMode: existingRoster?.orderMode ?? "AUTO",
   };
 }

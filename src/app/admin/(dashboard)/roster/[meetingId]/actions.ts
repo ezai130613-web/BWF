@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 import { getExcludedMemberIds } from "@/lib/roster/manage";
+import { getLeaderboard } from "@/lib/points/score";
 
 /**
  * Roster Sheet interactive management (2026-09-16 correction) — the single
@@ -38,6 +39,8 @@ export type SaveRosterInput = {
   chiefGuestIds: string[];
   openCategoryIds: string[];
   notesEnabled: boolean;
+  /** AUTO re-ranks by score on save; MANUAL keeps the submitted order (admin override). */
+  orderMode: "AUTO" | "MANUAL";
   members: SaveRosterMemberInput[];
 };
 
@@ -68,11 +71,20 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
       : Promise.resolve([]),
   ]);
 
-  const submittedMembers = input.members.filter((m) => eligibleMemberIds.has(m.memberId));
+  const seen = new Set<string>();
+  const submittedMembers = input.members
+    .filter((m) => eligibleMemberIds.has(m.memberId) && !seen.has(m.memberId) && seen.add(m.memberId))
+    .map((m) => ({ memberId: m.memberId, score: Math.max(0, Math.trunc(Number(m.score)) || 0) }));
+  const orderMode = input.orderMode === "MANUAL" ? "MANUAL" : "AUTO";
 
-  // Stable sort — equal scores keep their submitted relative order, which
-  // is already whatever order the wizard displayed them in.
-  const ranked = [...submittedMembers].sort((a, b) => b.score - a.score);
+  // AUTO: stable sort — equal scores keep their submitted relative order,
+  // which is already whatever order the wizard displayed them in. MANUAL:
+  // the admin's own order is the order, untouched.
+  const ranked = orderMode === "AUTO" ? [...submittedMembers].sort((a, b) => b.score - a.score) : submittedMembers;
+
+  // Snapshot of the system value next to each (possibly hand-edited) score,
+  // recomputed here rather than trusted from the browser.
+  const systemPoints = new Map((await getLeaderboard(ranked.map((m) => m.memberId))).map((r) => [r.memberId, r.total]));
 
   await db.$transaction(
     async (tx) => {
@@ -81,12 +93,14 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
         create: {
           meetingId: input.meetingId,
           notesEnabled: input.notesEnabled,
+          orderMode,
           savedAt: new Date(),
           chiefGuests: { connect: validChiefGuests.map((g) => ({ id: g.id })) },
           openCategories: { connect: validCategories.map((c) => ({ id: c.id })) },
         },
         update: {
           notesEnabled: input.notesEnabled,
+          orderMode,
           savedAt: new Date(),
           chiefGuests: { set: validChiefGuests.map((g) => ({ id: g.id })) },
           openCategories: { set: validCategories.map((c) => ({ id: c.id })) },
@@ -100,7 +114,13 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
       await tx.rosterScore.deleteMany({ where: { rosterId: roster.id } });
       if (ranked.length > 0) {
         await tx.rosterScore.createMany({
-          data: ranked.map((m, i) => ({ rosterId: roster.id, memberId: m.memberId, score: m.score, order: i })),
+          data: ranked.map((m, i) => ({
+            rosterId: roster.id,
+            memberId: m.memberId,
+            score: m.score,
+            systemPoints: systemPoints.get(m.memberId) ?? 0,
+            order: i,
+          })),
         });
       }
     },
@@ -111,7 +131,7 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
     action: "roster.saved",
     entity: "Meeting",
     entityId: input.meetingId,
-    metadata: { chapterId: meeting.chapterId, memberCount: ranked.length },
+    metadata: { chapterId: meeting.chapterId, memberCount: ranked.length, orderMode },
   });
 
   revalidatePath(`/admin/roster/${input.meetingId}`);

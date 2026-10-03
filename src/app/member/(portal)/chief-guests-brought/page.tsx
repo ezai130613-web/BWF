@@ -1,59 +1,40 @@
+import { Award } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { RecordChiefGuestForm } from "@/components/member/record-chief-guest-form";
+import { Card, DataTable, PageHeader, formatShortDate, tdClass } from "@/components/member/ui";
 
 export default async function MemberChiefGuestsBroughtPage() {
   const { member } = await requireMemberProfile();
 
-  const guests = await db.memberChiefGuest.findMany({
-    where: { memberId: member.id },
-    orderBy: { metAt: "desc" },
-  });
+  const guests = await db.memberChiefGuest.findMany({ where: { memberId: member.id }, orderBy: { metAt: "desc" } });
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Chief Guests</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Chief Guests you&rsquo;ve invited to meetings — your own activity record, separate from
-          BWF&rsquo;s public Chief Guests showcase.
-        </p>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold text-neutral-900">Invited by you ({guests.length})</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Designation</th>
-                <th className="px-4 py-3 font-medium">Company</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={Award}
+        title="Chief Guests"
+        description="Business leaders and decision-makers you've invited to a chapter meeting."
+      />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <RecordChiefGuestForm />
+        </div>
+        <div className="xl:col-span-2">
+          <Card title={`Chief Guests brought (${guests.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["Name", "Designation", "Company", "Date"]} empty={guests.length === 0 ? "No Chief Guests recorded yet." : null}>
               {guests.map((g) => (
                 <tr key={g.id}>
-                  <td className="px-4 py-3 text-neutral-900">{g.name}</td>
-                  <td className="px-4 py-3 text-neutral-600">{g.designation ?? "—"}</td>
-                  <td className="px-4 py-3 text-neutral-600">{g.company ?? "—"}</td>
-                  <td className="px-4 py-3 text-neutral-500">{g.metAt.toLocaleDateString()}</td>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>{g.name}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{g.designation ?? "—"}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{g.company ?? "—"}</td>
+                  <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(g.metAt)}</td>
                 </tr>
               ))}
-              {guests.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-neutral-400">
-                    No Chief Guests recorded yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+            </DataTable>
+          </Card>
         </div>
       </div>
-
-      <RecordChiefGuestForm />
     </div>
   );
 }

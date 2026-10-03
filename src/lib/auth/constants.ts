@@ -22,4 +22,6 @@ export const MEMBER_ROLE_KEYS: string[] = ["MEMBER"];
 export const OTP_PURPOSE = {
   LOGIN: "LOGIN",
   PASSWORD_RESET: "PASSWORD_RESET",
+  /** First-login email verification for bulk-credentialed members (2026-10-03). */
+  EMAIL_VERIFY: "EMAIL_VERIFY",
 } as const;

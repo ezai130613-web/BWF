@@ -29,10 +29,26 @@ enum UserStatus {
 
 model User {
   id       String     @id @default(cuid())
-  email    String     @unique
+  /// Optional since the 2026-10-03 member-credentials correction: a member
+  /// issued bulk temporary credentials signs in with `username` and only
+  /// supplies (and verifies) an email on first login. Every admin account
+  /// still has one. Postgres unique treats NULLs as distinct.
+  email    String?    @unique
   name     String
   password String
   status   UserStatus @default(ACTIVE)
+
+  /// Member temporary login id (e.g. "BWF001"), stored upper-case. Null for
+  /// admins and for members granted access by email the old way.
+  username String? @unique
+
+  /// True while the account still holds an admin-issued temporary password.
+  /// The member portal forces /member/activate (verify email + set a private
+  /// password) before anything else; cleared when that completes, which
+  /// also replaces the temporary password hash.
+  mustChangePassword        Boolean   @default(false)
+  temporaryPasswordIssuedAt DateTime?
+  emailVerifiedAt           DateTime?
 
   /// Bumped to invalidate every JWT session already issued to this user
   /// (e.g. on password change or an admin-initiated "sign out everywhere").
@@ -124,6 +140,10 @@ model OtpChallenge {
   /// Room for PASSWORD_RESET etc. later without a new table.
   purpose String @default("LOGIN")
 
+  /// EMAIL_VERIFY challenges only — the address the code was sent to, so
+  /// the code can't be replayed to verify a different address.
+  target String?
+
   attempts    Int       @default(0)
   maxAttempts Int       @default(5)
   expiresAt   DateTime
@@ -196,6 +216,15 @@ model Chapter {
   meetingVenue    String?
   meetingAddress  String?
   googleMapsUrl   String?
+
+  /// Structured recurring schedule (2026-10-03, "Create Next Month's
+  /// Meetings"). `meetingSchedule` above stays the human-readable public
+  /// text; these drive generation. Weekday 0 = Sunday … 6 = Saturday;
+  /// weeksOfMonth are ordinals (1 = first … 5 = fifth — a month without a
+  /// fifth occurrence simply gets none); meetingTime is "HH:mm" in IST.
+  meetingWeekday      Int?
+  meetingWeeksOfMonth Int[]   @default([])
+  meetingTime         String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -305,6 +334,15 @@ model Member {
   address       String?
   googleMapsUrl String?
 
+  /// Business location for the member-portal "find members near a place"
+  /// radius search (2026-10-03). Set from a Google Places selection (admin
+  /// edit form) or by geocoding `address` (scripts/geocode-members.ts) —
+  /// never from free-text matching. `locationLabel` is the place's
+  /// formatted name, shown on result cards.
+  latitude      Float?
+  longitude     Float?
+  locationLabel String?
+
   // --- Social (brief §19 — "Other approved links" deferred; add if a real need shows up) ---
   instagramUrl String?
   linkedinUrl  String?
@@ -403,6 +441,10 @@ model Member {
 
   // Phase 29 — public "View contact details" pop-up requests for this member.
   contactRequests VendorContactRequest[]
+
+  // 2026-10-03 corrections
+  feedbackInvitations Feedback[]           @relation("FeedbackInvitedBy")
+  meetingReminderLogs MeetingReminderLog[]
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -689,8 +731,21 @@ model Feedback {
   email   String?
   message String
 
+  /// Optional visitor details (2026-10-03) — all nullable so older rows and
+  /// non-meeting feedback stay valid.
+  phone   String?
+  company String?
+  /// 1–5 stars, optional.
+  rating  Int?
+
   chapterId String?
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  invitedByMemberId String?
+  invitedByMember   Member? @relation("FeedbackInvitedBy", fields: [invitedByMemberId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
@@ -857,6 +912,15 @@ model Meeting {
   visitorAttendanceQrToken String? @unique
   visitorCheckInOpen       Boolean @default(false)
 
+  /// Automatic member reminder email, 2 days (48h) before startsAt
+  /// (2026-10-03). Sent by the /api/cron/meeting-reminders job, which
+  /// always reads the meeting fresh, so edits made before sending are
+  /// reflected. reminderStatus is null until processed; changing startsAt
+  /// resets it so the new date gets its own reminder.
+  reminderEnabled     Boolean                @default(true)
+  reminderStatus      MeetingReminderStatus?
+  reminderProcessedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -866,9 +930,47 @@ model Meeting {
   payments           Payment[]
   visitorAttendances VisitorAttendance[]
   invitation         MeetingInvitation?
+  feedback           Feedback[]
+  reminderLogs       MeetingReminderLog[]
 
   @@index([chapterId, startsAt])
   @@map("meetings")
+}
+
+enum MeetingReminderStatus {
+  /// Claimed by a cron run and being sent — guards against two overlapping
+  /// runs both sending.
+  SENDING
+  SENT
+  PARTIALLY_SENT
+  FAILED
+  /// Nobody in the chapter had a valid email address.
+  NO_RECIPIENTS
+}
+
+enum ReminderDeliveryStatus {
+  SENT
+  FAILED
+}
+
+/// One row per recipient per reminder send — the admin's delivery log.
+model MeetingReminderLog {
+  id String @id @default(cuid())
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  email  String
+  status ReminderDeliveryStatus
+  error  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([meetingId])
+  @@map("meeting_reminder_logs")
 }
 
 // ---------------------------------------------------------------------------
@@ -889,17 +991,27 @@ model MeetingInvitation {
   meetingId String  @unique
   meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
-  headingLine1 String @default("BUILDERS WORLD FORUM")
-  headingLine2 String @default("YOU ARE INVITED")
+  /// 2026-10-03 reference redesign: headingLine1 is the small top line on
+  /// the green panel ("CHENNAI CHAPTER-2 MEETING INVITATION"), headingLine2
+  /// the big headline (connector words like "for"/"and" render in regular
+  /// weight automatically — see src/lib/invitations/poster.ts).
+  headingLine1 String @default("CHAPTER MEETING INVITATION")
+  headingLine2 String @default("NETWORKING FOR CONSTRUCTION MATERIAL SUPPLIERS AND PROFESSIONALS")
 
-  /// Copied from ChiefGuest at first save, then independently editable —
-  /// never written back to the ChiefGuest catalog row.
+  /// Legacy single-guest fields (pre-redesign). New saves use `guests`.
   guestName         String?
   guestDesignation  String?
   guestOrganisation String?
   guestPhotoUrl     String?
 
-  whyAttendText String @default("Connect with entrepreneurs, build meaningful business relationships, exchange referrals and discover new opportunities through the Builders World Forum.")
+  /// Up to 3 chief guests, in poster order:
+  /// [{ name, designation, organisation, organisationNote, photoUrl }]. Copied
+  /// from the ChiefGuest catalog, then independently editable — never written
+  /// back to it.
+  guests Json?
+
+  /// "What's in it for you?" text.
+  whyAttendText String @default("Connect with builders, contractors, and suppliers in a focused networking space.")
 
   /// Manual-only — see the model-block comment above.
   dateLabel       String?
@@ -910,6 +1022,19 @@ model MeetingInvitation {
   isComplimentary Boolean @default(false)
 
   includeQr Boolean @default(true)
+
+  /// What the QR opens: "LOCATION" (Google Maps for the venue — the
+  /// reference design) or "REGISTRATION" (visitor check-in link).
+  qrTarget String @default("LOCATION")
+
+  /// Text after the fee amount, e.g. "+ GST 18% only (Including Breakfast)".
+  feeNote            String?
+  websiteLabel       String?
+  /// e.g. "+91 99625 50806 | +91 94441 31213"
+  contactPhones      String?
+  ctaText            String  @default("Call for Registration")
+  /// Optional photo blurred behind the green panel; null = BWF's bundled image.
+  backgroundPhotoUrl String?
 
   /// Snapshot of Meeting.updatedAt at last save/refresh — lets the page
   /// detect "the underlying meeting changed since this invitation was last
@@ -1659,6 +1784,11 @@ model Roster {
   /// space on the printed sheet, same as every reference roster).
   notesEnabled Boolean @default(false)
 
+  /// AUTO: "All Other Members" order is recomputed from score on every save.
+  /// MANUAL: the admin re-ordered rows by hand; save keeps that order as-is
+  /// until they switch back to auto (2026-10-03 correction).
+  orderMode RosterOrderMode @default(AUTO)
+
   /// Which Chief Guest(s) are featured on this specific roster's cover —
   /// independent of Meeting.chiefGuestId (that field is the single speaker
   /// shown on the public meeting/visit page; a roster cover can feature more
@@ -1683,6 +1813,11 @@ model Roster {
   @@map("rosters")
 }
 
+enum RosterOrderMode {
+  AUTO
+  MANUAL
+}
+
 /// One row per (Roster, Member) in the roster's "All Other Members" section
 /// — Chief Guest/Founding Team/Leadership Team/Coordinators are NOT scored
 /// (see src/lib/roster/manage.ts's exclusion logic; those sections keep
@@ -1692,8 +1827,13 @@ model RosterScore {
   rosterId String
   memberId String
 
-  /// Editable by the admin; drives the automatic ranking on Save.
+  /// Editable by the admin; drives the automatic ranking on Save. Pre-filled
+  /// from the member's live overall activity points (src/lib/points/score.ts).
   score Int @default(0)
+
+  /// The member's overall activity points at the moment of saving — lets the
+  /// wizard show which scores were manually changed from the system value.
+  systemPoints Int?
 
   /// Recomputed on every Save — a stable descending sort by score (ties
   /// keep their prior relative order) — and used directly as this member's
@@ -2046,4 +2186,33 @@ model VendorContactRequest {
   @@index([memberId])
   @@index([createdAt])
   @@map("vendor_contact_requests")
+}
+
+// ---------------------------------------------------------------------------
+// 2026-10-03 corrections — small key/value settings store plus the visitor
+// feedback email recipient list.
+// ---------------------------------------------------------------------------
+
+/// Admin-editable switches that don't deserve their own table. Keys are
+/// declared in src/lib/settings.ts — never spelled out at call sites.
+model AppSetting {
+  key   String @id
+  value Json
+
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+/// Extra addresses (beyond the Super Admin default) that receive an email
+/// for every visitor feedback submission.
+model FeedbackEmailRecipient {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  isEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("feedback_email_recipients")
 }

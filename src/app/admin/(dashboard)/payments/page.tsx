@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getChapterScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
+import { getPaymentsScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthsCovered } from "@/lib/attendance/manage";
 import { PaymentReviewActions } from "@/components/admin/payment-review-actions";
@@ -12,7 +12,7 @@ export default async function PaymentsPage({
 }: {
   searchParams: Promise<{ chapterId?: string; meetingId?: string; status?: string; from?: string; to?: string; q?: string }>;
 }) {
-  const scope = await getChapterScope("payments:view");
+  const scope = await getPaymentsScope();
   const session = await requireAdminSession();
   const permissions = await getUserPermissionKeys(session.user.id);
   const canApprove = permissions.has("payments:approve");

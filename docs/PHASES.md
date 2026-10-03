@@ -3747,3 +3747,181 @@ afterwards (confirmed zero rows remaining).
   `<category>-in-<location>` page are unaffected.
 - **Not changeable from code:** Google picks sitelinks itself — they'll update as Google recrawls
   (typically days to a few weeks); requesting re-indexing in Search Console speeds this up.
+
+---
+
+## Phase 30 — Member Portal & Admin Panel Corrections (2026-10-03 client spec)
+
+**Status:** Complete (item 4 delivered in the follow-up below).
+
+**Client decisions (asked before building):** chapters start meetings at **7:00 AM IST**;
+two-step = **email verification at first login only** (a Super Admin switch, no per-login codes —
+those were removed in Phase 19); new rosters take scores from **live overall points**
+(replacing the carry-forward from the previous meeting).
+
+**What shipped:**
+1. **Referrals → Chapter → Category → Member picker** (`MemberPicker`): step 2 lists only
+   categories with members in the chosen chapter, step 3 only that chapter+category's members,
+   type-to-filter. Used for Referrals, Thank You Slips, One-to-Ones, Power Dates and Conclaves
+   (multi-pick with chips). The browser payload (`getPickerMembers`) carries no contact details.
+2. **Find Members Nearby** (`/member/search`): Google Places (New) autocomplete — selecting a
+   suggestion uses its coordinates, never the typed text; members within a radius (default 5 km;
+   2/10/25 selectable) by haversine distance, nearest first; cards show name, company,
+   category | chapter, locality, "2.3 KM away", Call/WhatsApp/Directions/Profile; results map
+   with radius circle. New `Member.latitude/longitude/locationLabel`, set from a Places picker
+   on the admin member form and the member's own edit request (goes through approval).
+   `scripts/geocode-members.ts` backfills existing members from their saved addresses.
+   **Without `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` it falls back to the old address text match.**
+3. **Create Next Month's Meetings** (`/admin/meetings/generate`): preview → confirm → result
+   (created vs skipped). Driven by new structured chapter schedule fields (day, weeks of month,
+   start time — backfilled from the free-text schedule; editable on the chapter page). Holidays
+   ignored, Chief Guest left unassigned, venue = chapter venue (fallback "Aditya"), reminder ON.
+   Duplicates prevented by a same-IST-day check inside a transaction under an advisory lock.
+   Chapter Admins generate only their own chapter.
+4. **Invitation poster redesign — not started.** The spec says the reference design will be
+   provided separately; nothing has been changed until it arrives.
+5. **Roster ranking:** scores pre-fill from live overall points (`getLeaderboard`), with an
+   "Overall points" column, "Edited" markers where a score was changed by hand, and a reset
+   button. New `Roster.orderMode`: **Auto-generated ranking** (re-ranked by score on save) vs
+   **Manual override** (moving a row ▲▼ or typing a serial number; saved order kept as-is until
+   "Return to auto ranking"). `RosterScore.systemPoints` snapshots the system value at save.
+6. **Member Portal redesign** (member-facing only — admin untouched): green sidebar navigation
+   with mobile drawer, full-width layout (max 1400px), dashboard with score hero, 8 quick-action
+   cards, this-month stats, next meeting; new `/member/meetings`; every activity page rebuilt on
+   shared primitives (`src/components/member/ui.tsx`) — form first and wide, history beside it;
+   clear success/error states; `lucide-react` icons.
+7. **Bulk member login credentials** (`/admin/member-credentials`, Super Admin): "Generate Member
+   Login Credentials" creates `BWF001…` usernames + random 12-char passwords (Argon2id-hashed;
+   plaintext shown once, CSV download, never stored or logged) for active members without a
+   login; "Reissue" for not-yet-activated members. First login forces `/member/activate`:
+   verify email with a 6-digit code (switchable in Settings), set a private password; the
+   temporary password and every session using it die immediately. Member login accepts
+   username or email and offers "Keep me signed in" (30-day session; standard sessions now have
+   an 8-hour idle limit); "Sign out of all devices" on the dashboard. `User.email` is now optional.
+8. **Meeting reminder emails:** `Meeting.reminderEnabled` (default ON, toggle on create/edit);
+   hourly cron `/api/cron/meeting-reminders` (`vercel.json`) emails the chapter's active members
+   with a valid email (login email first, else contact email) 48h before the meeting, always
+   reading the latest meeting details. Status Sent / Partially sent / Failed / No recipients,
+   scheduled time and recipient count in the Meetings list and meeting page, per-recipient
+   delivery log. Changing the date resets the reminder. Sent via Resend's batch endpoint.
+9. **Visitor feedback emails:** feedback is saved first, then emailed via `after()` (a mail
+   failure can't fail the submission). Default recipient = every active Super Admin's login
+   email (read from accounts — currently Abiramanathan's), plus extra addresses with ON/OFF and
+   remove in the new **Admin → Settings**. Email carries all collected details and a deep link
+   to the highlighted record. The public form gained optional company, phone, star rating,
+   meeting attended and invited-by.
+
+**Also fixed along the way:** meeting create/edit parsed `datetime-local` in the server's
+timezone — correct on this IST dev machine, but would shift every meeting by 5½ h on a UTC host
+(Vercel). New date logic and the meeting forms are now explicitly IST (`src/lib/ist.ts`).
+
+**Migration:** `20261003120000_member_portal_corrections` — additive only (new nullable/defaulted
+columns, 3 new tables, `users.email` relaxed to nullable, chapter-schedule backfill). Applied via
+the documented `db execute` → `migrate resolve --applied` path; backfill confirmed for all 4
+chapters (2nd & 4th Thu / 2nd & 4th Fri / 1st & 3rd Wed / 1st & 3rd Tue, 07:00).
+
+**Verification performed:** `lint`, `typecheck`, `build` clean. Production build (`next start`
+on port 3100) driven by Playwright against the live DB with clearly-labelled temporary data (a
+"ZZ Test Chapter", 4 test members with coordinates 2.3/4.5/8 km from Arumbakkam, temp Chapter
+Admin and Super Admin logins). Every test email went to Resend's test inbox
+(`delivered+…@resend.dev`); the real Super Admin feedback recipient was switched off during
+the test and restored. **47 checks, 45 passed first run; both failures diagnosed and resolved:**
+one real bug — the activity pages scrolled 76px sideways at phone width (grid track
+`minmax(auto,1fr)` stretched by table min-width; fixed with `grid-cols-1`, then all 15 portal
+pages confirmed 0px overflow at 390px and 1440px); one test artifact (the raw `pg` driver reads
+`timestamp` as local time — Prisma confirmed meetings stored at 01:30Z = 7:00 IST). Covered:
+temp login → forced activation → wrong/right code → 30-day cookie → temp password rejected →
+new email login; cascading picker (categories/members scoped, reset after save, conclave
+multi-pick); 5 km vs 10 km radius; cron sends once to 4 members, second run sends nothing;
+generate preview/create/re-open-as-skipped, Chapter Admin scoped and 403 on Settings; date edit
+resets reminder; roster manual order persisted and reloaded; feedback stored + emailed + deep
+link; reissue → new Argon2 hash, CSV export, reissued password reaches activation. **Not run:
+the bulk "Generate" button** (it would issue credentials to all 126 real members) — its
+per-member logic is the same as reissue's. All test data, audit rows and settings rows deleted
+afterwards (confirmed: 0 test rows; 2 meetings, 127 members, 1 login — baseline).
+
+**Known issues / follow-ups:**
+- **Google Maps key needed** (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, Places API (New) + Maps JS;
+  server key with Geocoding API for the backfill). Until then search is text-only, and **no
+  member has coordinates yet** — run `npx tsx scripts/geocode-members.ts` (dry run) then
+  `--apply` once a key exists. Places autocomplete itself is untested against Google for that reason.
+- **Points config is all 0** in the live DB, so roster auto-ranking has nothing to sort by until
+  values are set in App Points & Scoring (all members tie and keep join order).
+- **Reminder cron needs a deployment** with `CRON_SECRET` set (hourly schedule needs Vercel Pro).
+- Item 4 (invitation poster) awaiting the reference design.
+- Older admin pages still render dates with the server's local timezone (`toLocaleString()`);
+  fine on an IST machine, will show UTC once on Vercel. New pages use `src/lib/ist.ts`.
+- HawkScan DAST scan not run — no `hawk` runtime or `HAWK_API_KEY` in this environment.
+
+### Phase 30 follow-up (2026-10-03) — Accounts-only payments + invitation reference design
+
+**Client decisions:** payment features are **Accounts-only** — "All payment features" option:
+All Payments, Member-wise Payments, Payments, Visitors Payment, their exports and approve/reject
+are removed from Super, Central and Chapter Admins. Supersedes Phase 29's "Super Admin + Accounts".
+
+**What shipped:**
+- Seed: Super Admin gets every permission *except* `accounts:view`/`payments:view`/
+  `payments:approve`; Central Admin loses `payments:view`. Migration
+  `20261003180000_accounts_only_payments` revokes the existing rows (live DB confirmed: only
+  ACCOUNTS holds them).
+- Chapter Admins previously reached payments via chapter scoping (bypassing permissions):
+  payment pages/exports now use `getPaymentsScope()` (requires the real permission). Payment
+  items left the Member Performance sidebar/picker text; the payment column was removed from
+  Visitors Attendance → visitor profile history.
+- **Invitation poster redesigned to the client's reference** — now the pattern for every invite
+  (`src/lib/invitations/poster.ts`, 900×1600 design space exported at 1350×2400): faceted light
+  background, logo + wordmark + script tagline, green panel over a blurred photo, eyebrow line,
+  mixed-weight headline (connector words regular automatically), "Chief Guest(s)" pill, **up to 3
+  chief-guest cards** (lime frame, initials if no photo; cut-out PNGs look exactly like the
+  reference), "What's in it for you?" row, details card (date with superscript ordinal, time,
+  venue, website, QR + caption), phones + "Call for Registration" pill, lime fee bar. QR opens
+  the venue location (reference) or visitor registration (option). Fonts: Poppins + Dancing
+  Script, loaded only on the editor page. Migration `20261003190000_invitation_reference_redesign`
+  (additive; `guests` JSON, `qrTarget`, `feeNote`, `websiteLabel`, `contactPhones`, `ctaText`,
+  `backgroundPhotoUrl`, new defaults). House-style fields (headline, why-attend, fee, phones,
+  website, CTA, QR target, background) **carry forward from the last saved invitation**, so each
+  new invite starts in the same pattern; guests default to the meeting's roster chief guests,
+  else the meeting's Chief Guest. `imageUrlToDataUrl` now requires an admin session and rejects
+  non-image responses (it was callable without auth before).
+
+**Verification:** lint/typecheck/build clean; production build + Playwright with temp data:
+**20/20** — crawl of 48 admin pages + 4 exports as Accounts (200 only on the 4 payment pages and
+3 payment exports, `/admin` and `/admin/workspace` → `/admin/accounts`, everything else 403,
+sidebar shows only the 4 accounts items) and as Super/Central/Chapter Admin (every payment
+page/export 403, no Accounts card, no payment sidebar items, normal pages still 200); invitation
+defaults to the roster's 3 guests, saves, reloads, downloads. Rendered PNGs (3- and 1-guest)
+compared visually against the reference; three differences fixed (wordmark outline weight,
+backdrop visibility, phone glyph). All temp data deleted (0 rows left).
+
+**Follow-ups:** the default panel backdrop is BWF's own chapter-meeting photo — upload a
+construction-crowd image in the editor if you want the reference's exact look; Central Admin
+could be re-granted `payments:view` from Roles & Permissions, but the Super Admin row is fixed.
+
+### Phase 30 correction 2 (2026-10-03) — Super Admin keeps payments; credentials issued
+
+- **Super Admin has payment/accounts access again** (client: "Super admin can have the access and
+  should be able to change access"). Seed back to every permission; migration
+  `20261003200000_super_admin_payments_restored` re-grants `accounts:view`/`payments:view`/
+  `payments:approve` (live DB: only SUPER_ADMIN + ACCOUNTS hold them). Central/Chapter Admin stay
+  without; Super Admin grants them from Roles & Permissions if needed. `getPaymentsScope()` now
+  limits a Chapter Admin granted `payments:view` to their own chapter. Payment links reappear in
+  Member Performance for whoever holds the permission.
+- **Member credentials generated** at the client's request for all 126 active members without a
+  login (Chapter 01: 57, 02: 39, 03: 30 — the 127th already had an email login): `BWF001`–`BWF126`,
+  same logic as the admin Generate button, audit-logged against the Super Admin account.
+- **Credential scheme simplified (client, same day):** usernames per chapter — `BWFCC101…157`
+  (Chapter 01), `BWFCC201…239` (02), `BWFCC301…330` (03) — and one shared temporary password,
+  `1234`, for everyone (`src/lib/auth/member-credentials.ts`; Generate/Reset buttons follow it).
+  All 126 issued logins were converted and re-verified. **Accepted risk, flagged to the client:**
+  until a member activates, anyone who knows the pattern can sign in as them and bind their own
+  email. Mitigation offered (not built): also require the member's registered phone number at
+  first login.
+  Exported to `../BWF-Member-Login-Credentials.xlsx` (outside the repo, never committed); every
+  row verified against its stored Argon2 hash. Members can sign in once the new site is deployed.
+- **One-click member login on the member's admin page** (replaces the old email + 12-char
+  password "Grant portal access" form): **Create login** assigns the next `BWFCC` username for
+  the member's chapter with password `1234` and shows it to share; **Reset to temporary password**
+  for members who haven't activated (also signs out any open session). Available to anyone with
+  `members:manage` for that chapter, Chapter Admins included. Verified live as a temp Chapter
+  Admin (BWFCC701, then BWFCC702; member signed in with `bwfcc701`/`1234` → activation; reset
+  revoked the session); temp data deleted.

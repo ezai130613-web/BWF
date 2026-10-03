@@ -28,6 +28,7 @@ const NAV_ITEMS: { href: string; label: string; permission: string | null; works
   { href: "/admin/qr-codes", label: "QR Codes", permission: "attendance:manage", workspace: "performance" },
   { href: "/admin/attendance", label: "Attendance", permission: "attendance:manage", workspace: "performance" },
   { href: "/admin/accounts", label: "All Payments", permission: "accounts:view", workspace: "accounts" },
+  // Shown only to holders of payments:view (Accounts + Super Admin by default, 2026-10-03).
   { href: "/admin/payments", label: "Payments", permission: "payments:view", workspace: ["performance", "accounts"] },
   { href: "/admin/payments/members", label: "Member-wise Payments", permission: "accounts:view", workspace: "accounts" },
   { href: "/admin/visitors-qr", label: "Visitors QR", permission: "attendance:manage", workspace: "performance" },
@@ -51,6 +52,8 @@ const NAV_ITEMS: { href: string; label: string; permission: string | null; works
   { href: "/admin/faqs", label: "FAQs", permission: "content:manage", workspace: "website" },
   { href: "/admin/feedback", label: "Feedback", permission: "feedback:view", workspace: "website" },
   { href: "/admin/users", label: "Users", permission: "users:manage", workspace: "website" },
+  { href: "/admin/member-credentials", label: "Member Login Credentials", permission: "users:manage", workspace: "website" },
+  { href: "/admin/settings", label: "Settings", permission: "users:manage", workspace: "website" },
   { href: "/admin/roles", label: "Roles & Permissions", permission: "roles:manage", workspace: "website" },
   { href: "/admin/activity", label: "Activity Log", permission: "audit_log:view", workspace: "website" },
 ];
@@ -92,7 +95,6 @@ export function Sidebar({
       "app_activity:view",
       "roster:manage",
       "attendance:manage",
-      "payments:view",
       "invitations:manage",
       "contact_requests:view",
     ];

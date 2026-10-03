@@ -1,101 +1,75 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { Receipt } from "lucide-react";
 import { recordThankYouSlip } from "@/app/member/(portal)/thank-you-slips/actions";
+import type { PickerMember } from "@/lib/members/picker";
+import { MemberPicker } from "@/components/member/member-picker";
+import { ActivityFormShell } from "@/components/member/activity-form-shell";
+import { Field, inputClass } from "@/components/member/ui";
 
-const initialState: { error?: string; success?: boolean } = {};
+const initialState: { error?: string; success?: boolean; successes?: number } = {};
 
-type Option = { id: string; name: string };
 type ReferralOption = { id: string; fromMemberName: string; createdAt: Date };
 
 export function RecordThankYouSlipForm({
   members,
   receivedReferrals,
 }: {
-  members: Option[];
+  members: PickerMember[];
   receivedReferrals: ReferralOption[];
 }) {
-  const [state, formAction, pending] = useActionState(recordThankYouSlip, initialState);
+  // `successes` keys the member picker, so it remounts (clears) after each
+  // successful save — a form's native reset() can't clear React state.
+  const [state, formAction, pending] = useActionState(
+    async (prev: typeof initialState, formData: FormData) => {
+      const result = await recordThankYouSlip(prev, formData);
+      return { ...result, successes: (prev.successes ?? 0) + (result?.success ? 1 : 0) };
+    },
+    initialState,
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state?.success) formRef.current?.reset();
-  }, [state?.success]);
+  }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
-      <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Record a Thank You Slip</h2>
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Thanking
-        <select
-          name="toMemberId"
-          required
-          defaultValue=""
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        >
-          <option value="" disabled>
-            Select a member…
-          </option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Business value (₹)
-        <input
-          name="amountInr"
-          type="number"
-          min="1"
-          required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        />
-      </label>
-
+    <ActivityFormShell
+      icon={Receipt}
+      title="Add a Thank You Slip"
+      description="You received business through a BWF referral — thank the member who passed it."
+      formRef={formRef}
+      action={formAction}
+      pending={pending}
+      error={state?.error}
+      success={state?.success && "Thank You Slip recorded."}
+      submitLabel="Record Thank You Slip"
+    >
+      <div className="md:col-span-2">
+        <MemberPicker key={state.successes ?? 0} members={members} name="toMemberId" label="Thanking" />
+      </div>
+      <Field label="Business value (₹)" htmlFor="tys-amount">
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-neutral-500">₹</span>
+          <input id="tys-amount" name="amountInr" type="number" inputMode="numeric" min="1" required className={`${inputClass} pl-8`} />
+        </div>
+      </Field>
       {receivedReferrals.length > 0 ? (
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
-          Link to a referral you received (optional)
-          <select
-            name="referralId"
-            defaultValue=""
-            className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-          >
+        <Field label="Link to a referral you received (optional)" htmlFor="tys-referral">
+          <select id="tys-referral" name="referralId" defaultValue="" className={inputClass}>
             <option value="">None</option>
             {receivedReferrals.map((r) => (
               <option key={r.id} value={r.id}>
-                From {r.fromMemberName} — {r.createdAt.toLocaleDateString()}
+                From {r.fromMemberName} — {r.createdAt.toLocaleDateString("en-IN")}
               </option>
             ))}
           </select>
-        </label>
+        </Field>
       ) : null}
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
-        Description (optional)
-        <textarea
-          name="description"
-          rows={2}
-          placeholder="What was the business — e.g. order details"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-        />
-      </label>
-
-      {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}
-      {state?.success ? <p className="text-sm text-emerald-700 sm:col-span-2">Thank You Slip recorded.</p> : null}
-
-      <div className="sm:col-span-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-        >
-          {pending ? "Recording…" : "Record Thank You Slip"}
-        </button>
-      </div>
-    </form>
+      <Field label="Description (optional)" htmlFor="tys-description" className="md:col-span-2">
+        <textarea id="tys-description" name="description" rows={3} placeholder="What was the business — e.g. order details" className={inputClass} />
+      </Field>
+    </ActivityFormShell>
   );
 }

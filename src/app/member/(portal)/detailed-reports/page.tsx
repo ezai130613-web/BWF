@@ -1,3 +1,5 @@
+import { FileBarChart } from "lucide-react";
+import { PageHeader } from "@/components/member/ui";
 import Link from "next/link";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
@@ -175,10 +177,7 @@ export default async function DetailedReportsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Detailed Reports</h1>
-        <p className="mt-1 text-sm text-neutral-600">Go beyond the numbers — exactly who, what, and when.</p>
-      </div>
+      <PageHeader icon={FileBarChart} title="Detailed Reports" description="Go beyond the numbers — exactly who, what, and when." />
 
       <nav className="flex gap-2 overflow-x-auto whitespace-nowrap pb-1">
         {TABS.map((t) => (
@@ -186,7 +185,7 @@ export default async function DetailedReportsPage({
             key={t.key}
             href={`/member/detailed-reports?tab=${t.key}`}
             className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
-              tab === t.key ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              tab === t.key ? "bg-emerald-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
             }`}
           >
             {t.label}
@@ -194,7 +193,7 @@ export default async function DetailedReportsPage({
         ))}
       </nav>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full min-w-[500px] text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>

@@ -17,29 +17,41 @@ const LOCKOUT_MINUTES = 15;
 // password was wrong, or whether the account is locked/wrong-role.
 export const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
+/** Members may sign in with their bulk-issued username (e.g. "BWF001") as
+ * well as an email — anything without an "@" is treated as a username. */
+export function loginLookup(identifier: string): { email: string } | { username: string } {
+  const trimmed = identifier.trim();
+  return trimmed.includes("@") ? { email: trimmed.toLowerCase() } : { username: trimmed.toUpperCase() };
+}
+
 export class AccountLockedError extends CredentialsSignin {
   code = "account-locked";
 }
 
 export type LoginResult = {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
   roles: string[];
   chapterId: string | null;
   sessionVersion: number;
+  /** "Keep me signed in on this device" — member logins only (see config.ts). */
+  longLived: boolean;
 } | null;
 
 export async function authorizeLogin(
-  email: unknown,
+  identifier: unknown,
   password: unknown,
   allowedRoleKeys: string[],
+  options: { allowUsername?: boolean; longLived?: boolean } = {},
 ): Promise<LoginResult> {
-  if (typeof email !== "string" || typeof password !== "string") return null;
+  if (typeof identifier !== "string" || typeof password !== "string" || !identifier.trim()) return null;
 
-  const normalizedEmail = email.toLowerCase();
+  const lookup = loginLookup(identifier);
+  if ("username" in lookup && !options.allowUsername) return null;
+
   const user = await db.user.findUnique({
-    where: { email: normalizedEmail },
+    where: lookup,
     include: { roles: { include: { role: true } } },
   });
 
@@ -81,5 +93,6 @@ export async function authorizeLogin(
     roles: roleKeys,
     chapterId: chapterAdminAssignment?.chapterId ?? null,
     sessionVersion: user.sessionVersion,
+    longLived: Boolean(options.longLived),
   };
 }

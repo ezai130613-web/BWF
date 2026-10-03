@@ -20,8 +20,8 @@ export default async function WorkspaceSelectPage() {
   const selectPerformance = selectWorkspace.bind(null, "performance");
   const selectMarketing = selectWorkspace.bind(null, "marketing");
   const selectAccounts = selectWorkspace.bind(null, "accounts");
-  // Phase 29 — Super Admin (and anyone else granted accounts:view) gets the
-  // Accounts workspace too; Central Admin does not by default.
+  // Accounts workspace for holders of accounts:view — Accounts Department and
+  // Super Admin by default; grantable to others from Roles & Permissions.
   const permissions = await getUserPermissionKeys(session.user.id);
   const canSeeAccounts = permissions.has("accounts:view");
 
@@ -60,8 +60,7 @@ export default async function WorkspaceSelectPage() {
               <p className="text-base font-semibold text-neutral-900">Member Performance Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
                 App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
-                Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Payments, Visitors QR,
-                Visitors Attendance &amp; Visitors Payment.
+                Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Visitors QR &amp; Visitors Attendance.
               </p>
             </button>
           </form>

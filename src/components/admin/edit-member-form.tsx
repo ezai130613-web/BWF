@@ -1,5 +1,7 @@
 "use client";
 
+import { LocationPickerField } from "@/components/maps/location-picker-field";
+
 import { useActionState, useState } from "react";
 import { updateMemberProfile } from "@/app/admin/(dashboard)/members/actions";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
@@ -147,6 +149,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <Field label="Website" name="website" type="url" defaultValue={member.website} />
         <Field label="Address" name="address" defaultValue={member.address} />
         <Field label="Google Maps URL" name="googleMapsUrl" type="url" defaultValue={member.googleMapsUrl} />
+        <LocationPickerField defaultLabel={member.locationLabel} defaultLat={member.latitude} defaultLng={member.longitude} />
       </section>
 
       <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">

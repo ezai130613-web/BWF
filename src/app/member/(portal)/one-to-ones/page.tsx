@@ -1,6 +1,9 @@
+import { Users } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { getPickerMembers } from "@/lib/members/picker";
 import { RecordOneToOneForm } from "@/components/member/record-one-to-one-form";
+import { Card, DataTable, PageHeader, formatShortDate, tdClass } from "@/components/member/ui";
 
 export default async function MemberOneToOnesPage() {
   const { member } = await requireMemberProfile();
@@ -8,56 +11,40 @@ export default async function MemberOneToOnesPage() {
   const [oneToOnes, members] = await Promise.all([
     db.oneToOne.findMany({
       where: { OR: [{ memberId: member.id }, { withMemberId: member.id }] },
-      include: { member: true, withMember: true },
+      include: { member: { select: { id: true, name: true } }, withMember: { select: { id: true, name: true } } },
       orderBy: { metAt: "desc" },
     }),
-    db.member.findMany({ where: { status: "ACTIVE", id: { not: member.id } }, orderBy: { name: "asc" } }),
+    getPickerMembers(member.id),
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">One-to-Ones</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          A dedicated meeting between two BWF members outside the regular chapter meeting — a
-          chance to understand each other&rsquo;s business deeply.
-        </p>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold text-neutral-900">Your One-to-Ones ({oneToOnes.length})</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">With</th>
-                <th className="px-4 py-3 font-medium">Notes</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {oneToOnes.map((o) => (
-                <tr key={o.id}>
-                  <td className="px-4 py-3 text-neutral-900">
-                    {o.memberId === member.id ? o.withMember.name : o.member.name}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-600">{o.notes ?? "—"}</td>
-                  <td className="px-4 py-3 text-neutral-500">{o.metAt.toLocaleDateString()}</td>
-                </tr>
-              ))}
-              {oneToOnes.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
-                    No One-to-Ones recorded yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={Users}
+        title="One-to-Ones"
+        description="A dedicated meeting between two BWF members outside the regular chapter meeting — a chance to understand each other's business deeply. Recorded once, it counts for both of you."
+      />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <RecordOneToOneForm members={members} />
+        </div>
+        <div className="xl:col-span-2">
+          <Card title={`Your One-to-Ones (${oneToOnes.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["With", "Notes", "Date"]} empty={oneToOnes.length === 0 ? "No One-to-Ones recorded yet." : null}>
+              {oneToOnes.map((o) => {
+                const other = o.memberId === member.id ? o.withMember : o.member;
+                return (
+                  <tr key={o.id}>
+                    <td className={`${tdClass} font-medium text-neutral-900`}>{other.name}</td>
+                    <td className={`${tdClass} text-neutral-600`}>{o.notes ?? "—"}</td>
+                    <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(o.metAt)}</td>
+                  </tr>
+                );
+              })}
+            </DataTable>
+          </Card>
         </div>
       </div>
-
-      <RecordOneToOneForm members={members} />
     </div>
   );
 }

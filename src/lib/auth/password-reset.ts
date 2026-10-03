@@ -34,7 +34,9 @@ export async function requestPasswordReset(email: string, allowedRoleKeys: strin
     include: { roles: { include: { role: true } } },
   });
 
-  if (!user || user.status !== "ACTIVE") return;
+  // A member still on bulk-issued temporary credentials has no email yet —
+  // nothing to send a code to (an admin reissues their credentials instead).
+  if (!user || !user.email || user.status !== "ACTIVE") return;
 
   const roleKeys = user.roles.map((r) => r.role.key);
   if (!roleKeys.some((key) => allowedRoleKeys.includes(key))) return;
@@ -88,7 +90,7 @@ export async function resetPassword(
     where: { email: normalizedEmail },
     include: { roles: { include: { role: true } } },
   });
-  if (!user || user.status !== "ACTIVE") return { ok: false, error: GENERIC_RESET_ERROR };
+  if (!user || !user.email || user.status !== "ACTIVE") return { ok: false, error: GENERIC_RESET_ERROR };
 
   const roleKeys = user.roles.map((r) => r.role.key);
   if (!roleKeys.some((key) => allowedRoleKeys.includes(key))) return { ok: false, error: GENERIC_RESET_ERROR };

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getChapterScope } from "@/lib/auth/rbac";
+import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
 
@@ -11,7 +11,7 @@ export default async function PaymentMembersPage({
 }: {
   searchParams: Promise<{ q?: string; chapterId?: string; categoryId?: string; memberId?: string }>;
 }) {
-  const scope = await getChapterScope("payments:view");
+  const scope = await getPaymentsScope();
   const params = await searchParams;
 
   if (!params.memberId) {

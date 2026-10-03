@@ -1,3 +1,5 @@
+import { FileText } from "lucide-react";
+import { PageHeader } from "@/components/member/ui";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { SubmitArticleForm } from "@/components/member/submit-article-form";
@@ -23,18 +25,16 @@ export default async function MemberArticlesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Article Submissions</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Submit an article for BWF to review (brief §31). Nothing you write goes public until an
-          admin approves it — same review-before-publish rule as your profile edits.
-        </p>
-      </div>
+      <PageHeader
+        icon={FileText}
+        title="Articles"
+        description="Submit an article for BWF to review. Nothing you write goes public until an admin approves it."
+      />
 
       {submissions.length > 0 ? (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-neutral-900">Your submissions</h2>
-          <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
                 <tr>

@@ -1,3 +1,5 @@
+import { UserRound } from "lucide-react";
+import { PageHeader } from "@/components/member/ui";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { RequestProfileEditForm } from "@/components/member/request-profile-edit-form";
@@ -12,13 +14,11 @@ export default async function MemberProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">My Profile</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Edits here don&rsquo;t go live immediately — BWF admin reviews every change before it becomes public
-          (brief §20).
-        </p>
-      </div>
+      <PageHeader
+        icon={UserRound}
+        title="My Profile"
+        description="Edits here don't go live immediately — BWF reviews every change before it becomes public."
+      />
 
       {pendingRevision ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-6">

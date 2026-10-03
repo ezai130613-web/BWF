@@ -1,3 +1,5 @@
+import { BarChart3 } from "lucide-react";
+import { PageHeader } from "@/components/member/ui";
 import Link from "next/link";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { getActivityStats, daysAgo, monthsAgo } from "@/lib/points/activity-stats";
@@ -56,18 +58,13 @@ export default async function MemberReportsPage({
 
   return (
     <div className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Reports</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Your BWF activity — this week at a glance, and over a longer period below.
-        </p>
-      </div>
+      <PageHeader icon={BarChart3} title="My Activity" description="Your BWF activity — this week at a glance, and over a longer period below." />
 
       <div>
         <h2 className="text-sm font-semibold text-neutral-900">This Week</h2>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {WEEKLY_TILES.map((tile) => (
-            <div key={tile.key} className="rounded-lg border border-neutral-200 bg-white p-4 text-center">
+            <div key={tile.key} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4 text-center">
               <p className="text-2xl font-semibold text-neutral-900">
                 {tile.isCurrency ? formatInr(String(weekly[tile.key])) : weekly[tile.key]}
               </p>
@@ -86,7 +83,7 @@ export default async function MemberReportsPage({
                 key={p.key}
                 href={`/member/reports?period=${p.key}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  period === p.key ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  period === p.key ? "bg-emerald-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                 }`}
               >
                 {p.label}
@@ -95,7 +92,7 @@ export default async function MemberReportsPage({
           </div>
         </div>
 
-        <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>

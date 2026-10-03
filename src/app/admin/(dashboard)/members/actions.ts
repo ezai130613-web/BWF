@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
-import { hashPassword, newPasswordSchema } from "@/lib/auth/password";
+import { hashPassword } from "@/lib/auth/password";
+import { TEMPORARY_PASSWORD, assignUsernames } from "@/lib/auth/member-credentials";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { memberProfileFieldsSchema, normalizeMemberProfileFields } from "@/lib/members/profile-fields";
 import { slugify } from "@/lib/slugify";
@@ -197,49 +198,74 @@ export async function updateMemberInduction(_prevState: { error?: string } | und
 // own chapter's members without needing Super-Admin-only access.
 // ---------------------------------------------------------------------------
 
-const grantPortalAccessSchema = z.object({
-  memberId: z.string(),
-  email: z.email(),
-  password: newPasswordSchema,
-});
+export type MemberLoginResult = { error?: string; username?: string; password?: string };
 
-export async function grantMemberPortalAccess(_prevState: { error?: string } | undefined, formData: FormData) {
-  const parsed = grantPortalAccessSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
-
-  const { memberId, email, password } = parsed.data;
+/**
+ * One-click member login (2026-10-03): the next BWFCC username for the
+ * member's chapter + the shared temporary password, flagged so the member
+ * must verify an email and set a private password on first sign-in — the
+ * same scheme as the bulk generator (src/lib/auth/member-credentials.ts).
+ */
+export async function createMemberLogin(memberId: string): Promise<MemberLoginResult> {
   const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
-  await requireChapterAccess(member.chapterId, "members:manage");
+  const session = await requireChapterAccess(member.chapterId, "members:manage").then(() => requireAdminSession());
 
-  if (member.userId) return { error: "This member already has portal access." };
-
-  const normalizedEmail = email.toLowerCase();
-  const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing) return { error: "A login already exists with that email address." };
+  if (member.userId) return { error: "This member already has a login." };
+  if (member.status !== "ACTIVE") return { error: "Only active members can be given a login." };
 
   const memberRole = await db.role.findUniqueOrThrow({ where: { key: "MEMBER" } });
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await hashPassword(TEMPORARY_PASSWORD);
 
-  const user = await db.user.create({
+  // Retry once if another admin took the same next number at the same moment.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const username = (await assignUsernames([{ id: member.id, chapterId: member.chapterId }])).get(member.id)!;
+    try {
+      await db.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            name: member.name,
+            username,
+            password: passwordHash,
+            mustChangePassword: true,
+            temporaryPasswordIssuedAt: new Date(),
+            roles: { create: { roleId: memberRole.id } },
+          },
+        });
+        const linked = await tx.member.updateMany({ where: { id: member.id, userId: null }, data: { userId: user.id } });
+        if (linked.count !== 1) throw new Error("already-linked");
+      });
+      await logActivity({ userId: session.user.id, action: "member.portal_access_granted", entity: "Member", entityId: memberId, metadata: { username } });
+      revalidatePath(`/admin/members/${memberId}`);
+      revalidatePath("/admin/member-credentials");
+      return { username, password: TEMPORARY_PASSWORD };
+    } catch (err) {
+      if (err instanceof Error && err.message === "already-linked") return { error: "This member was just given a login by someone else — reload the page." };
+      if (attempt === 1) return { error: "Couldn't create the login — please try again." };
+    }
+  }
+  return { error: "Couldn't create the login — please try again." };
+}
+
+/** Puts a not-yet-activated member back on the temporary password (forgotten, locked out, or a suspected misuse). */
+export async function resetMemberTemporaryPassword(memberId: string): Promise<MemberLoginResult> {
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId }, include: { user: true } });
+  const session = await requireChapterAccess(member.chapterId, "members:manage").then(() => requireAdminSession());
+  if (!member.user?.username || !member.user.mustChangePassword) {
+    return { error: "This member has already activated their account — they can use “Forgot password” instead." };
+  }
+  await db.user.update({
+    where: { id: member.user.id },
     data: {
-      name: member.name,
-      email: normalizedEmail,
-      password: passwordHash,
-      roles: { create: { roleId: memberRole.id } },
+      password: await hashPassword(TEMPORARY_PASSWORD),
+      temporaryPasswordIssuedAt: new Date(),
+      sessionVersion: { increment: 1 },
+      failedLoginCount: 0,
+      lockedUntil: null,
     },
   });
-
-  await db.member.update({ where: { id: memberId }, data: { userId: user.id } });
-
-  await logActivity({
-    action: "member.portal_access_granted",
-    entity: "Member",
-    entityId: memberId,
-    metadata: { email: normalizedEmail },
-  });
-
+  await logActivity({ userId: session.user.id, action: "member.credentials_reissued", entity: "Member", entityId: memberId, metadata: { count: 1 } });
   revalidatePath(`/admin/members/${memberId}`);
-  return { error: undefined };
+  return { username: member.user.username, password: TEMPORARY_PASSWORD };
 }
 
 export async function toggleMemberPortalAccess(memberId: string) {

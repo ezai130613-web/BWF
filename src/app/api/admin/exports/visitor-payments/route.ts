@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getChapterScope } from "@/lib/auth/rbac";
+import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 
 /** Spec §6: "Export Excel reports for ... visitor payments." Same shape as the member payments export, minus the months-covered concept visitors don't have. */
 export async function GET(request: Request) {
-  const scope = await getChapterScope("payments:view");
+  const scope = await getPaymentsScope();
   const { searchParams } = new URL(request.url);
 
   const requestedChapterId = searchParams.get("chapterId");

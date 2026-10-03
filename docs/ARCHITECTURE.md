@@ -1537,6 +1537,86 @@ active member's phone/WhatsApp/email into the public page payload even though th
 names. Both now `select: { id, name }`. Any future public page passing member data to a client
 component must select fields explicitly for the same reason.
 
+### Member portal & admin corrections (2026-10-03 client spec, Phase 30)
+
+**Temporary credentials are a state on `User`, not a separate table.** `username` (unique,
+upper-case `BWF###`), `mustChangePassword`, `temporaryPasswordIssuedAt`, `emailVerifiedAt`;
+`email` became nullable because a bulk-issued member has none until first login. The temporary
+password is an ordinary Argon2id hash — plaintext exists only in the generating Server Action's
+return value. `mustChangePassword` is re-read from the DB on every request by the `jwt()`
+callback (not frozen into the token), so finishing activation releases the portal immediately;
+`proxy.ts` redirects to `/member/activate` and `requireMemberProfile()` enforces it server-side
+for every portal page and Server Action. Activation bumps `sessionVersion`, killing every
+session opened with the temporary password, then the client signs straight back in.
+Email-verification codes reuse `OtpChallenge` (`purpose: EMAIL_VERIFY`, new `target` column
+binding the code to the exact address it was sent to).
+
+**Long-lived sessions without infinite ones.** The JWT/cookie ceiling is now 30 days; the
+`jwt()` callback revokes any *standard* session (every admin, and members who untick "Keep me
+signed in") after 8 hours without activity via a `lastSeenAt` claim. Revocation is unchanged —
+`sessionVersion` (suspension, password reset, activation, and the member's own "Sign out of all
+devices").
+
+**`AppSetting` key/value table for small admin switches** (`src/lib/settings.ts` owns every key
+and default — a missing row means "default"). Used for the feedback default-recipient switch
+and the first-login email-code switch. `FeedbackEmailRecipient` is its own table since it is a
+list with per-row state.
+
+**Visitor feedback email runs in `after()`.** The row is committed before the response; the
+notification runs after it, catches everything, and records only a
+`feedback.notification_failed` audit row on failure — so email can never fail or slow a
+submission. Default recipients are read from active Super Admin accounts, never hardcoded.
+
+**Meeting reminders: hourly cron + a claim-by-status state machine.** `reminderStatus` null →
+`SENDING` via a conditional `updateMany` (exactly-once across overlapping runs); stale `SENDING`
+(>15 min) is retried, sending only to recipients without a `SENT` log row. The meeting is
+re-read at send time, so edits before sending are reflected; changing `startsAt` resets the
+status so the new date gets its own reminder. Recipients = chapter's ACTIVE members, login
+email first (verified at activation) else contact email, validated and de-duplicated. One email
+per recipient through Resend's batch endpoint (100 per call — stays under its rate limit).
+
+**Meeting generation is plan-then-create from one function.** `planMonthMeetings()` produces
+both the preview and the creation list; the confirm action re-plans server-side, rejects a stale
+month, and re-checks "meeting already on this IST day for this chapter" inside a transaction
+holding `pg_advisory_xact_lock`, so double clicks/concurrent admins can't duplicate. There is no
+DB unique constraint on (chapter, day) — existing data may legitimately hold two meetings on one
+day, and Postgres can't express it on a timestamp without a generated column.
+
+**All new date logic is explicit IST** (`src/lib/ist.ts`, fixed +05:30, no DST). Meeting
+create/edit now parse/emit `datetime-local` as IST instead of the server's zone — identical
+behavior on the IST dev machine, correct on a UTC host.
+
+**Distance search is in application code, not PostGIS.** ~140 members: fetch those with
+coordinates, haversine in JS, filter, sort. Coordinates come only from a Google Places selection
+or the Geocoding backfill — never from matching locality names. The Maps JS loader
+(`src/lib/maps/loader.ts`) is deliberately not a `"use client"` module, because server pages
+read its key constant and a client-module export would arrive as an always-truthy reference
+(same trap applies to any constant exported from a client component — keep shared constants in
+plain modules).
+
+**Roster order has a mode.** `Roster.orderMode` AUTO re-ranks by score on save (stable sort,
+unchanged algorithm); MANUAL persists the admin's order verbatim. Scores default to live
+overall points (`getLeaderboard`, batched), replacing the earlier carry-forward;
+`RosterScore.systemPoints` snapshots the system value so hand edits stay visible.
+
+**Payments are Accounts-only (follow-up, supersedes Phase 29's "Super Admin + Accounts").**
+Super Admin is no longer "every permission": the seed excludes `accounts:view`/`payments:view`/
+`payments:approve`, and a migration revoked the live grants. Payment pages use
+`getPaymentsScope()` rather than `getChapterScope()`, because chapter scoping deliberately lets a
+Chapter Admin through without any permission row — correct for members/meetings, wrong for
+data that must be Accounts-only.
+
+**Invitation poster = the client's reference, in its own coordinate space.** `poster.ts` lays
+everything out at the reference's 900×1600 and scales ×1.5 on export, so the layout can be
+checked against the reference by reading coordinates directly. Panel backdrop blur is a
+downscale/upscale (portable — `ctx.filter` isn't everywhere); fonts are next/font faces requested
+explicitly via `document.fonts.load()` before drawing, since canvas text never triggers a font
+download. Style fields carry forward from the last saved invitation instead of living in a
+separate settings table — the latest invite *is* the template.
+
+**Member portal has its own design primitives** (`src/components/member/ui.tsx`, server-safe)
+and `lucide-react` icons — the admin panel is intentionally unchanged.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1558,6 +1638,8 @@ they aren't lost, with the phase they'd first block:
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
+| ~~Second reference invitation poster (Phase 30 item 4)~~ | ~~Phase 30~~ | **Resolved 2026-10-03** — poster rebuilt to the client's reference; see Phase 30 section. |
+| Google Maps API keys (browser + server) | Phase 30 | Needed for Places autocomplete, the results map and the geocoding backfill; text-match fallback until then. |
 | ~~Reference invitation poster for the Meeting Invitation Generator's final layout~~ | ~~Phase 24~~ | **Resolved 2026-09-18** (same day) — client supplied a reference poster; `drawInvitationPoster()` redesigned to match its alignment/icon-driven detail row, background photo intentionally omitted per the client's own instruction (chief guest photo fills that role instead). See the Phase 24 section above. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
 | ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |

@@ -1,10 +1,13 @@
+import { Handshake } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { getPickerMembers } from "@/lib/members/picker";
 import { RecordReferralForm } from "@/components/member/record-referral-form";
+import { Card, DataTable, PageHeader, formatShortDate, tdClass } from "@/components/member/ui";
 
 const TYPE_LABEL: Record<string, string> = {
-  OUTSIDE: "Outside Referral",
-  SELF: "Self / Inside Referral",
+  OUTSIDE: "Outside",
+  SELF: "Self / Inside",
 };
 
 export default async function MemberReferralsPage() {
@@ -13,92 +16,53 @@ export default async function MemberReferralsPage() {
   const [given, received, members] = await Promise.all([
     db.referral.findMany({
       where: { fromMemberId: member.id },
-      include: { toMember: true },
+      include: { toMember: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     db.referral.findMany({
       where: { toMemberId: member.id },
-      include: { fromMember: true },
+      include: { fromMember: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    db.member.findMany({ where: { status: "ACTIVE", id: { not: member.id } }, orderBy: { name: "asc" } }),
+    getPickerMembers(member.id),
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Referrals</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          A referral is a genuine business opportunity you pass to a fellow BWF member — Outside
-          (from your own network) or Self/Inside (you bought from them yourself).
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">Given ({given.length})</h2>
-          <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">To</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {given.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-4 py-3 text-neutral-900">{r.toMember.name}</td>
-                    <td className="px-4 py-3 text-neutral-600">{TYPE_LABEL[r.type]}</td>
-                    <td className="px-4 py-3 text-neutral-500">{r.createdAt.toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {given.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
-                      No referrals given yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={Handshake}
+        title="Referrals"
+        description="A genuine business opportunity you pass to a fellow BWF member — Outside (from your own network) or Self/Inside (you bought from them yourself)."
+      />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <RecordReferralForm members={members} />
         </div>
-
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">Received ({received.length})</h2>
-          <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">From</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
+        <div className="flex flex-col gap-6 xl:col-span-2">
+          <Card title={`Given (${given.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["To", "Type", "Date"]} empty={given.length === 0 ? "No referrals given yet." : null}>
+              {given.map((r) => (
+                <tr key={r.id}>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>{r.toMember.name}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{TYPE_LABEL[r.type]}</td>
+                  <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(r.createdAt)}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {received.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-4 py-3 text-neutral-900">{r.fromMember.name}</td>
-                    <td className="px-4 py-3 text-neutral-600">{TYPE_LABEL[r.type]}</td>
-                    <td className="px-4 py-3 text-neutral-500">{r.createdAt.toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {received.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
-                      No referrals received yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </DataTable>
+          </Card>
+          <Card title={`Received (${received.length})`} bodyClassName="px-5 pb-1 pt-0 sm:px-6">
+            <DataTable head={["From", "Type", "Date"]} empty={received.length === 0 ? "No referrals received yet." : null}>
+              {received.map((r) => (
+                <tr key={r.id}>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>{r.fromMember.name}</td>
+                  <td className={`${tdClass} text-neutral-600`}>{TYPE_LABEL[r.type]}</td>
+                  <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(r.createdAt)}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </Card>
         </div>
       </div>
-
-      <RecordReferralForm members={members} />
     </div>
   );
 }
