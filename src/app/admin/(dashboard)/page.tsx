@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { isAccountsOnly } from "@/lib/auth/constants";
+import { WORKSPACE_HOME, fixedWorkspaceFor } from "@/lib/auth/constants";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { getDashboardMetrics } from "@/lib/dashboard/metrics";
 import { DATE_RANGE_PRESETS, resolveDateRange } from "@/lib/dashboard/date-range";
@@ -31,7 +31,9 @@ export default async function AdminDashboardPage({
   const session = await requireAdminSession();
   // proxy.ts already redirects here, this is the backstop — the global
   // metrics below are not something an Accounts-only login should see.
-  if (isAccountsOnly(session.user.roles)) redirect("/admin/accounts");
+  // the global metrics below aren't for single-workspace logins (except Website Admin, whose home this is).
+  const fixedWorkspace = fixedWorkspaceFor(session.user.roles);
+  if (fixedWorkspace && fixedWorkspace !== "website") redirect(WORKSPACE_HOME[fixedWorkspace]);
   const isChapterAdmin = session.user.roles.includes("CHAPTER_ADMIN");
   const chapterId = session.user.chapterId ?? null;
 

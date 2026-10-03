@@ -3,23 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
+import { WORKSPACE_HOME, type AdminWorkspace } from "@/lib/auth/constants";
 
-export type AdminWorkspace = "website" | "performance" | "marketing" | "accounts";
-
-const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
-  website: "/admin",
-  // "Member Performance Admin panel refinement" is its own separate,
-  // not-yet-started backlog item — this deliberately reuses the existing
-  // BWF App Activity page as Performance's landing spot rather than
-  // building a new dashboard here.
-  performance: "/admin/app-activity",
-  // Marketing portal (2026-09-18) — has its own real Dashboard page, unlike
-  // Performance above.
-  marketing: "/admin/marketing",
-  // Phase 29 — Accounts Department workspace (combined payment ledger).
-  accounts: "/admin/accounts",
-};
-
+export type { AdminWorkspace } from "@/lib/auth/constants";
 /**
  * Phase 20 Batch 4 — a per-browser UI preference, not account data, so a
  * plain cookie rather than a new User column. Remembered ~30 days so this

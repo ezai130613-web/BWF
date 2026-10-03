@@ -1,13 +1,46 @@
 /** Roles allowed through the admin login flow — kept in one place since
  * both the OTP-request route and the NextAuth authorize() callback need it. */
-export const ADMIN_ROLE_KEYS: string[] = ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN", "ACCOUNTS"];
+export const ADMIN_ROLE_KEYS: string[] = [
+  "SUPER_ADMIN",
+  "CENTRAL_ADMIN",
+  "CHAPTER_ADMIN",
+  "ACCOUNTS",
+  "WEBSITE_ADMIN",
+  "MEMBERSHIP_ADMIN",
+  "MARKETING_ADMIN",
+];
 
-/** Phase 29 — an Accounts Department login with no other admin role. They
- * never see the workspace picker or the main dashboard: their whole admin
- * is the Accounts workspace (/admin/accounts). Pure role check so proxy.ts
- * can call it straight off the JWT without a DB round-trip. */
+export type AdminWorkspace = "website" | "performance" | "marketing" | "accounts";
+
+/** Where each admin workspace lands. */
+export const WORKSPACE_HOME: Record<AdminWorkspace, string> = {
+  website: "/admin",
+  performance: "/admin/app-activity",
+  marketing: "/admin/marketing",
+  accounts: "/admin/accounts",
+};
+
+/** Roles confined to exactly one workspace (Phase 29 Accounts; 2026-10-03
+ * Website/Membership/Marketing Admin). Such a login never sees the
+ * workspace picker — they land straight in their workspace. */
+const SINGLE_WORKSPACE_ROLES: Record<string, AdminWorkspace> = {
+  ACCOUNTS: "accounts",
+  WEBSITE_ADMIN: "website",
+  MEMBERSHIP_ADMIN: "performance",
+  MARKETING_ADMIN: "marketing",
+};
+
+/** The one workspace this login is confined to, or null for Super/Central/
+ * Chapter Admin (who see everything their permissions allow). Pure role
+ * check so proxy.ts can call it straight off the JWT. */
+export function fixedWorkspaceFor(roles: string[]): AdminWorkspace | null {
+  if (roles.some((role) => ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"].includes(role))) return null;
+  const single = roles.map((role) => SINGLE_WORKSPACE_ROLES[role]).find(Boolean);
+  return single ?? null;
+}
+
 export function isAccountsOnly(roles: string[]): boolean {
-  return roles.includes("ACCOUNTS") && !roles.some((role) => ["SUPER_ADMIN", "CENTRAL_ADMIN", "CHAPTER_ADMIN"].includes(role));
+  return fixedWorkspaceFor(roles) === "accounts";
 }
 
 /** Roles allowed through the member login flow (brief §12) — deliberately

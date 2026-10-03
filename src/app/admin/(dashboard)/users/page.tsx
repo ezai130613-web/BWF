@@ -46,7 +46,7 @@ export default async function UsersPage() {
                 return (
                 <tr key={user.id}>
                   <td className="px-4 py-3 text-neutral-900">{user.name}</td>
-                  <td className="px-4 py-3 text-neutral-600">{user.email}</td>
+                  <td className="px-4 py-3 text-neutral-600">{[user.username?.toLowerCase(), user.email].filter(Boolean).join(" · ")}</td>
                   <td className="px-4 py-3 text-neutral-600">
                     {user.id === session.user.id ? (
                       primaryRole?.role.label ?? "—"

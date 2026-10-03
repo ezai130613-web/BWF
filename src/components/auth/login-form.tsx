@@ -15,6 +15,7 @@ export function LoginForm({
   defaultRedirectTo,
   forgotPasswordUrl,
   memberVariant = false,
+  allowUsername = memberVariant,
 }: {
   providerId: string;
   defaultRedirectTo: string;
@@ -22,6 +23,8 @@ export function LoginForm({
   /** Member portal (2026-10-03): accepts a temporary username as well as an
    * email, offers "Keep me signed in", and uses the green portal styling. */
   memberVariant?: boolean;
+  /** Admin login also accepts a username (2026-10-03, e.g. "centraladmin"). */
+  allowUsername?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,7 +53,7 @@ export function LoginForm({
         setError(
           result.code === "account-locked"
             ? "Too many failed attempts. Try again later."
-            : memberVariant
+            : allowUsername
               ? "Invalid username/email or password."
               : "Invalid email or password.",
         );
@@ -73,10 +76,10 @@ export function LoginForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        {memberVariant ? "Email or username" : "Email"}
+        {allowUsername ? "Email or username" : "Email"}
         <input
-          type={memberVariant ? "text" : "email"}
-          autoComplete={memberVariant ? "username" : "email"}
+          type={allowUsername ? "text" : "email"}
+          autoComplete={allowUsername ? "username" : "email"}
           autoCapitalize="none"
           required
           value={email}

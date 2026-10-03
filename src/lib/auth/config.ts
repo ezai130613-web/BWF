@@ -30,11 +30,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "admin-login",
       name: "Admin login",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        return authorizeLogin(credentials?.email, credentials?.password, ADMIN_ROLE_KEYS);
+        return authorizeLogin(credentials?.email, credentials?.password, ADMIN_ROLE_KEYS, { allowUsername: true });
       },
     }),
     Credentials({

@@ -8,7 +8,20 @@ import { completeActivation, sendActivationCode } from "@/app/member/activate/ac
 const inputClass =
   "w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20";
 
-export function ActivateAccountForm({ requireCode, username }: { requireCode: boolean; username: string | null }) {
+export function ActivateAccountForm({
+  requireCode,
+  username,
+  providerId = "member-login",
+  destination = "/member",
+  offerRemember = true,
+}: {
+  requireCode: boolean;
+  username: string | null;
+  providerId?: string;
+  destination?: string;
+  /** "Keep me signed in" is a member-portal option only. */
+  offerRemember?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -47,17 +60,17 @@ export function ActivateAccountForm({ requireCode, username }: { requireCode: bo
       }
       // The temporary-password session was just revoked server-side; sign
       // straight back in with the new private credentials.
-      const signInResult = await signIn("member-login", {
+      const signInResult = await signIn(providerId, {
         email: email.trim().toLowerCase(),
         password,
-        remember: remember ? "true" : "false",
+        ...(offerRemember ? { remember: remember ? "true" : "false" } : {}),
         redirect: false,
       });
       if (signInResult?.error) {
-        router.push("/member/login");
+        router.push(`${destination}/login`);
         return;
       }
-      router.push("/member");
+      router.push(destination);
       router.refresh();
     });
   }
@@ -66,7 +79,7 @@ export function ActivateAccountForm({ requireCode, username }: { requireCode: bo
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {username ? (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-          Temporary username: <span className="font-mono font-semibold">{username}</span>
+          Username: <span className="font-mono font-semibold">{username}</span>
         </p>
       ) : null}
 
@@ -163,7 +176,7 @@ export function ActivateAccountForm({ requireCode, username }: { requireCode: bo
         />
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-neutral-700">
+      <label className={`flex items-center gap-2 text-sm text-neutral-700 ${offerRemember ? "" : "hidden"}`}>
         <input
           type="checkbox"
           checked={remember}

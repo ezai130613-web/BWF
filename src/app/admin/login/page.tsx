@@ -17,6 +17,7 @@ export default function AdminLoginPage() {
               providerId="admin-login"
               defaultRedirectTo="/admin"
               forgotPasswordUrl="/admin/reset-password"
+              allowUsername
             />
           </Suspense>
         </div>

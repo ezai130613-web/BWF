@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { selectWorkspace } from "./actions";
+import { WORKSPACE_HOME, fixedWorkspaceFor } from "@/lib/auth/constants";
 
 /**
  * Phase 20 Batch 4 — "Select Admin Workspace." Only reachable meaningfully
@@ -15,6 +16,8 @@ export default async function WorkspaceSelectPage() {
   if (session.user.roles.includes("CHAPTER_ADMIN")) {
     redirect("/admin");
   }
+  const fixedWorkspace = fixedWorkspaceFor(session.user.roles);
+  if (fixedWorkspace) redirect(WORKSPACE_HOME[fixedWorkspace]);
 
   const selectWebsite = selectWorkspace.bind(null, "website");
   const selectPerformance = selectWorkspace.bind(null, "performance");

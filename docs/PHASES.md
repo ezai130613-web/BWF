@@ -3925,3 +3925,23 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   `members:manage` for that chapter, Chapter Admins included. Verified live as a temp Chapter
   Admin (BWFCC701, then BWFCC702; member signed in with `bwfcc701`/`1234` → activation; reset
   revoked the session); temp data deleted.
+
+### Phase 30 correction 3 (2026-10-03) — workspace admin logins
+
+- **Three new single-workspace roles**: Website Admin (website permissions only), Membership
+  Admin (`roster`, `attendance`, `invitations`, `points_config`, `app_activity`), Marketing Admin
+  (`marketing:manage`). Like Accounts, they skip the workspace picker and land in their
+  workspace (`fixedWorkspaceFor()` in `src/lib/auth/constants.ts`). **Central Admin** now also
+  opens the Accounts workspace (`accounts:view` + `payments:view`; approving stays with Super
+  Admin + Accounts). Migration `20261003210000_workspace_admin_roles`; seed updated; new roles
+  selectable on the Users page and editable in Roles & Permissions.
+- **Admin login accepts usernames** (spaces ignored — "central admin" = CENTRALADMIN).
+- **Six logins created at the client's request**: superadmin/4321, centraladmin, accountingadmin,
+  marketingadmin, membershipadmin, websiteadmin (/1234). Like members, each must **secure the
+  login on first sign-in** (`/admin/activate`: verify an email + choose a 12+ character password)
+  before using the admin panel; the temporary password then stops working.
+- Verified on a production build, 27/27: all six real logins (typed with spaces) reach the
+  secure-your-login step, wrong password rejected; activated temp copies of each role land in the
+  right place and reach only their workspace(s) (Super/Central: all four via the picker; Central
+  has no Approve); Users/Roles/Settings blocked for non-Super; full admin activation → old
+  password dead, new one works. Temp users and test login noise deleted.

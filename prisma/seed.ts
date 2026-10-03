@@ -13,6 +13,9 @@ const ROLES = [
   { key: "CHAPTER_ADMIN", label: "Chapter Admin", description: "Scoped to one chapter via UserRole.chapterId." },
   { key: "MEMBER", label: "Member", description: "Member self-service portal (added in Phase 11)." },
   { key: "ACCOUNTS", label: "Accounts Department", description: "Payment records across all chapters — view, approve & reject (added in Phase 29)." },
+  { key: "WEBSITE_ADMIN", label: "Website Admin", description: "Website Admin workspace only (added 2026-10-03)." },
+  { key: "MEMBERSHIP_ADMIN", label: "Membership Admin", description: "Member Performance workspace only (added 2026-10-03)." },
+  { key: "MARKETING_ADMIN", label: "Marketing Admin", description: "Marketing workspace only (added 2026-10-03)." },
 ] as const;
 
 const PERMISSIONS = [
@@ -70,8 +73,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "roster:manage",
     "marketing:manage",
     "attendance:manage",
-    // payments:view removed 2026-10-03 — payments belong to Accounts + Super
-    // Admin; Super Admin can re-grant it from Roles & Permissions.
+    // 2026-10-03 — "all four platforms open, slightly more controlled":
+    // Central Admin can see the Accounts workspace and payments, but approving
+    // stays with Super Admin + Accounts (no payments:approve).
+    "accounts:view",
+    "payments:view",
     "invitations:manage",
     "contact_requests:view",
     // payments:approve is deliberately NOT given to Central Admin (Phase 29,
@@ -101,6 +107,23 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // (blanket payments:view, never chapter-scoped) plus approve/reject. No
   // other admin area — every other page's own permission check forbids them.
   ACCOUNTS: ["accounts:view", "payments:view", "payments:approve"],
+  // 2026-10-03 — one workspace each (src/lib/auth/constants.ts SINGLE_WORKSPACE_ROLES).
+  WEBSITE_ADMIN: [
+    "chapters:manage",
+    "categories:manage",
+    "companies:manage",
+    "members:manage",
+    "applications:manage",
+    "meetings:manage",
+    "visitors:manage",
+    "contact_requests:view",
+    "blogs:manage",
+    "testimonials:manage",
+    "chief_guests:manage",
+    "content:manage",
+  ],
+  MEMBERSHIP_ADMIN: ["roster:manage", "attendance:manage", "invitations:manage", "points_config:manage", "app_activity:view"],
+  MARKETING_ADMIN: ["marketing:manage"],
 };
 
 // Placeholder names — real chapter names/locations are an open decision

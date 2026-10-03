@@ -41,6 +41,9 @@ export async function requireAdminSession() {
   if (!session?.user || !session.user.roles.some((role) => ADMIN_ROLE_KEYS.includes(role))) {
     redirect("/admin/login");
   }
+  // 2026-10-03 — admin logins issued with a temporary password must set
+  // their own (and verify an email) before using the admin panel.
+  if (session.user.mustActivate) redirect("/admin/activate");
   return session as Session & { user: NonNullable<Session["user"]> };
 }
 

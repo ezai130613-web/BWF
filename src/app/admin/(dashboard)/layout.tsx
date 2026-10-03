@@ -2,8 +2,7 @@ import { cookies } from "next/headers";
 import { requireAdminSession, getUserPermissionKeys } from "@/lib/auth/rbac";
 import { Sidebar } from "@/components/admin/sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
-import type { AdminWorkspace } from "@/app/admin/workspace/actions";
-import { isAccountsOnly } from "@/lib/auth/constants";
+import { fixedWorkspaceFor, type AdminWorkspace } from "@/lib/auth/constants";
 
 const ADMIN_WORKSPACES: AdminWorkspace[] = ["website", "performance", "marketing", "accounts"];
 
@@ -12,10 +11,11 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const permissions = await getUserPermissionKeys(session.user.id);
   const cookieStore = await cookies();
   const workspaceCookie = cookieStore.get("bwf_admin_workspace")?.value;
-  const accountsOnly = isAccountsOnly(session.user.roles);
-  // An Accounts-only login has exactly one workspace regardless of cookie.
-  const workspace: AdminWorkspace | null = accountsOnly
-    ? "accounts"
+  // Single-workspace roles (Accounts, Website/Membership/Marketing Admin)
+  // have exactly one workspace regardless of cookie.
+  const fixedWorkspace = fixedWorkspaceFor(session.user.roles);
+  const workspace: AdminWorkspace | null = fixedWorkspace
+    ? fixedWorkspace
     : ADMIN_WORKSPACES.includes(workspaceCookie as AdminWorkspace)
       ? (workspaceCookie as AdminWorkspace)
       : null;
@@ -27,7 +27,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
         permissions={permissions}
         isChapterAdmin={session.user.roles.includes("CHAPTER_ADMIN")}
         workspace={workspace}
-        canSwitchWorkspace={!accountsOnly}
+        canSwitchWorkspace={!fixedWorkspace}
       />
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-end border-b border-neutral-200 bg-white px-8">

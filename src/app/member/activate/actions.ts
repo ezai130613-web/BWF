@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireMemberSession } from "@/lib/auth/rbac";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/config";
 import { generateOtpCode, hashOtpCode, otpExpiryDate } from "@/lib/auth/otp";
 import { OTP_PURPOSE } from "@/lib/auth/constants";
 import { hashPassword, newPasswordSchema, verifyPassword } from "@/lib/auth/password";
@@ -12,7 +13,7 @@ import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/audit";
 
 /**
- * First sign-in with bulk-issued temporary credentials (2026-10-03):
+ * First sign-in with temporary credentials — members and admins (2026-10-03):
  * verify an email address (6-digit code, unless Super Admin switched that
  * off in Settings), then set a private password. Completing it replaces the
  * temporary password hash and bumps sessionVersion, so the temporary
@@ -23,8 +24,10 @@ const CODE_RESEND_COOLDOWN_MS = 60 * 1000;
 const EMAIL_TAKEN_ERROR = "That email address is already linked to another BWF login. Use a different one, or contact BWF.";
 const emailSchema = z.email("Enter a valid email address.").transform((v) => v.trim().toLowerCase());
 
+/** Shared by member (/member/activate) and admin (/admin/activate) first sign-in. */
 async function requirePendingActivation() {
-  const session = await requireMemberSession();
+  const session = await auth();
+  if (!session?.user) redirect("/member/login");
   const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id } });
   return { session, user };
 }

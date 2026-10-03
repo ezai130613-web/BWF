@@ -50,6 +50,9 @@ export function CreateUserForm({ chapters }: { chapters: { id: string; name: str
           <option value="CENTRAL_ADMIN">Central Admin</option>
           <option value="CHAPTER_ADMIN">Chapter Admin</option>
           <option value="ACCOUNTS">Accounts Department</option>
+          <option value="WEBSITE_ADMIN">Website Admin</option>
+          <option value="MEMBERSHIP_ADMIN">Membership Admin</option>
+          <option value="MARKETING_ADMIN">Marketing Admin</option>
           <option value="SUPER_ADMIN">Super Admin</option>
         </select>
       </label>

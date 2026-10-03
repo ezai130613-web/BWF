@@ -17,11 +17,12 @@ const LOCKOUT_MINUTES = 15;
 // password was wrong, or whether the account is locked/wrong-role.
 export const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
-/** Members may sign in with their bulk-issued username (e.g. "BWF001") as
- * well as an email — anything without an "@" is treated as a username. */
+/** Sign-in with a username (e.g. "BWFCC101", "centraladmin") as well as an
+ * email — anything without an "@" is a username. Usernames are stored
+ * upper-case with no spaces, so "central admin" matches CENTRALADMIN. */
 export function loginLookup(identifier: string): { email: string } | { username: string } {
   const trimmed = identifier.trim();
-  return trimmed.includes("@") ? { email: trimmed.toLowerCase() } : { username: trimmed.toUpperCase() };
+  return trimmed.includes("@") ? { email: trimmed.toLowerCase() } : { username: trimmed.replace(/\s+/g, "").toUpperCase() };
 }
 
 export class AccountLockedError extends CredentialsSignin {

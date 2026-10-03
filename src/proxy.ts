@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
-import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS, isAccountsOnly } from "@/lib/auth/constants";
+import { ADMIN_ROLE_KEYS, MEMBER_ROLE_KEYS, WORKSPACE_HOME, fixedWorkspaceFor } from "@/lib/auth/constants";
 
 // Next.js 16 renamed `middleware.ts` -> `proxy.ts` (same behavior, defaults
 // to the Node.js runtime now, which is what lets this safely wrap
@@ -29,6 +29,15 @@ export default auth((request) => {
   // session yet (that's the whole point of a password reset).
   const isAdminPublicAuthPage = pathname === "/admin/login" || pathname === "/admin/reset-password";
   if (isAdminRoute) {
+    const adminMustActivate = hasAdminRole && Boolean(request.auth?.user?.mustActivate);
+    if (adminMustActivate && pathname !== "/admin/activate") {
+      return NextResponse.redirect(new URL("/admin/activate", request.nextUrl.origin));
+    }
+    if (pathname === "/admin/activate") {
+      return hasAdminRole && adminMustActivate
+        ? NextResponse.next()
+        : NextResponse.redirect(new URL(hasAdminRole ? "/admin" : "/admin/login", request.nextUrl.origin));
+    }
     if (!hasAdminRole && !isAdminPublicAuthPage) {
       const loginUrl = new URL("/admin/login", request.nextUrl.origin);
       loginUrl.searchParams.set("from", pathname);
@@ -48,8 +57,13 @@ export default auth((request) => {
     // directly on the JWT, no DB round-trip needed for this check.
     // Phase 29 — an Accounts Department login has exactly one workspace, so
     // the dashboard and the picker both just send them straight to it.
-    if (hasAdminRole && isAccountsOnly(roles) && (pathname === "/admin" || pathname === "/admin/workspace")) {
-      return NextResponse.redirect(new URL("/admin/accounts", request.nextUrl.origin));
+    // 2026-10-03 — Website/Membership/Marketing Admin work the same way.
+    const fixedWorkspace = hasAdminRole ? fixedWorkspaceFor(roles) : null;
+    if (
+      fixedWorkspace &&
+      (pathname === "/admin/workspace" || (pathname === "/admin" && WORKSPACE_HOME[fixedWorkspace] !== "/admin"))
+    ) {
+      return NextResponse.redirect(new URL(WORKSPACE_HOME[fixedWorkspace], request.nextUrl.origin));
     }
 
     const needsWorkspaceChoice = roles.includes("SUPER_ADMIN") || roles.includes("CENTRAL_ADMIN");
