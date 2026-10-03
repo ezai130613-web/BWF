@@ -25,7 +25,7 @@ export function InsideBwf() {
   return (
     <section className="bg-emerald-900 py-28">
       <Container>
-        <SectionLabel number="05">Inside BWF</SectionLabel>
+        <SectionLabel>Inside BWF</SectionLabel>
         <p className="mt-6 max-w-xl font-display text-3xl leading-snug text-ivory-100 sm:text-4xl">
           Chapter meetings, networking, and business introductions.
         </p>

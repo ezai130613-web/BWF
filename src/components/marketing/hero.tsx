@@ -29,7 +29,7 @@ export function Hero() {
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           <Button href="/chapters" variant="secondary">
-            Visit a Chapter
+            How it Works
           </Button>
           <TrackedButton href="/apply" variant="primary" eventName="become_member_click" eventParams={{ location: "hero" }}>
             Apply for Membership

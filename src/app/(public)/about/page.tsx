@@ -128,7 +128,7 @@ export default async function AboutPage() {
         ) : null}
 
         {founders.length > 0 ? (
-          <section className="mt-16 border-t border-emerald-700/60 pt-16">
+          <section id="founders" className="mt-16 scroll-mt-24 border-t border-emerald-700/60 pt-16">
             <SectionLabel>Founders</SectionLabel>
             <div className="mt-6 flex flex-col gap-16">
               {founders.map((founder, i) => (

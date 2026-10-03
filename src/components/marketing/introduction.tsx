@@ -5,7 +5,7 @@ export function Introduction() {
   return (
     <section className="bg-emerald-900 py-28">
       <Container className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:items-start">
-        <SectionLabel number="01">About BWF</SectionLabel>
+        <SectionLabel>About BWF</SectionLabel>
         <div>
           <p className="font-display text-3xl leading-snug text-ivory-100 sm:text-4xl">
             A private business community for Chennai&rsquo;s construction ecosystem — built

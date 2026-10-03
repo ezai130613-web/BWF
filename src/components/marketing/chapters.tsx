@@ -27,7 +27,7 @@ export async function Chapters() {
     <section className="bg-emerald-900 py-28">
       <Container>
         <div className="flex items-end justify-between gap-4">
-          <SectionLabel number="03">Chapters</SectionLabel>
+          <SectionLabel>Chapters</SectionLabel>
         </div>
 
         <div className="mt-10 flex snap-x gap-6 overflow-x-auto pb-4">

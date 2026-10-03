@@ -17,7 +17,7 @@ export async function TestimonialsSection() {
     <section className="bg-emerald-900 py-28">
       <Container>
         <div className="flex items-end justify-between gap-4">
-          <SectionLabel number="06">Testimonials</SectionLabel>
+          <SectionLabel>Testimonials</SectionLabel>
           <Link href="/testimonials" className="text-sm font-medium text-gold-400 hover:underline">
             View all →
           </Link>

@@ -14,7 +14,7 @@ export async function FindProfessional() {
     <section className="bg-emerald-800 py-28">
       <Container className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
         <div>
-          <SectionLabel number="04">Find a BWF Professional</SectionLabel>
+          <SectionLabel>Find a BWF Professional</SectionLabel>
           <p className="mt-6 font-display text-3xl leading-snug text-ivory-100 sm:text-4xl">
             Every category. One trusted member.
           </p>

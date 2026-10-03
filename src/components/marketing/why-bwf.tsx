@@ -28,15 +28,14 @@ export function WhyBwf() {
   return (
     <section className="bg-emerald-800 py-28">
       <Container>
-        <SectionLabel number="02">Why BWF</SectionLabel>
+        <SectionLabel>Why BWF</SectionLabel>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {PILLARS.map((pillar, i) => (
+          {PILLARS.map((pillar) => (
             <div
               key={pillar.title}
               className="rounded-sm border border-emerald-600 p-6 transition-transform hover:-translate-y-1"
             >
-              <span className="font-display text-sm text-gold-500">{String(i + 1).padStart(2, "0")}</span>
-              <h2 className="mt-2 font-display text-xl text-ivory-100">{pillar.title}</h2>
+              <h2 className="font-display text-xl text-ivory-100">{pillar.title}</h2>
               <p className="mt-3 text-sm font-medium text-gold-300">{pillar.statement}</p>
               <p className="mt-3 text-sm leading-relaxed text-slate-400">{pillar.body}</p>
             </div>

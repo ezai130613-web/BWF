@@ -3725,3 +3725,25 @@ afterwards (confirmed zero rows remaining).
 - Search engines no longer see member phone/email in structured data (an accepted consequence of
   the gate).
 - HawkScan DAST scan not run — no `hawk` runtime or `HAWK_API_KEY` in this environment.
+
+---
+
+## Post-Phase 29 fixes (2026-10-03)
+
+- **Homepage:** hero "Visit a Chapter" button relabelled "How it Works" (still links to
+  `/chapters`, client's choice); section/card numbering ("01 About BWF", Why BWF's 01–04) removed
+  from the homepage — `SectionLabel` no longer supports a number at all. Numbering on About/Chief
+  Guest/FAQ/Chapters pages deliberately left as-is (client said no).
+- **Legacy URL redirects (`next.config.ts`):** Google's sitelinks (Membership Category, Founder's
+  Message, Contact Us, Members Details, Membership Registration, About Us) still pointed at the old
+  PHP site's pages and 404'd. Each is now a permanent 308 redirect to its new equivalent (`/chapters`,
+  `/about#founders`, `/#contact`, `/members`, `/apply`, `/about`), covering likely filename variants
+  with and without `.php`, plus a catch-all sending any other `*.php` URL to `/`. Exact old filenames
+  were inferred (only `members-details.php` is confirmed via search; no Wayback archive exists) —
+  if Search Console shows other old URLs still 404ing, add them to `LEGACY_PAGES`. `/members` now
+  ignores unrecognised `?chapter=`/`?category=` values (the old site's encrypted chapter ids pass
+  through the redirect) instead of showing zero members. Verified against a production build: all
+  16 legacy URL forms redirect to a 200 page; `/about`, `/members`, `/apply`, `/chapters` and a
+  `<category>-in-<location>` page are unaffected.
+- **Not changeable from code:** Google picks sitelinks itself — they'll update as Google recrawls
+  (typically days to a few weeks); requesting re-indexing in Search Console speeds this up.

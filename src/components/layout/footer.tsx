@@ -32,7 +32,7 @@ export async function Footer() {
   const content = await getContent(["footer.tagline", "contact.phone", "contact.email", "contact.address"]);
 
   return (
-    <footer className="border-t border-emerald-700/60 bg-emerald-950">
+    <footer id="contact" className="border-t border-emerald-700/60 bg-emerald-950">
       <Container className="grid gap-12 py-16 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div>
           <div className="flex items-center gap-3">

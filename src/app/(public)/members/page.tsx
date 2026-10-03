@@ -26,10 +26,16 @@ export default async function MembersPage({
     db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
   ]);
 
+  // An unrecognised filter (e.g. the old PHP site's encrypted ?chapter=
+  // value, passed through by the legacy redirect) is ignored rather than
+  // silently matching zero members.
+  const chapterFilter = chapters.some((c) => c.slug === chapterSlug) ? chapterSlug : undefined;
+  const categoryFilter = categories.some((c) => c.slug === categorySlug) ? categorySlug : undefined;
+
   const where = {
     status: "ACTIVE" as const,
-    chapter: { status: "ACTIVE" as const, ...(chapterSlug ? { slug: chapterSlug } : {}) },
-    ...(categorySlug ? { category: { slug: categorySlug } } : {}),
+    chapter: { status: "ACTIVE" as const, ...(chapterFilter ? { slug: chapterFilter } : {}) },
+    ...(categoryFilter ? { category: { slug: categoryFilter } } : {}),
     ...(q
       ? {
           OR: [
@@ -57,8 +63,8 @@ export default async function MembersPage({
   function buildHref(targetPage: number) {
     const qs = new URLSearchParams();
     if (q) qs.set("q", q);
-    if (chapterSlug) qs.set("chapter", chapterSlug);
-    if (categorySlug) qs.set("category", categorySlug);
+    if (chapterFilter) qs.set("chapter", chapterFilter);
+    if (categoryFilter) qs.set("category", categoryFilter);
     if (targetPage > 1) qs.set("page", String(targetPage));
     const query = qs.toString();
     return query ? `/members?${query}` : "/members";
@@ -83,8 +89,8 @@ export default async function MembersPage({
           chapters={chapters}
           categories={categories}
           defaultQuery={q}
-          defaultChapterSlug={chapterSlug}
-          defaultCategorySlug={categorySlug}
+          defaultChapterSlug={chapterFilter}
+          defaultCategorySlug={categoryFilter}
         />
 
         {totalMembers > 0 ? (
