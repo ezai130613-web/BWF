@@ -10,6 +10,8 @@ import { TEMPORARY_PASSWORD, assignUsernames } from "@/lib/auth/member-credentia
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { memberProfileFieldsSchema, normalizeMemberProfileFields } from "@/lib/members/profile-fields";
 import { slugify } from "@/lib/slugify";
+import { normalizeCompanyName } from "@/lib/companies/normalize";
+import { GST_FORMAT_ERROR, isValidGstNumber, normalizeGstNumber } from "@/lib/companies/gst";
 import { notifyProfileRevisionReviewed } from "@/lib/notifications";
 import type { $Enums } from "@/generated/prisma/client";
 
@@ -29,7 +31,16 @@ const createSchema = z.object({
   designation: z.string().optional(),
   email: z.email().optional().or(z.literal("")),
   phone: z.string().optional(),
-  companyId: z.string().min(1, "Select a company"),
+  photoUrl: z.string().optional(),
+  // 2026-10-05 client correction — the company is typed on this form: an
+  // existing one is picked by id, otherwise a new one is created from the
+  // company* fields below in the same transaction as the member.
+  companyId: z.string().optional(),
+  companyName: z.string().optional(),
+  companyWebsite: z.string().optional(),
+  companyDescription: z.string().optional(),
+  companyLogoUrl: z.string().optional(),
+  companyGstNumber: z.string().optional(),
   chapterId: z.string().min(1, "Select a chapter"),
   categoryId: z.string().min(1, "Select a category"),
   // Phase 20 Batch 5, decision #6 — manual induction picker: who invited
@@ -40,32 +51,106 @@ const createSchema = z.object({
   referredByMemberId: z.string().optional(),
 });
 
-export async function createMember(_prevState: { error?: string } | undefined, formData: FormData) {
+export type CreateMemberState = { error?: string; savedAt?: number };
+
+export async function createMember(_prevState: CreateMemberState | undefined, formData: FormData): Promise<CreateMemberState> {
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
-  const { chapterId, categoryId, companyId, referredByMemberId, ...rest } = parsed.data;
+  const {
+    chapterId,
+    categoryId,
+    companyId,
+    companyName,
+    companyWebsite,
+    companyDescription,
+    companyLogoUrl,
+    companyGstNumber,
+    referredByMemberId,
+    photoUrl,
+    ...rest
+  } = parsed.data;
 
   // Central/Super Admin can create in any chapter; a Chapter Admin only in
-  // their own — enforced here, not just hidden in the UI.
+  // their own — enforced here, not just hidden in the UI. Creating the
+  // member's company along with it needs no separate companies:manage.
   await requireChapterAccess(chapterId, "members:manage");
+
+  const gstNumber = companyGstNumber ? normalizeGstNumber(companyGstNumber) : undefined;
+  if (gstNumber && !isValidGstNumber(gstNumber)) return { error: GST_FORMAT_ERROR };
+
+  const companies = await db.company.findMany({ select: { id: true, name: true, gstNumber: true } });
+  const gstOwner = gstNumber ? companies.find((c) => c.gstNumber === gstNumber) : undefined;
+
+  let existingCompany: (typeof companies)[number] | undefined;
+  if (companyId) {
+    existingCompany = companies.find((c) => c.id === companyId);
+    if (!existingCompany) return { error: "That company no longer exists — reload the page." };
+    if (gstOwner && gstOwner.id !== existingCompany.id) {
+      return { error: `GST number ${gstNumber} is already registered to “${gstOwner.name}”.` };
+    }
+  } else {
+    const target = normalizeCompanyName(companyName ?? "");
+    if (!target) return { error: "Enter the member's company." };
+    const duplicate = companies.find((c) => normalizeCompanyName(c.name) === target);
+    if (duplicate) {
+      return { error: `“${duplicate.name}” already exists — select it from the list instead of creating it again.` };
+    }
+    if (gstOwner) {
+      return { error: `GST number ${gstNumber} is already registered to “${gstOwner.name}” — select that company instead.` };
+    }
+  }
 
   const slug = await generateUniqueMemberSlug(parsed.data.name);
 
   try {
-    const member = await db.member.create({
-      data: {
-        ...rest,
-        slug,
-        email: rest.email || undefined,
-        companyId,
-        chapterId,
-        categoryId,
-        referredByMemberId: referredByMemberId || undefined,
-        activeSlotKey: computeActiveSlotKey("ACTIVE", chapterId, categoryId),
-      },
+    const { member, createdCompanyId } = await db.$transaction(async (tx) => {
+      let memberCompanyId: string;
+      let createdCompanyId: string | null = null;
+      if (existingCompany) {
+        memberCompanyId = existingCompany.id;
+        // Fill in a GST number the company didn't have yet; never overwrite one.
+        if (gstNumber && !existingCompany.gstNumber) {
+          await tx.company.update({ where: { id: existingCompany.id }, data: { gstNumber } });
+        }
+      } else {
+        const company = await tx.company.create({
+          data: {
+            name: companyName!.trim(),
+            website: companyWebsite || undefined,
+            description: companyDescription || undefined,
+            logoUrl: companyLogoUrl || undefined,
+            gstNumber,
+          },
+        });
+        memberCompanyId = company.id;
+        createdCompanyId = company.id;
+      }
+
+      const member = await tx.member.create({
+        data: {
+          ...rest,
+          slug,
+          email: rest.email || undefined,
+          photoUrl: photoUrl || undefined,
+          companyId: memberCompanyId,
+          chapterId,
+          categoryId,
+          referredByMemberId: referredByMemberId || undefined,
+          activeSlotKey: computeActiveSlotKey("ACTIVE", chapterId, categoryId),
+        },
+      });
+      return { member, createdCompanyId };
     });
 
+    if (createdCompanyId) {
+      await logActivity({
+        action: "company.created",
+        entity: "Company",
+        entityId: createdCompanyId,
+        metadata: { viaMemberId: member.id },
+      });
+    }
     await logActivity({
       action: "member.created",
       entity: "Member",
@@ -76,17 +161,21 @@ export async function createMember(_prevState: { error?: string } | undefined, f
     if (isUniqueConstraintError(error, "activeSlotKey")) {
       return { error: SLOT_TAKEN_ERROR };
     }
+    if (isUniqueConstraintError(error, "gstNumber")) {
+      return { error: `GST number ${gstNumber} is already registered to another company.` };
+    }
     throw error;
   }
 
   revalidatePath("/admin/members");
+  revalidatePath("/admin/companies");
   revalidatePath("/chapters");
   revalidatePath("/chapters/[slug]", "page");
   revalidatePath("/");
   revalidatePath("/members");
   revalidatePath("/members/[slug]", "page");
   revalidatePath("/apply");
-  return { error: undefined };
+  return { savedAt: Date.now() };
 }
 
 export async function updateMemberStatus(memberId: string, status: $Enums.MemberStatus) {

@@ -279,6 +279,10 @@ model Company {
   description String?
   website     String?
   logoUrl     String?
+  /// Optional GSTIN (2026-10-05), stored normalized (no spaces, uppercase —
+  /// src/lib/companies/gst.ts). Unique: one registration can't belong to two
+  /// Company rows, which also catches a duplicate typed under another name.
+  gstNumber   String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

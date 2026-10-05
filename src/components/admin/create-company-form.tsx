@@ -28,7 +28,15 @@ export function CreateCompanyForm() {
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+        GST number (optional)
+        <input
+          name="gstNumber"
+          placeholder="29ABCDE1234F1Z5"
+          className="rounded-md border border-neutral-300 px-3 py-2 text-sm uppercase text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        />
+      </label>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Description (optional)
         <textarea
           name="description"

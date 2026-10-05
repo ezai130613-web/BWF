@@ -16,8 +16,8 @@ export default async function CompaniesPage() {
         <h1 className="text-xl font-semibold text-neutral-900">Companies</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">
           A company is not a member (brief §14) — one company can have several BWF
-          representatives across different chapters. Create the company here first, then assign
-          members to it from the Members page.
+          representatives across different chapters. Companies can also be created straight from the
+          Add member form on the Members page.
         </p>
       </div>
 
@@ -27,6 +27,7 @@ export default async function CompaniesPage() {
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Website</th>
+              <th className="px-4 py-3 font-medium">GST</th>
               <th className="px-4 py-3 font-medium">Members</th>
             </tr>
           </thead>
@@ -35,12 +36,13 @@ export default async function CompaniesPage() {
               <tr key={company.id}>
                 <td className="px-4 py-3 text-neutral-900">{company.name}</td>
                 <td className="px-4 py-3 text-neutral-500">{company.website ?? "—"}</td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{company.gstNumber ?? "—"}</td>
                 <td className="px-4 py-3 text-neutral-600">{company._count.members}</td>
               </tr>
             ))}
             {companies.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-neutral-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-neutral-400">
                   No companies yet.
                 </td>
               </tr>

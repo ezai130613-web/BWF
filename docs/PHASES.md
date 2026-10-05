@@ -3945,3 +3945,25 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   right place and reach only their workspace(s) (Super/Central: all four via the picker; Central
   has no Approve); Users/Roles/Settings blocked for non-Super; full admin activation → old
   password dead, new one works. Temp users and test login noise deleted.
+
+### Phase 30 correction 4 (2026-10-05) — company, GST and photo on Add member
+
+- **Company typed on the Add member form** (client: creating the company on the Companies page
+  first was a daily chore). Typing a name that matches an existing company — same normalization
+  as application conversion (`src/lib/companies/normalize.ts`: case, punctuation, "Pvt Ltd" /
+  "Private Limited" etc. ignored) — shows "already exists — this member will be added to it" and
+  links the member, so no duplicate is created; anything else opens the new-company fields
+  (GST, website, description, logo) and the company is created in the same transaction as the
+  member (a slot clash leaves no orphan company). The server repeats the duplicate check. Creating
+  the company this way needs only `members:manage` for the chapter.
+- **GST number (optional)** on Company — migration `20261005120000_company_gst_number`, unique,
+  stored normalized and checked against the GSTIN format (`src/lib/companies/gst.ts`). A GST
+  already on another company is refused with that company's name; an existing company without
+  one can have it filled in from the member form (never overwritten). Also on the Companies page
+  form and table, which now applies the same duplicate checks.
+- **Photograph (optional)** upload on Add member (`Member.photoUrl`, was edit-page only).
+- Verified in the browser as a temp Super Admin: invalid GST rejected; new company + GST
+  ("29 aaacq…" saved as 29AAACQ…) + photo created; "qa temp builders private limited" flagged as
+  the existing "…Pvt Ltd" and linked (one company, two members); a new company reusing the GST
+  blocked. Temp data deleted. The previously unrecorded
+  `20261003200000_super_admin_payments_restored` (idempotent) was recorded by `migrate deploy`.

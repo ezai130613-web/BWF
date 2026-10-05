@@ -46,7 +46,7 @@ export default async function MembersPage({
       orderBy: { name: "asc" },
     }),
     db.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    db.company.findMany({ orderBy: { name: "asc" } }),
+    db.company.findMany({ select: { id: true, name: true, gstNumber: true }, orderBy: { name: "asc" } }),
   ]);
 
   const pendingRevisions = await db.memberProfileRevision.findMany({
@@ -173,16 +173,12 @@ export default async function MembersPage({
         </table>
       </div>
 
-      {companies.length === 0 ? (
-        <p className="text-sm text-neutral-500">Add a company first (Companies page) before adding members.</p>
-      ) : (
-        <CreateMemberForm
-          chapters={chapters}
-          categories={categories}
-          companies={companies}
-          members={referralCandidates.map((m) => ({ id: m.id, name: m.name, chapterName: m.chapter.name }))}
-        />
-      )}
+      <CreateMemberForm
+        chapters={chapters}
+        categories={categories}
+        companies={companies}
+        members={referralCandidates.map((m) => ({ id: m.id, name: m.name, chapterName: m.chapter.name }))}
+      />
     </div>
   );
 }
