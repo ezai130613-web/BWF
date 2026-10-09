@@ -3967,3 +3967,35 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   the existing "…Pvt Ltd" and linked (one company, two members); a new company reusing the GST
   blocked. Temp data deleted. The previously unrecorded
   `20261003200000_super_admin_payments_restored` (idempotent) was recorded by `migrate deploy`.
+
+### Phase 30 correction 5 (2026-10-09) — Membership Terms & Conditions page
+
+- **New public page `/membership-terms`** (`src/app/(public)/membership-terms/page.tsx`) with the
+  client-supplied membership T&C (eligibility and the 10% non-core category cap, fees and payment
+  timelines, the 15-day renewal window, leave/substitute limits, confidentiality, liability
+  disclaimer, conduct, discipline, amendments), using the shared `LegalPageShell`. The copy is
+  as supplied, except the fee amounts: the annual fee reads the `fees.annualMembership` setting,
+  same as the general Terms page and the Chapters page's Meeting Charges. The monthly fee
+  (per-meeting rate = half) reads `fees.monthlyMeeting` when that setting is a plain number, and
+  otherwise falls back to the supplied ₹2,000 / ₹1,000 wording. The live monthly value is currently
+  free text ("1000 per meeting - two meetings…"), which `formatInr` can't parse, so the Chapters page
+  shows "Contact BWF" for it until an admin enters `2000`.
+- **Linked from the footer only** ("More" column, under Terms & Conditions), not the header nav;
+  added to the sitemap.
+- Verified on a dev server: page returns 200 with all 10 sections; the homepage has exactly one
+  link to it (the footer).
+
+### Phase 30 correction 6 (2026-10-09) — member contact details public again
+
+- **Phase 29's "View contact details" gate removed** (client: anyone who can see the website should
+  see a member's contact details without filling in a form). Public member profiles show
+  phone, WhatsApp and email directly again, as clickable tel:/wa.me/mailto: links tracked with
+  `member_contact_click`, and `telephone`/`email` are back in the `LocalBusiness` JSON-LD.
+  Deleted `src/components/members/vendor-contact-reveal.tsx` and
+  `src/app/(public)/members/[slug]/contact-actions.ts` (the `bwf_contact_requester` cookie is no
+  longer read or set).
+- **Kept:** the `VendorContactRequest` table and the read-only `/admin/contact-requests` page,
+  so requests already logged stay viewable (no new ones are recorded), and Phase 29's `/visit`
+  fix (member dropdown selects only id/name).
+- Verified on a dev server: a live profile returns 200 with tel:, wa.me and mailto: links and
+  `telephone` in the JSON-LD, and no "View contact details" button. `tsc` is clean.

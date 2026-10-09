@@ -1508,6 +1508,12 @@ meeting fee", the only two payment kinds this app records. Approve/Reject reuse 
 with the client; the existing member-wise grid's "No approved payment recorded" remains the only
 non-payment view, still never labelled "Unpaid".
 
+> **Superseded 2026-10-09 (client request):** the contact gate below was removed. Member
+> profiles show phone/WhatsApp/email to every visitor again (and in the `LocalBusiness` JSON-LD);
+> the pop-up component and `contact-actions.ts` were deleted. The `VendorContactRequest` table and
+> `/admin/contact-requests` page are kept read-only so requests already logged stay viewable; no
+> new rows are created. The `/visit` leak fix further down still stands.
+
 **Vendor contact details are gated server-side, not hidden client-side.** Phone, WhatsApp and
 email were removed from the member profile's HTML *and* its `LocalBusiness` JSON-LD — hiding them
 visually while leaving them in source/structured data would make the pop-up decorative. The page

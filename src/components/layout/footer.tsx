@@ -23,6 +23,7 @@ const MORE_LINKS = [
   { href: "/feedback", label: "Feedback" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms & Conditions" },
+  { href: "/membership-terms", label: "Membership Terms & Conditions" },
 ];
 
 const DEFAULT_TAGLINE =

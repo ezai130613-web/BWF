@@ -6,7 +6,6 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { PhotoSlot } from "@/components/ui/photo-slot";
 import { Button } from "@/components/ui/button";
 import { TrackedAnchor } from "@/components/analytics/tracked-anchor";
-import { VendorContactReveal } from "@/components/members/vendor-contact-reveal";
 import { breadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_URL } from "@/lib/site";
@@ -57,12 +56,10 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   const member = await getMember(slug);
   if (!member) notFound();
 
-  // Phase 29 — phone/WhatsApp/email are gated behind the "View contact
-  // details" pop-up (VendorContactReveal). Only whether they exist is used
-  // here; their values must never reach this page's HTML or JSON-LD, or the
-  // gate is trivially bypassed by viewing source.
-  const hasGatedContact = Boolean(member.phone || member.whatsapp || member.email);
   const contactItems = [
+    { label: "Phone", value: member.phone, href: member.phone ? `tel:${member.phone}` : undefined },
+    { label: "WhatsApp", value: member.whatsapp, href: member.whatsapp ? `https://wa.me/${member.whatsapp.replace(/\D/g, "")}` : undefined },
+    { label: "Email", value: member.email, href: member.email ? `mailto:${member.email}` : undefined },
     { label: "Website", value: member.website, href: member.website ?? undefined },
   ].filter((item) => item.value);
 
@@ -86,6 +83,8 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     "@type": "LocalBusiness",
     name: member.name,
     description: member.bio || undefined,
+    telephone: member.phone || undefined,
+    email: member.email || undefined,
     address: member.address ? { "@type": "PostalAddress", streetAddress: member.address } : undefined,
     url: `${SITE_URL}/members/${member.slug}`,
     areaServed: member.areasServed || undefined,
@@ -227,11 +226,10 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="flex flex-col gap-8">
-          {hasGatedContact || contactItems.length > 0 || member.address || member.googleMapsUrl ? (
+          {contactItems.length > 0 || member.address || member.googleMapsUrl ? (
             <div className="rounded-sm border border-emerald-700 p-6">
               <SectionLabel>Contact</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
-                {hasGatedContact ? <VendorContactReveal slug={member.slug} memberName={member.name} /> : null}
                 {contactItems.map((item) => (
                   <TrackedAnchor
                     key={item.label}
