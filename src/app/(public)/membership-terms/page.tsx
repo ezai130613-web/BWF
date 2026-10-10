@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "The terms every Builders World Forum member agrees to on applying for, obtaining, or renewing membership.",
 };
 
-// Client-supplied copy (2026-10-09), reproduced as given. Linked from the
+// Client-supplied copy (revised 2026-10-10), reproduced as given. Linked from the
 // footer only — deliberately not in the header nav. Fee amounts come from the
 // admin Fees settings so an edit there shows here too; the monthly setting is
 // only used when it's a plain number (the per-meeting rate is half of it, two
@@ -24,12 +24,12 @@ export default async function MembershipTermsPage() {
     <LegalPageShell
       eyebrow="Membership"
       title="Membership Terms & Conditions"
-      lastUpdated="9 October 2026"
+      lastUpdated="10 October 2026"
       intro={
-        "Welcome to Builders World Forum (BWF). By applying for, obtaining, or renewing your membership with BWF, you agree to comply with and be bound by the following Terms and Conditions. These rules are established to ensure structural clarity, maintain professional decorum, and promote collaborative business growth among all members."
+        "Welcome to Builders World Forum (BWF). By applying for, obtaining, or renewing your membership with BWF, you agree to comply with and be bound by the following Terms and Conditions. These rules are established to ensure structural clarity, maintain professional decorum, protect forum integrity, and promote collaborative business growth among all members."
       }
     >
-      <h2>1. Membership Eligibility &amp; Business Category Protection</h2>
+      <h2>1. Membership Eligibility &amp; Category Protection</h2>
       <ul>
         <li>
           <strong>Industry Focus:</strong> Forum membership is exclusively reserved for
@@ -147,9 +147,63 @@ export default async function MembershipTermsPage() {
           business dealings are conducted directly between the involved parties at their own risk
           and discretion.
         </li>
+        <li>
+          <strong>No Assurance or Guarantee of Business:</strong> Joining BWF provides access to a
+          structured networking platform, directory, and ecosystem; however,{" "}
+          <strong>BWF does not guarantee or assure any specific volume of business, leads, or
+          revenue</strong>. BWF acts strictly as a platform—much like a library providing access to
+          knowledge or a gym providing access to facilities. Generating business outcomes depends
+          entirely on the individual member&apos;s proactive involvement, attendance, active
+          engagement with fellow members and visiting Chief Guests, and the inherent strength of
+          their commercial offering. Business conversion varies per member based on individual
+          effort and networking diligence.
+        </li>
       </ul>
 
-      <h2>7. Performance-Based Visibility &amp; Special Advantages</h2>
+      <h2>7. Duty to Honor Business Commitments &amp; Commercial Integrity</h2>
+      <ul>
+        <li>
+          <strong>Obligation to Honor Deals:</strong> Members must handle all business inquiries,
+          orders, and contracts obtained through BWF—whether originating from fellow members or
+          visiting Chief Guests—with high professional standards and delivery efficiency.
+        </li>
+        <li>
+          <strong>Unethical Practices Prohibited:</strong> Accepting advance payments without
+          supplying goods/materials, failing to fulfill committed services, or engaging in deceptive
+          business practices is <strong>strictly prohibited</strong>.
+        </li>
+        <li>
+          <strong>Protection of Forum Goodwill:</strong> Visiting Chief Guests and external invitees
+          engage with members based on BWF&apos;s institutional credibility and goodwill.
+          Non-performance or failure to honor business deals risks implicating the forum. To
+          prevent such risks, any failure to honor commercial commitments will be treated as a{" "}
+          <strong>Gross Deviation</strong>, subjecting the member to immediate administrative
+          review, suspension, or membership termination.
+        </li>
+      </ul>
+
+      <h2>8. Mandatory Business Reporting &amp; Transparency</h2>
+      <ul>
+        <li>
+          <strong>Requirement to Report Business:</strong> Members are required to promptly report,
+          update, and log all business closed, transactions completed, or leads converted through
+          BWF channels (including deals originating from internal members or visiting Chief
+          Guests).
+        </li>
+        <li>
+          <strong>Official Channels:</strong> Updates must be submitted via the designated BWF
+          mobile application, official website portal, or prescribed group reporting protocols.
+        </li>
+        <li>
+          <strong>Concealment as a Deviation:</strong> Systematically hiding, withholding, or
+          failing to report business generated through BWF activities distorts community
+          performance metrics and is considered an operational <strong>Deviation</strong>. Repeated
+          failure to comply with reporting protocols despite administrative reminders will result
+          in disciplinary evaluation.
+        </li>
+      </ul>
+
+      <h2>9. Performance-Based Visibility &amp; Special Advantages</h2>
       <ul>
         <li>
           <strong>Contribution Benefits:</strong> Enhanced branding and promotional privileges are
@@ -158,17 +212,16 @@ export default async function MembershipTermsPage() {
         <li>
           <strong>Visibility Channels:</strong> Members who meet contribution targets may receive
           additional visibility opportunities, including features on the BWF website, social media
-          promotions (such as Instagram spotlights), and participation in exhibitions or special
-          events.
+          spotlights, and participation in exhibitions or special events.
         </li>
         <li>
-          <strong>Special Event Access:</strong> Access to VIP meets, guest interaction sessions, and
-          special events beyond the two monthly meetings is aligned with member engagement and Head
-          Table guidelines.
+          <strong>Special Event Access:</strong> Access to VIP meets, Chief Guest interaction
+          sessions, and special events beyond the regular bi-monthly meetings is aligned with member
+          engagement and Head Table guidelines.
         </li>
       </ul>
 
-      <h2>8. Code of Conduct &amp; Communication Etiquette</h2>
+      <h2>10. Code of Conduct &amp; Communication Etiquette</h2>
       <ul>
         <li>
           <strong>Dress Code:</strong> Members are required to attend all official BWF meetings in
@@ -185,37 +238,38 @@ export default async function MembershipTermsPage() {
         </li>
       </ul>
 
-      <h2>9. General Compliance &amp; Disciplinary Framework</h2>
+      <h2>11. General Compliance &amp; Disciplinary Framework</h2>
       <ul>
         <li>
           BWF leadership values active participation, ethical dealing, and mutual respect among all
           members.
         </li>
         <li>
-          In cases where there is a <strong>significant deviation</strong> from any of the above
-          terms (including payment defaults, attendance non-compliance, breach of confidentiality,
-          misbehavior, or unethical commercial conduct), the matter will be referred to the{" "}
+          In cases where there is a <strong>significant or gross deviation</strong> from any of the
+          terms outlined herein (including payment defaults, attendance non-compliance, breach of
+          confidentiality, misbehavior, failure to honor business deals, or non-reporting of
+          business), the matter will be referred to the{" "}
           <strong>BWF Disciplinary Committee / Head Table</strong> for review.
         </li>
         <li>
           The Disciplinary Committee / Head Table reserves the right to take appropriate
           administrative actions, up to and including{" "}
-          <strong>membership suspension or termination</strong>, to protect the forum&apos;s overall
-          interest.
+          <strong>immediate membership suspension or termination</strong>, to protect the
+          forum&apos;s overall reputation and interest.
         </li>
         <li>
-          The decision of the Head Table regarding any administrative review shall be final. Upon
-          membership termination, all privileges cease immediately, and past fees are
-          non-refundable.
+          The decision of the Head Table regarding any administrative review shall be{" "}
+          <strong>final and binding</strong>. Upon membership termination, all membership
+          privileges cease immediately, and past fees remain strictly non-refundable.
         </li>
       </ul>
 
-      <h2>10. Governance &amp; Amendments</h2>
+      <h2>12. Governance &amp; Amendments</h2>
       <ul>
         <li>
           BWF leadership reserves the right to amend or update operational policies to adapt to
           future growth and maintain high organization standards. Continuous participation in BWF
-          activities signifies acceptance of the current Terms and Conditions.
+          activities signifies full acceptance of the revised Terms and Conditions.
         </li>
       </ul>
     </LegalPageShell>

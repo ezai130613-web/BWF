@@ -3999,3 +3999,12 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   fix (member dropdown selects only id/name).
 - Verified on a dev server: a live profile returns 200 with tel:, wa.me and mailto: links and
   `telephone` in the JSON-LD, and no "View contact details" button. `tsc` is clean.
+
+### Phase 30 correction 7 (2026-10-10) — revised Membership T&C copy
+
+- **`/membership-terms` updated to the client's revised T&C** (now 12 sections, last updated
+  10 October 2026). New: "No Assurance or Guarantee of Business" under §6, §7 Duty to Honor Business
+  Commitments (failure to honor deals is a Gross Deviation), and §8 Mandatory Business Reporting.
+  Reworded: the intro (adds "protect forum integrity"), the §1 heading, §9 visibility/Chief Guest
+  wording, and §11–12 (gross deviation, non-reporting, "final and binding"). §1–5 are otherwise
+  unchanged, and fee amounts still come from the Fees settings as before.
