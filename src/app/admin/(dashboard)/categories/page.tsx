@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateCategoryForm } from "@/components/admin/create-category-form";
-import { toggleCategoryActive, toggleShowInOpenCategories } from "./actions";
+import { toggleCategoryActive, toggleShowInOpenCategories, toggleShowOnApplyForm } from "./actions";
 
 export default async function CategoriesPage() {
   await requirePermission("categories:manage");
@@ -17,8 +17,14 @@ export default async function CategoriesPage() {
         <h1 className="text-xl font-semibold text-neutral-900">Categories</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">
           The business-category taxonomy used for the category-exclusivity rule (brief §15) —
-          seeded with a starter list, edit freely. Deactivating a category hides it from new
-          membership applications (Phase 7) without affecting existing members.
+          seeded with a starter list, edit freely. Deactivating a category hides it everywhere
+          new members are added without affecting existing members.
+        </p>
+        <p className="mt-2 max-w-xl text-sm text-neutral-600">
+          &ldquo;Apply Form&rdquo; controls whether the public Apply for Membership page offers the
+          category to new applicants. New categories are shown by default; the roster-specific
+          labels copied from existing members&rsquo; sheets are hidden so applicants see the clean
+          official list.
         </p>
         <p className="mt-2 max-w-xl text-sm text-neutral-600">
           &ldquo;Show in Open Categories&rdquo; is separate — it only controls whether a category
@@ -38,6 +44,7 @@ export default async function CategoriesPage() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Members</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Apply Form</th>
               <th className="px-4 py-3 font-medium">Open Categories</th>
               <th className="px-4 py-3" />
             </tr>
@@ -61,6 +68,17 @@ export default async function CategoriesPage() {
                 <td className="px-4 py-3">
                   <span
                     className={
+                      category.showOnApplyForm
+                        ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                        : "rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500"
+                    }
+                  >
+                    {category.showOnApplyForm ? "Shown" : "Hidden"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={
                       category.showInOpenCategories
                         ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
                         : "rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500"
@@ -71,6 +89,11 @@ export default async function CategoriesPage() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-3">
+                    <form action={toggleShowOnApplyForm.bind(null, category.id)}>
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                        {category.showOnApplyForm ? "Hide from apply form" : "Show on apply form"}
+                      </button>
+                    </form>
                     <form action={toggleShowInOpenCategories.bind(null, category.id)}>
                       <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
                         {category.showInOpenCategories ? "Hide from roster" : "Show on roster"}

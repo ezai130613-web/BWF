@@ -82,3 +82,25 @@ export async function toggleShowInOpenCategories(categoryId: string) {
 
   revalidatePath("/admin/categories");
 }
+
+/**
+ * Correction (2026-10-13) — whether /apply offers this category to a new
+ * applicant. Separate from `isActive` (which also gates the members
+ * directory, admin forms, etc.) and from `showInOpenCategories` (roster).
+ */
+export async function toggleShowOnApplyForm(categoryId: string) {
+  const session = await requirePermission("categories:manage");
+
+  const category = await db.category.findUniqueOrThrow({ where: { id: categoryId } });
+  await db.category.update({ where: { id: categoryId }, data: { showOnApplyForm: !category.showOnApplyForm } });
+
+  await logActivity({
+    userId: session.user.id,
+    action: category.showOnApplyForm ? "category.hidden_from_apply_form" : "category.shown_on_apply_form",
+    entity: "Category",
+    entityId: categoryId,
+  });
+
+  revalidatePath("/admin/categories");
+  revalidatePath("/apply");
+}

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
 import { getChapterAvailability } from "@/lib/applications/availability";
-import { APPLY_CATEGORY_NAMES } from "@/lib/apply-categories";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { ApplyWizard } from "@/components/marketing/apply-wizard";
@@ -13,13 +12,13 @@ export const metadata: Metadata = {
 };
 
 export default async function ApplyPage() {
-  // Scoped to BWF's official category list (src/lib/apply-categories.ts) —
+  // Scoped by Category.showOnApplyForm (toggled on /admin/categories) —
   // deliberately not every active Category row, which also holds the
   // precise per-member text off the roster sheets (e.g. "SS Handrail /
   // Fabrication"). A new applicant picks from the clean taxonomy; existing
   // members' own category text is untouched wherever else it's shown.
   const categories = await db.category.findMany({
-    where: { isActive: true, name: { in: [...APPLY_CATEGORY_NAMES] } },
+    where: { isActive: true, showOnApplyForm: true },
     orderBy: { name: "asc" },
   });
 

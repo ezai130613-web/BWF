@@ -18,8 +18,8 @@ import { APPLY_CATEGORY_NAMES } from "../src/lib/apply-categories";
  * page that reads Category (members directory filter, admin's add-member
  * form, visitor registration, programmatic SEO landing pages) keeps showing
  * the roster-specific categories exactly as before — this is purely
- * additive. The /apply page itself is scoped to just this list separately,
- * in its own data-fetching code (src/app/(public)/apply/page.tsx).
+ * additive. The /apply page itself is scoped by Category.showOnApplyForm
+ * (managed on /admin/categories; new rows default to shown).
  *
  * Safe to re-run. Run once via `npx tsx prisma/seed-apply-categories.ts`.
  */

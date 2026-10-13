@@ -6,8 +6,10 @@
  * sheet — those stay exactly as they are on the member's own record, they
  * just aren't generic options a new applicant should be offered.
  *
- * prisma/seed-apply-categories.ts creates these as active Category rows;
- * this same list is what src/app/(public)/apply/page.tsx filters to.
+ * prisma/seed-apply-categories.ts creates these as active Category rows.
+ * Since 2026-10-13 /apply no longer filters by this list — it reads
+ * Category.showOnApplyForm, which was backfilled from this list and is now
+ * managed on /admin/categories. This list is only the seed's input.
  */
 export const APPLY_CATEGORY_NAMES = [
   "Air Conditioner Sales / Service",

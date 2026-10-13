@@ -42,6 +42,16 @@ export async function submitApplication(
   const { consent, chapterId, yearsInBusiness, ...rest } = parsed.data;
   void consent; // required by the schema (must be "on"); nothing further to persist
 
+  // Same scope as the /apply dropdown — a stale form can't submit a category
+  // an admin has since deactivated or taken off the Apply form.
+  const offered = await db.category.findFirst({
+    where: { id: rest.categoryId, isActive: true, showOnApplyForm: true },
+    select: { id: true },
+  });
+  if (!offered) {
+    return { error: "That category is no longer available for new applications — please refresh and try again.", success: false };
+  }
+
   let finalChapterId: string | null = null;
   let status: "NEW" | "WAITLISTED" = "NEW";
 

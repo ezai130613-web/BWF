@@ -261,6 +261,13 @@ model Category {
   /// were backfilled by cross-referencing real member data and the
   /// reference roster PDFs, not left to the default.
   showInOpenCategories Boolean @default(true)
+  /// Correction (2026-10-13): whether /apply offers this category to a new
+  /// applicant. Replaces the hard-coded name list that used to scope /apply,
+  /// which silently left out categories added from /admin/categories.
+  /// Defaults true so a newly created category appears without extra steps;
+  /// existing rows were backfilled to the official list (roster-specific
+  /// labels start hidden). Only applies while `isActive` is also true.
+  showOnApplyForm Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -4008,3 +4008,19 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   Reworded: the intro (adds "protect forum integrity"), the §1 heading, §9 visibility/Chief Guest
   wording, and §11–12 (gross deviation, non-reporting, "final and binding"). §1–5 are otherwise
   unchanged, and fee amounts still come from the Fees settings as before.
+
+### Phase 30 correction 8 (2026-10-13) — admin-managed Apply form categories
+
+- **Bug:** a category added on `/admin/categories` ("Lighting Products and solutions") never
+  appeared on `/apply`, because `/apply` filtered by a hard-coded name list
+  (`src/lib/apply-categories.ts`) rather than anything an admin could change.
+- **New `Category.showOnApplyForm`** (migration `20261013120000_category_show_on_apply_form`,
+  default true). Backfilled to the 109 official names plus "Lighting Products and solutions";
+  every other existing row (roster-specific labels, and the stray "Chennai Chapter 01") starts
+  hidden. `/apply` now reads `isActive && showOnApplyForm`, and `submitApplication` re-checks the
+  same scope server-side so a stale form can't submit a hidden category.
+- **Admin:** `/admin/categories` has an "Apply Form" column and a "Hide from / Show on apply form"
+  toggle (`category.hidden_from_apply_form` / `category.shown_on_apply_form` in the activity log).
+  New categories show on `/apply` by default. `apply-categories.ts` now only feeds the seed script.
+- Verified: migration applied, `tsc` and eslint are clean, and `/apply` on a dev server returns
+  200 with the Lighting category and without roster-only labels (110 options).
