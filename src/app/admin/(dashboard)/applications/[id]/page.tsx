@@ -57,6 +57,12 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                 <dt className="text-neutral-500">Referral source</dt>
                 <dd className="text-neutral-900">{application.referralSource ?? "—"}</dd>
               </div>
+              <div>
+                <dt className="text-neutral-500">Membership T&amp;C accepted</dt>
+                <dd className="text-neutral-900">
+                  {application.termsAcceptedAt ? application.termsAcceptedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}
+                </dd>
+              </div>
               {application.companyInfo ? (
                 <div className="col-span-2">
                   <dt className="text-neutral-500">Company info</dt>

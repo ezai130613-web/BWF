@@ -5,6 +5,7 @@ import { getChapterAvailability } from "@/lib/applications/availability";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { ApplyWizard } from "@/components/marketing/apply-wizard";
+import { MembershipTermsContent, MEMBERSHIP_TERMS_INTRO } from "@/components/legal/membership-terms-content";
 
 export const metadata: Metadata = {
   title: "Apply for Membership",
@@ -96,6 +97,12 @@ export default async function ApplyPage() {
                   swiftCode={content["payment.membershipSwiftCode"]}
                   upiId={content["payment.membershipUpiId"]}
                   bankName={content["payment.membershipBankName"]}
+                  termsContent={
+                    <>
+                      <p>{MEMBERSHIP_TERMS_INTRO}</p>
+                      <MembershipTermsContent />
+                    </>
+                  }
                 />
               </div>
             </div>

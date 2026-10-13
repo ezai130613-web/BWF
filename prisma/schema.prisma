@@ -829,6 +829,11 @@ model MembershipApplication {
   /// paymentScreenshotUrl.
   paymentScreenshotUrl String?
 
+  /// 2026-10-13 client correction — applicants must accept the Membership
+  /// T&C (/membership-terms) before submitting. Null only on applications
+  /// that predate the requirement.
+  termsAcceptedAt DateTime?
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 

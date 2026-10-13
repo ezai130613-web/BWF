@@ -4024,3 +4024,19 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   New categories show on `/apply` by default. `apply-categories.ts` now only feeds the seed script.
 - Verified: migration applied, `tsc` and eslint are clean, and `/apply` on a dev server returns
   200 with the Lighting category and without roster-only labels (110 options).
+
+### Phase 30 correction 9 (2026-10-13) — Membership T&C acceptance on /apply
+
+- **Applicants must accept the Membership T&C before submitting.** Step 3 of the Apply form has
+  a new "I have read and accept all the Membership Terms & Conditions" checkbox. Ticking it (or
+  clicking the link) opens the full terms in a pop-up (`<dialog>`), and only its "I have read
+  and accept" button ticks the box. "Submit application" stays disabled until then.
+  `submitApplication` also requires `termsAccepted=on` server-side.
+- **New `MembershipApplication.termsAcceptedAt`** (migration
+  `20261013150000_application_terms_accepted`, nullable; older applications stay null), set on
+  submit and shown on the admin application page.
+- The T&C copy moved to `src/components/legal/membership-terms-content.tsx` so `/membership-terms`
+  and the pop-up share one source, including the fee amounts from the Fees settings.
+- Verified: migration applied, `tsc` and eslint are clean, and `/apply` and `/membership-terms`
+  both return 200 on a dev server with the full terms and live fee amounts. The pop-up was not
+  click-tested in a browser.

@@ -20,6 +20,7 @@ const submitSchema = z.object({
   categoryId: z.string().min(1, "Select a category"),
   chapterId: z.string().optional(), // absent/empty => waiting list
   consent: z.literal("on", { error: "Please confirm you agree to be contacted about your application." }),
+  termsAccepted: z.literal("on", { error: "Please read and accept the Membership Terms & Conditions to apply." }),
 });
 
 /**
@@ -39,8 +40,9 @@ export async function submitApplication(
   const allowed = await rateLimit(`application:${ip}`, { limit: 10, windowSeconds: 3600 });
   if (!allowed) return { error: TOO_MANY_REQUESTS_ERROR, success: false };
 
-  const { consent, chapterId, yearsInBusiness, ...rest } = parsed.data;
+  const { consent, termsAccepted, chapterId, yearsInBusiness, ...rest } = parsed.data;
   void consent; // required by the schema (must be "on"); nothing further to persist
+  void termsAccepted; // required by the schema; persisted as termsAcceptedAt below
 
   // Same scope as the /apply dropdown — a stale form can't submit a category
   // an admin has since deactivated or taken off the Apply form.
@@ -72,6 +74,7 @@ export async function submitApplication(
       yearsInBusiness: yearsInBusiness === "" ? undefined : yearsInBusiness,
       chapterId: finalChapterId,
       status,
+      termsAcceptedAt: new Date(),
     },
   });
 

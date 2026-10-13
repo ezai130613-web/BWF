@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { submitApplication } from "@/app/(public)/apply/actions";
 import type { ChapterAvailability } from "@/lib/applications/availability";
 import { trackEvent } from "@/lib/analytics";
@@ -20,6 +20,7 @@ export function ApplyWizard({
   swiftCode,
   upiId,
   bankName,
+  termsContent,
 }: {
   categories: Category[];
   availabilityByCategory: Record<string, ChapterAvailability[]>;
@@ -30,11 +31,18 @@ export function ApplyWizard({
   swiftCode?: string | null;
   upiId?: string | null;
   bankName?: string | null;
+  /** Server-rendered Membership T&C copy, shown in the acceptance pop-up. */
+  termsContent: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(submitApplication, initialState);
   const [categoryId, setCategoryId] = useState<string>("");
   const [chapterId, setChapterId] = useState<string | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  // Client correction (2026-10-13): the Membership T&C open in a pop-up and
+  // must be accepted there before the application can be submitted.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const termsDialogRef = useRef<HTMLDialogElement>(null);
+  const openTerms = () => termsDialogRef.current?.showModal();
 
   // Brief §50 — "Membership submissions".
   useEffect(() => {
@@ -200,17 +208,80 @@ export function ApplyWizard({
             I agree to be contacted by BWF about my application.
           </label>
 
+          <label className="flex items-start gap-2 text-sm text-slate-400">
+            <input
+              type="checkbox"
+              name="termsAccepted"
+              checked={termsAccepted}
+              onChange={(e) => {
+                // Ticking it opens the terms; only "I accept" in the pop-up ticks it.
+                if (e.target.checked) openTerms();
+                else setTermsAccepted(false);
+              }}
+              className="mt-1 h-4 w-4"
+            />
+            <span>
+              I have read and accept all the{" "}
+              <button type="button" onClick={openTerms} className="text-gold-400 underline underline-offset-2 hover:text-gold-300">
+                Membership Terms &amp; Conditions
+              </button>
+              .
+            </span>
+          </label>
+
           {state?.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !termsAccepted}
             className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
           >
             {pending ? "Submitting…" : "Submit application"}
           </button>
         </form>
       ) : null}
+
+      <dialog
+        ref={termsDialogRef}
+        aria-labelledby="membership-terms-title"
+        className="m-auto flex max-h-[85vh] w-[calc(100%-2rem)] max-w-3xl flex-col rounded-sm border border-emerald-700 bg-emerald-950 p-0 text-ivory-100 backdrop:bg-black/70 [&:not([open])]:hidden"
+      >
+        <div className="flex items-center justify-between gap-4 border-b border-emerald-700 px-6 py-4">
+          <h2 id="membership-terms-title" className="font-display text-xl text-ivory-100">
+            Membership Terms &amp; Conditions
+          </h2>
+          <button
+            type="button"
+            onClick={() => termsDialogRef.current?.close()}
+            aria-label="Close"
+            className="text-2xl leading-none text-slate-400 hover:text-ivory-100"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="prose prose-invert prose-sm prose-headings:font-display prose-strong:text-ivory-100 max-w-none flex-1 overflow-y-auto px-6 py-4">
+          {termsContent}
+        </div>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-emerald-700 px-6 py-4">
+          <button
+            type="button"
+            onClick={() => termsDialogRef.current?.close()}
+            className="rounded-full border border-emerald-600 px-5 py-2 text-sm text-slate-300 hover:border-gold-500/50"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTermsAccepted(true);
+              termsDialogRef.current?.close();
+            }}
+            className="rounded-full bg-gold-500 px-5 py-2 text-sm font-medium text-emerald-950 hover:bg-gold-400"
+          >
+            I have read and accept
+          </button>
+        </div>
+      </dialog>
     </div>
   );
 }
