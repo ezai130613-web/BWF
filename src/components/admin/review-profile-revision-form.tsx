@@ -28,6 +28,7 @@ const FIELD_ORDER: (keyof MemberProfileFields)[] = [
   "instagramUrl",
   "linkedinUrl",
   "facebookUrl",
+  "youtubeUrl",
   "photoUrl",
   "brochureUrl",
   "videoUrl",

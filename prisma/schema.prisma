@@ -358,6 +358,7 @@ model Member {
   instagramUrl String?
   linkedinUrl  String?
   facebookUrl  String?
+  youtubeUrl   String?
 
   // --- Media — URL fields only until object storage (R2) is wired up; no
   // upload UI yet. videoUrl is expected to be a direct file or an approved
@@ -833,6 +834,28 @@ model MembershipApplication {
   /// T&C (/membership-terms) before submitting. Null only on applications
   /// that predate the requirement.
   termsAcceptedAt DateTime?
+
+  /// 2026-10-19 client correction — the Apply form now collects everything a
+  /// selected applicant's member profile and company need, so conversion
+  /// (convertApplicationToMember) carries it straight over instead of an
+  /// admin chasing it afterwards. All nullable: older applications predate it.
+  whatsapp       String?
+  address        String?
+  bio            String?
+  services       String?
+  areasServed    String?
+  gstNumber      String?
+  website        String?
+  youtubeUrl     String?
+  linkedinUrl    String?
+  instagramUrl   String?
+  facebookUrl    String?
+  photoUrl       String?
+  companyLogoUrl String?
+  /// R2 object key (not a URL) of the applicant's Aadhaar card. Never
+  /// rendered publicly — admins open it through a short-lived signed link
+  /// (/api/admin/applications/[id]/aadhaar).
+  aadhaarFileKey String?
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)

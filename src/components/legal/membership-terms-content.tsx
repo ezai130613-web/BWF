@@ -1,5 +1,5 @@
 import { getContent } from "@/lib/content";
-import { formatInr } from "@/lib/format";
+import { formatAnnualMembershipFee, formatInr } from "@/lib/format";
 
 export const MEMBERSHIP_TERMS_LAST_UPDATED = "10 October 2026";
 
@@ -14,7 +14,7 @@ export const MEMBERSHIP_TERMS_INTRO =
 // otherwise the client's original wording stands.
 export async function MembershipTermsContent() {
   const content = await getContent(["fees.annualMembership", "fees.monthlyMeeting"]);
-  const annualFee = formatInr(content["fees.annualMembership"]);
+  const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
   const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
   const perMeetingFee = monthlyFee ? formatInr(String(Number(content["fees.monthlyMeeting"]) / 2)) : null;
 
@@ -45,7 +45,7 @@ export async function MembershipTermsContent() {
       <ul>
         <li>
           <strong>Annual Membership Fee:</strong>{" "}
-          {annualFee ? `${annualFee} + applicable GST per annum` : "As confirmed by BWF, plus applicable GST, per annum"}{" "}
+          {annualFee ? `${annualFee.withGst} per annum (${annualFee.total} in total)` : "As confirmed by BWF, plus applicable GST, per annum"}{" "}
           (Non-refundable).
         </li>
         <li>

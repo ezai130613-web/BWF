@@ -5,6 +5,67 @@ import { submitApplication } from "@/app/(public)/apply/actions";
 import type { ChapterAvailability } from "@/lib/applications/availability";
 import { trackEvent } from "@/lib/analytics";
 import { BankPaymentDetails } from "@/components/marketing/bank-payment-details";
+import { PublicUploadField } from "@/components/marketing/payment-screenshot-field";
+
+const inputClass =
+  "rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none";
+
+function TextField({
+  label,
+  name,
+  required,
+  type = "text",
+  placeholder,
+  wide,
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  type?: string;
+  placeholder?: string;
+  wide?: boolean;
+}) {
+  return (
+    <label className={`flex flex-col gap-1.5 text-sm font-medium text-slate-300 ${wide ? "sm:col-span-2" : ""}`}>
+      <span>
+        {label}
+        {required ? <span className="text-gold-400"> *</span> : null}
+      </span>
+      <input
+        name={name}
+        // Links are plain text (URL keyboard on phones) so "www.example.com"
+        // isn't refused by the browser; the server adds https:// and validates.
+        type={type === "url" ? "text" : type}
+        inputMode={type === "url" ? "url" : undefined}
+        min={type === "number" ? 0 : undefined}
+        required={required}
+        placeholder={placeholder}
+        className={inputClass}
+      />
+    </label>
+  );
+}
+
+function TextArea({ label, name, required, placeholder }: { label: string; name: string; required?: boolean; placeholder?: string }) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
+      <span>
+        {label}
+        {required ? <span className="text-gold-400"> *</span> : null}
+      </span>
+      <textarea name={name} rows={3} required={required} placeholder={placeholder} className={inputClass} />
+    </label>
+  );
+}
+
+function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="grid gap-4 border-t border-emerald-800 pt-4 sm:grid-cols-2">
+      <legend className="pr-3 text-xs font-medium uppercase tracking-wide text-gold-500">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
 
 const initialState: { error?: string; success?: boolean } = {};
 
@@ -20,6 +81,7 @@ export function ApplyWizard({
   swiftCode,
   upiId,
   bankName,
+  annualFee,
   termsContent,
 }: {
   categories: Category[];
@@ -31,6 +93,8 @@ export function ApplyWizard({
   swiftCode?: string | null;
   upiId?: string | null;
   bankName?: string | null;
+  /** e.g. { withGst: "₹20,000 + 18% GST", total: "₹23,600" }; null when the Fees setting isn't a number. */
+  annualFee?: { withGst: string; total: string } | null;
   /** Server-rendered Membership T&C copy, shown in the acceptance pop-up. */
   termsContent: React.ReactNode;
 }) {
@@ -43,6 +107,10 @@ export function ApplyWizard({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const termsDialogRef = useRef<HTMLDialogElement>(null);
   const openTerms = () => termsDialogRef.current?.showModal();
+  // Client correction (2026-10-19): photo and Aadhaar are required up front;
+  // the server checks too, this just keeps Submit disabled until both are in.
+  const [photoUploaded, setPhotoUploaded] = useState(false);
+  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
 
   // Brief §50 — "Membership submissions".
   useEffect(() => {
@@ -153,40 +221,72 @@ export function ApplyWizard({
           <input type="hidden" name="categoryId" value={categoryId} />
           {chapterId ? <input type="hidden" name="chapterId" value={chapterId} /> : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              Name
-              <input name="name" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              Phone
-              <input name="phone" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
-              Email
-              <input name="email" type="email" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              Company
-              <input name="companyName" required className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              Designation
-              <input name="designation" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              Years in business
-              <input name="yearsInBusiness" type="number" min="0" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
-              How did you hear about BWF?
-              <input name="referralSource" className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300 sm:col-span-2">
-              Short company information
-              <textarea name="companyInfo" rows={3} className="rounded-md border border-emerald-600 bg-emerald-900 px-3 py-2 text-sm text-ivory-100 focus:border-gold-500 focus:outline-none" />
-            </label>
-          </div>
+          <p className="text-xs text-slate-500">
+            Please fill in everything you can — if you&rsquo;re selected, these details become your
+            BWF member profile. Fields marked <span className="text-gold-400">*</span> are required.
+          </p>
+
+          <FieldGroup title="About you">
+            <TextField label="Full name" name="name" required />
+            <TextField label="Designation" name="designation" placeholder="e.g. Founder & CEO" />
+            <TextField label="Phone" name="phone" type="tel" required />
+            <TextField label="WhatsApp number" name="whatsapp" type="tel" placeholder="If different from phone" />
+            <TextField label="Email" name="email" type="email" required wide />
+          </FieldGroup>
+
+          <FieldGroup title="Your business">
+            <TextField label="Company name" name="companyName" required />
+            <TextField label="GST number" name="gstNumber" placeholder="e.g. 33ABCDE1234F1Z5" />
+            <TextField label="Years in business" name="yearsInBusiness" type="number" />
+            <TextField label="Areas served" name="areasServed" placeholder="e.g. Chennai, Tamil Nadu" />
+            <TextField label="Business address" name="address" required wide />
+            <TextArea label="Short company information" name="companyInfo" />
+            <TextArea label="About you & your business" name="bio" placeholder="Shown as the About section of your member profile" />
+            <TextArea label="Products / services" name="services" />
+          </FieldGroup>
+
+          <FieldGroup title="Website & social media">
+            <TextField label="Website" name="website" type="url" placeholder="https://" />
+            <TextField label="YouTube" name="youtubeUrl" type="url" placeholder="https://youtube.com/…" />
+            <TextField label="LinkedIn" name="linkedinUrl" type="url" placeholder="https://linkedin.com/in/…" />
+            <TextField label="Instagram" name="instagramUrl" type="url" placeholder="https://instagram.com/…" />
+            <TextField label="Facebook" name="facebookUrl" type="url" placeholder="https://facebook.com/…" />
+          </FieldGroup>
+
+          <FieldGroup title="Photo & documents">
+            <PublicUploadField
+              name="photoUrl"
+              label="Your photograph"
+              hint="Passport-size or square photo."
+              noun="photo"
+              required
+              onUploadedChange={setPhotoUploaded}
+            />
+            <PublicUploadField name="companyLogoUrl" label="Company logo" noun="logo" />
+            <PublicUploadField
+              name="aadhaarFileKey"
+              label="Aadhaar card"
+              kind="identityDocument"
+              hint="Image or PDF. Seen only by BWF admins, never shown on the website."
+              noun="Aadhaar"
+              required
+              onUploadedChange={setAadhaarUploaded}
+            />
+          </FieldGroup>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-300">
+            How did you hear about BWF?
+            <input name="referralSource" className={inputClass} />
+          </label>
+
+          {annualFee ? (
+            <div className="rounded-sm border border-gold-500/40 p-4">
+              <p className="text-sm text-ivory-100">
+                Annual membership fee: <span className="font-medium text-gold-400">{annualFee.withGst}</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-400">{annualFee.total} per year including GST.</p>
+            </div>
+          ) : null}
 
           <p className="text-xs text-slate-500">
             If you&rsquo;d like to pay your membership fee now, you can use the details below —
@@ -230,10 +330,13 @@ export function ApplyWizard({
           </label>
 
           {state?.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
+          {!photoUploaded || !aadhaarUploaded ? (
+            <p className="text-xs text-slate-500">Upload your photograph and Aadhaar card to submit.</p>
+          ) : null}
 
           <button
             type="submit"
-            disabled={pending || !termsAccepted}
+            disabled={pending || !termsAccepted || !photoUploaded || !aadhaarUploaded}
             className="self-start rounded-full bg-gold-500 px-6 py-2.5 text-sm font-medium text-emerald-950 hover:bg-gold-400 disabled:opacity-50"
           >
             {pending ? "Submitting…" : "Submit application"}

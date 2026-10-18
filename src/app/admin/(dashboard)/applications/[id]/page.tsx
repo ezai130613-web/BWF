@@ -19,6 +19,17 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
   const chapters = await db.chapter.findMany({ orderBy: { name: "asc" } });
 
+  const links: [string, string][] = [];
+  for (const [label, href] of [
+    ["Website", application.website],
+    ["YouTube", application.youtubeUrl],
+    ["LinkedIn", application.linkedinUrl],
+    ["Instagram", application.instagramUrl],
+    ["Facebook", application.facebookUrl],
+  ] as const) {
+    if (href) links.push([label, href]);
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -63,14 +74,78 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                   {application.termsAcceptedAt ? application.termsAcceptedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}
                 </dd>
               </div>
-              {application.companyInfo ? (
+              {[
+                ["WhatsApp", application.whatsapp],
+                ["GST number", application.gstNumber],
+                ["Areas served", application.areasServed],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-neutral-500">{label}</dt>
+                  <dd className="text-neutral-900">{value || "—"}</dd>
+                </div>
+              ))}
+              {[
+                ["Address", application.address],
+                ["Company info", application.companyInfo],
+                ["About", application.bio],
+                ["Products / services", application.services],
+              ].map(([label, value]) =>
+                value ? (
+                  <div key={label} className="col-span-2">
+                    <dt className="text-neutral-500">{label}</dt>
+                    <dd className="whitespace-pre-line text-neutral-900">{value}</dd>
+                  </div>
+                ) : null,
+              )}
+              {links.length > 0 ? (
                 <div className="col-span-2">
-                  <dt className="text-neutral-500">Company info</dt>
-                  <dd className="text-neutral-900">{application.companyInfo}</dd>
+                  <dt className="text-neutral-500">Website &amp; social</dt>
+                  <dd className="mt-1 flex flex-col gap-1">
+                    {links.map(([label, href]) => (
+                      <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="break-all text-neutral-900 underline">
+                        {label}: {href}
+                      </a>
+                    ))}
+                  </dd>
                 </div>
               ) : null}
             </dl>
           </div>
+
+          {application.photoUrl || application.companyLogoUrl || application.aadhaarFileKey ? (
+            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+              <h2 className="text-sm font-semibold text-neutral-900">Photo &amp; documents</h2>
+              <div className="mt-3 flex flex-wrap items-start gap-6">
+                {application.photoUrl ? (
+                  <a href={application.photoUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-1 text-xs text-neutral-500">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
+                    <img src={application.photoUrl} alt="Applicant photograph" className="h-32 w-28 rounded-md border border-neutral-200 object-cover" />
+                    Photograph
+                  </a>
+                ) : null}
+                {application.companyLogoUrl ? (
+                  <a href={application.companyLogoUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-1 text-xs text-neutral-500">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
+                    <img src={application.companyLogoUrl} alt="Company logo" className="h-32 w-32 rounded-md border border-neutral-200 object-contain p-2" />
+                    Company logo
+                  </a>
+                ) : null}
+                {application.aadhaarFileKey ? (
+                  <div className="flex flex-col gap-1 text-xs text-neutral-500">
+                    <a
+                      href={`/api/admin/applications/${application.id}/aadhaar`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 hover:bg-neutral-50"
+                    >
+                      View Aadhaar card
+                    </a>
+                    Private, opens a 5-minute link. Each view is logged.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {application.paymentScreenshotUrl ? (
             <div className="rounded-lg border border-neutral-200 bg-white p-6">

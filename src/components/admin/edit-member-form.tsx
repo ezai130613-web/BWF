@@ -157,6 +157,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <Field label="Instagram URL" name="instagramUrl" type="url" defaultValue={member.instagramUrl} />
         <Field label="LinkedIn URL" name="linkedinUrl" type="url" defaultValue={member.linkedinUrl} />
         <Field label="Facebook URL" name="facebookUrl" type="url" defaultValue={member.facebookUrl} />
+        <Field label="YouTube URL" name="youtubeUrl" type="url" defaultValue={member.youtubeUrl} />
         <MediaUploadField label="Brochure (PDF)" name="brochureUrl" kind="pdf" defaultValue={member.brochureUrl} />
         <MediaUploadField
           label="Video"

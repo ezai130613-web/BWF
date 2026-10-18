@@ -9,6 +9,7 @@ const ACCEPT_BY_KIND: Record<MediaKind, string> = {
   video: "video/mp4,video/webm,video/quicktime",
   marketingVideo: "video/mp4,video/quicktime",
   paymentProof: "image/jpeg,image/png,image/webp,image/avif,image/gif,application/pdf",
+  identityDocument: "image/jpeg,image/png,image/webp,application/pdf",
 };
 
 /**

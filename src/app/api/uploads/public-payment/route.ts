@@ -18,13 +18,16 @@ import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limi
  * `paymentProof` (image or PDF) was added for the Visitor Management form,
  * whose spec explicitly allows a PDF proof, unlike /visit and /apply which
  * only ever needed a screenshot — `image` stays the default so those two
- * callers are unaffected.
+ * callers are unaffected. The Apply form (2026-10-19) also uploads the
+ * applicant's photo and company logo (`image`) and Aadhaar card
+ * (`identityDocument`) here; for that last kind only the object key is
+ * returned, never a public URL — see MEDIA_KINDS.identityDocument.
  */
 const bodySchema = z.object({
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(100),
   size: z.number().int().positive(),
-  kind: z.enum(["image", "paymentProof"]).default("image"),
+  kind: z.enum(["image", "paymentProof", "identityDocument"]).default("image"),
 });
 
 export async function POST(request: Request) {
@@ -53,7 +56,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { uploadUrl, publicUrl } = await createPresignedUpload({ kind, filename, contentType });
+    const { uploadUrl, publicUrl, key } = await createPresignedUpload({ kind, filename, contentType });
+    if (kind === "identityDocument") return NextResponse.json({ uploadUrl, key });
     return NextResponse.json({ uploadUrl, publicUrl });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Couldn't start the upload." }, { status: 400 });

@@ -72,6 +72,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     { label: "Instagram", href: member.instagramUrl },
     { label: "LinkedIn", href: member.linkedinUrl },
     { label: "Facebook", href: member.facebookUrl },
+    { label: "YouTube", href: member.youtubeUrl },
   ].filter((item) => item.href);
 
   // Brief §53 — LocalBusiness. A member profile is a business directory
@@ -100,26 +101,41 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     <div>
       <JsonLd data={localBusinessJsonLd} />
       <JsonLd data={crumbs} />
-      <div className="relative">
-        <PhotoSlot
-          src={member.photoUrl}
-          alt={member.name}
-          brief={`${member.name} — portrait or company work`}
-          className="h-[40vh]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/60 to-emerald-950/10" />
-        <Container className="absolute inset-x-0 bottom-0 pb-10">
-          <SectionLabel>{member.category.name}</SectionLabel>
-          <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{member.name}</h1>
-          <p className="mt-2 text-slate-400">
-            {member.designation ? `${member.designation} · ` : ""}
-            {member.company.name} · {member.chapter.name}
-          </p>
-          {member.leadershipRoles.length > 0 ? (
-            <p className="mt-1 text-sm text-gold-400">
-              {member.leadershipRoles.map((r) => r.role.label).join(" · ")}
+      {/* Client correction (2026-10-19): members supply passport-size or
+          square photos, which a full-width banner cropped down to a strip
+          of chin. A small square frame (anchored to the top so a passport
+          photo only loses a little below the shoulders) fits both. */}
+      <div className="border-b border-emerald-800 bg-emerald-900/40">
+        <Container className="flex flex-col gap-8 py-12 sm:flex-row sm:items-end sm:gap-10">
+          <PhotoSlot
+            src={member.photoUrl}
+            alt={member.name}
+            brief={`${member.name} — portrait`}
+            sizes="(min-width: 640px) 208px, 176px"
+            objectPosition="center top"
+            className="aspect-square w-44 shrink-0 rounded-sm border border-emerald-700 sm:w-52"
+          />
+          <div className="min-w-0">
+            {member.company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded/R2 URL, not a next/image-managed asset
+              <img
+                src={member.company.logoUrl}
+                alt={`${member.company.name} logo`}
+                className="mb-6 h-14 w-auto max-w-[10rem] rounded-sm bg-white object-contain p-1.5"
+              />
+            ) : null}
+            <SectionLabel>{member.category.name}</SectionLabel>
+            <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{member.name}</h1>
+            <p className="mt-2 text-slate-400">
+              {member.designation ? `${member.designation} · ` : ""}
+              {member.company.name} · {member.chapter.name}
             </p>
-          ) : null}
+            {member.leadershipRoles.length > 0 ? (
+              <p className="mt-1 text-sm text-gold-400">
+                {member.leadershipRoles.map((r) => r.role.label).join(" · ")}
+              </p>
+            ) : null}
+          </div>
         </Container>
       </div>
 

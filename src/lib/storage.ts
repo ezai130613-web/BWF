@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
@@ -79,6 +79,14 @@ export const MEDIA_KINDS = {
     contentTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif", "application/pdf"],
     maxBytes: 10 * 1024 * 1024,
   },
+  /// Apply form Aadhaar card (2026-10-19). Uploaded publicly (signed-out
+  /// applicants) but its URL is never handed out: the application stores
+  /// only the object key, and admins read it via createSignedDownloadUrl().
+  identityDocument: {
+    folder: "identity-documents",
+    contentTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+    maxBytes: 10 * 1024 * 1024,
+  },
 } as const satisfies Record<string, { folder: string; contentTypes: readonly string[]; maxBytes: number }>;
 
 export type MediaKind = keyof typeof MEDIA_KINDS;
@@ -112,7 +120,31 @@ export async function createPresignedUpload(input: { kind: MediaKind; filename: 
 
   return {
     uploadUrl,
+    key,
     publicUrl: `${process.env.STORAGE_PUBLIC_URL}/${key}`,
     maxBytes: config.maxBytes,
   };
+}
+
+/** True when `url` points at an object in our own bucket — used to refuse arbitrary URLs submitted through public forms. */
+export function isOwnStorageUrl(url: string, kind: MediaKind): boolean {
+  const base = process.env.STORAGE_PUBLIC_URL;
+  if (!base) return false;
+  return url.startsWith(`${base}/${MEDIA_KINDS[kind].folder}/`);
+}
+
+/** True when `key` has the exact shape createPresignedUpload() issues for `kind`. */
+export function isOwnStorageKey(key: string, kind: MediaKind): boolean {
+  const folder = MEDIA_KINDS[kind].folder;
+  return new RegExp(`^${folder}/[0-9a-f-]{36}(\\.[A-Za-z0-9]{1,8})?$`).test(key);
+}
+
+/** Short-lived signed GET link for a private object (e.g. an applicant's Aadhaar card). */
+export async function createSignedDownloadUrl(key: string, expiresInSeconds = 5 * 60) {
+  if (!isStorageConfigured()) {
+    throw new Error("Object storage is not configured.");
+  }
+  return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: process.env.STORAGE_BUCKET, Key: key }), {
+    expiresIn: expiresInSeconds,
+  });
 }

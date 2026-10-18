@@ -19,12 +19,17 @@ export function PhotoSlot({
   brief,
   className,
   unoptimized = true,
+  sizes = "100vw",
+  objectPosition,
 }: {
   src?: string | null;
   alt: string;
   brief: string;
   className?: string;
   unoptimized?: boolean;
+  sizes?: string;
+  /** e.g. "center top" for portraits, so a crop never cuts off the head. */
+  objectPosition?: string;
 }) {
   if (!src) {
     return <MediaPlaceholder brief={brief} className={className} />;
@@ -32,7 +37,7 @@ export function PhotoSlot({
 
   return (
     <div className={cn("relative overflow-hidden bg-emerald-900", className)}>
-      <Image src={src} alt={alt} fill unoptimized={unoptimized} sizes="100vw" style={{ objectFit: "cover" }} />
+      <Image src={src} alt={alt} fill unoptimized={unoptimized} sizes={sizes} style={{ objectFit: "cover", objectPosition }} />
     </div>
   );
 }

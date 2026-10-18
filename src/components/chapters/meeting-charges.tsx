@@ -1,5 +1,5 @@
 import { getContent } from "@/lib/content";
-import { formatInr, withGst } from "@/lib/format";
+import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -17,7 +17,7 @@ export async function MeetingCharges() {
   const prebookBreakfast = withGst(formatInr(content["fees.visitorPrebookMeetingBreakfast"]));
   const onspotMeetingOnly = withGst(formatInr(content["fees.visitorOnspotMeetingOnly"]));
   const onspotBreakfast = withGst(formatInr(content["fees.visitorOnspotMeetingBreakfast"]));
-  const annual = formatInr(content["fees.annualMembership"]);
+  const annual = formatAnnualMembershipFee(content["fees.annualMembership"]);
   const monthly = formatInr(content["fees.monthlyMeeting"]);
 
   return (
@@ -62,9 +62,11 @@ export async function MeetingCharges() {
             <p className="font-display text-xl text-ivory-100">Members</p>
             <div className="mt-6 flex flex-col gap-6">
               <div>
-                <p className="font-display text-3xl text-gold-400">{annual ?? "Contact BWF"}</p>
+                <p className="font-display text-3xl text-gold-400">{annual?.withGst ?? "Contact BWF"}</p>
                 <p className="mt-1 text-sm text-ivory-100">Annual Membership Fee</p>
-                <p className="mt-1 text-sm text-slate-400">Applicable annual BWF membership fee.</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  {annual ? `${annual.total} per year including GST.` : "Applicable annual BWF membership fee."}
+                </p>
               </div>
               <div>
                 <p className="font-display text-3xl text-gold-400">{monthly ?? "Contact BWF"}</p>

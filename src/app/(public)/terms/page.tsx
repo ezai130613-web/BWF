@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getContent } from "@/lib/content";
-import { formatInr } from "@/lib/format";
+import { formatAnnualMembershipFee } from "@/lib/format";
 import { LegalPageShell, Placeholder } from "@/components/legal/legal-page-shell";
 
 export const metadata: Metadata = {
@@ -10,7 +10,8 @@ export const metadata: Metadata = {
 
 export default async function TermsPage() {
   const content = await getContent(["contact.email", "contact.phone", "contact.address", "fees.annualMembership"]);
-  const annualFee = formatInr(content["fees.annualMembership"]) ?? "the current BWF-confirmed amount";
+  const fee = formatAnnualMembershipFee(content["fees.annualMembership"]);
+  const annualFee = fee ? `${fee.withGst} (${fee.total} in total)` : "the current BWF-confirmed amount plus GST";
 
   return (
     <LegalPageShell

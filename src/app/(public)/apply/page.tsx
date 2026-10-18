@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
+import { formatAnnualMembershipFee } from "@/lib/format";
 import { getChapterAvailability } from "@/lib/applications/availability";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -38,6 +39,7 @@ export default async function ApplyPage() {
     "payment.membershipSwiftCode",
     "payment.membershipUpiId",
     "payment.membershipBankName",
+    "fees.annualMembership",
   ]);
   const steps = content["apply.steps"]?.split("\n").filter(Boolean) ?? [];
 
@@ -97,6 +99,7 @@ export default async function ApplyPage() {
                   swiftCode={content["payment.membershipSwiftCode"]}
                   upiId={content["payment.membershipUpiId"]}
                   bankName={content["payment.membershipBankName"]}
+                  annualFee={formatAnnualMembershipFee(content["fees.annualMembership"])}
                   termsContent={
                     <>
                       <p>{MEMBERSHIP_TERMS_INTRO}</p>

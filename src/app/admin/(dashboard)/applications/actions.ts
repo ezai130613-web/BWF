@@ -127,9 +127,30 @@ export async function convertApplicationToMember(_prevState: { error?: string } 
     return { error: "This application has already been converted." };
   }
 
-  let company = await findMatchingCompany(application.companyName);
-  if (!company) {
-    company = await db.company.create({ data: { name: application.companyName } });
+  // 2026-10-19 — the application now carries the company's GST, website,
+  // logo and description. A GST already on file identifies the company more
+  // reliably than its name; otherwise fall back to the name match. An
+  // existing company only has blanks filled in, never overwritten.
+  const companyDetails = {
+    gstNumber: application.gstNumber,
+    website: application.website,
+    logoUrl: application.companyLogoUrl,
+    description: application.companyInfo,
+  };
+  const gstOwner = application.gstNumber
+    ? await db.company.findUnique({ where: { gstNumber: application.gstNumber } })
+    : null;
+  const matched = gstOwner ?? (await findMatchingCompany(application.companyName));
+  let company: { id: string };
+  if (matched) {
+    const existing = await db.company.findUniqueOrThrow({ where: { id: matched.id } });
+    // Safe for gstNumber too: if any company held it, gstOwner would be this one.
+    const blanks = Object.fromEntries(
+      Object.entries(companyDetails).filter(([key, value]) => value && !existing[key as keyof typeof companyDetails]),
+    );
+    company = Object.keys(blanks).length > 0 ? await db.company.update({ where: { id: existing.id }, data: blanks }) : existing;
+  } else {
+    company = await db.company.create({ data: { name: application.companyName, ...companyDetails } });
   }
 
   const baseSlug = slugify(application.name) || "member";
@@ -148,6 +169,18 @@ export async function convertApplicationToMember(_prevState: { error?: string } 
         designation: application.designation,
         email: application.email,
         phone: application.phone,
+        whatsapp: application.whatsapp ?? application.phone,
+        address: application.address,
+        bio: application.bio,
+        services: application.services,
+        areasServed: application.areasServed,
+        yearsInBusiness: application.yearsInBusiness,
+        website: application.website,
+        youtubeUrl: application.youtubeUrl,
+        linkedinUrl: application.linkedinUrl,
+        instagramUrl: application.instagramUrl,
+        facebookUrl: application.facebookUrl,
+        photoUrl: application.photoUrl,
         companyId: company.id,
         chapterId: application.chapterId,
         categoryId: application.categoryId,

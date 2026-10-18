@@ -3,6 +3,7 @@ import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 import { ChiefGuestsCarousel } from "@/components/marketing/chief-guests-carousel";
+import { ChiefGuestsSignedIn } from "@/components/marketing/chief-guests-signed-in";
 
 /**
  * Reused on both the homepage and /chief-guest ("Leaders Who Have Joined Us") off the same
@@ -37,15 +38,17 @@ export async function ChiefGuestsSection({
         </p>
 
         {guests.length > 0 ? (
-          <ChiefGuestsCarousel
-            guests={guests.map((g) => ({
-              id: g.id,
-              name: g.name,
-              company: g.company ?? "",
-              designation: g.designation,
-              photoUrl: g.photoUrl,
-            }))}
-          />
+          <ChiefGuestsSignedIn>
+            <ChiefGuestsCarousel
+              guests={guests.map((g) => ({
+                id: g.id,
+                name: g.name,
+                company: g.company ?? "",
+                designation: g.designation,
+                photoUrl: g.photoUrl,
+              }))}
+            />
+          </ChiefGuestsSignedIn>
         ) : (
           <p className="mt-10 text-sm text-slate-400">
             Distinguished guests who join BWF meetings will be featured here soon.

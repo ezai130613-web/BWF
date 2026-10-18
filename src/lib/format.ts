@@ -21,3 +21,17 @@ export function toCrores(value: number): number {
 export function withGst(price: string | null): string {
   return price ? `${price} + GST` : "TBC";
 }
+
+/** GST rate on the annual membership fee (client, 2026-10-19: "20k plus GST 18%"). */
+export const MEMBERSHIP_GST_PERCENT = 18;
+
+/**
+ * The annual membership fee as "₹20,000 + 18% GST" plus the GST-inclusive
+ * total ("₹23,600") — or nulls when the Fees setting isn't a plain number.
+ */
+export function formatAnnualMembershipFee(value: string | null): { base: string; withGst: string; total: string } | null {
+  const base = formatInr(value);
+  if (!base) return null;
+  const total = formatInr(String(Math.round(Number(value) * (1 + MEMBERSHIP_GST_PERCENT / 100))))!;
+  return { base, withGst: `${base} + ${MEMBERSHIP_GST_PERCENT}% GST`, total };
+}

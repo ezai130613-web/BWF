@@ -4040,3 +4040,39 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
 - Verified: migration applied, `tsc` and eslint are clean, and `/apply` and `/membership-terms`
   both return 200 on a dev server with the full terms and live fee amounts. The pop-up was not
   click-tested in a browser.
+
+### Phase 30 correction 10 (2026-10-19) — fee with GST, full Apply form, portrait member photo, Chief Guest list for members
+
+- **Annual fee shown as "₹20,000 + 18% GST" (₹23,600 in total)** on the Chapters page's Meeting
+  Charges, `/terms`, `/membership-terms` and now on the Apply form itself
+  (`formatAnnualMembershipFee()` / `MEMBERSHIP_GST_PERCENT` in `src/lib/format.ts`). The amount
+  still comes from the `fees.annualMembership` setting (already 20000).
+- **Apply form asks for everything a selected member needs.** Grouped into About you / Your
+  business / Website & social media / Photo & documents: WhatsApp, business address (required),
+  GST (optional, validated + normalized like Add member), areas served, About, services, website,
+  YouTube, LinkedIn, Instagram, Facebook, photograph (required), company logo, Aadhaar card
+  (required, image or PDF). Migration `20261019120000_application_full_details` adds the columns
+  to `MembershipApplication` and `Member.youtubeUrl` (now also on the admin/member profile forms,
+  revision review and the public Social box). Links must be http(s) (a bare "www…" gets https://);
+  uploads must be this site's own R2 objects.
+- **Aadhaar is private:** stored as an R2 object key (`identity-documents/…`), never a URL. Admins
+  open it from the application page via `/api/admin/applications/[id]/aadhaar`
+  (`applications:manage`, 5-minute signed GET, each view logged as `application.aadhaar_viewed`).
+  The bucket is still the public one, so the key itself must stay secret — a separate private
+  bucket would be stronger.
+- **Convert to member carries it all over**: profile fields + photo onto the Member; GST, website,
+  logo and company info onto the Company (matched by GST first, then name; an existing company
+  only has blanks filled in).
+- **Member profile photo** is a small square frame (anchored top) beside the name instead of a
+  full-width banner, which cropped passport/square photos down to a strip. Company logo shows
+  above the name when present.
+- **Chief Guests for signed-in users:** members/admins see every published Chief Guest as small
+  bubbles (name, designation · company, "Visited BWF on" when `visitedAt` is set) in place of the
+  photo carousel, on both the homepage and `/chief-guest`. Loaded client-side from
+  `/api/chief-guests` (401 when signed out) so those pages stay cached. None of the 9 guests has a
+  visit date yet.
+- Verified in Chrome on a dev server: full application submitted with uploads (GST normalized,
+  www → https, Aadhaar stored as key; Submit disabled until photo + Aadhaar + T&C), signed Aadhaar
+  link returns the file, the route redirects signed-out users; member page checked at 1366px and
+  390px; bubbles shown only after member sign-in. Temp application, R2 files and login deleted.
+  Convert to member was not click-tested.
