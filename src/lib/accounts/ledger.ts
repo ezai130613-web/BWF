@@ -27,8 +27,9 @@ export type LedgerRow = {
   payerName: string;
   payerContact: string | null;
   chapterName: string;
-  meetingTitle: string;
-  meetingDate: Date;
+  /** Null for member payments made from the portal (not at a meeting check-in). */
+  meetingTitle: string | null;
+  meetingDate: Date | null;
   purpose: string;
   amountInr: number;
   paymentDate: Date;
@@ -140,9 +141,12 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       payerName: p.member.name,
       payerContact: p.member.phone,
       chapterName: p.member.chapter.name,
-      meetingTitle: p.meeting.title,
-      meetingDate: p.meeting.startsAt,
-      purpose: `Membership fee — ${formatMonthsCovered(p.monthsCovered) || `${p.numberOfMonths} month(s)`}`,
+      meetingTitle: p.meeting?.title ?? null,
+      meetingDate: p.meeting?.startsAt ?? null,
+      purpose:
+        p.type === "MEMBERSHIP"
+          ? `Annual membership — ${p.membershipYear}`
+          : `Meeting fee — ${formatMonthsCovered(p.monthsCovered) || `${p.numberOfMonths} month(s)`}`,
       amountInr: Number(p.amountPaidInr),
       paymentDate: p.actualPaymentDate,
       submittedAt: p.createdAt,

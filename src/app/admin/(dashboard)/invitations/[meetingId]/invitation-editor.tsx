@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
 import {
+  DEFAULT_GROUP_SRC,
   drawInvitationPoster,
   loadImage,
   MAX_INVITATION_GUESTS,
@@ -77,6 +78,7 @@ export function InvitationEditor({
   // loading" is derived (stored URL ≠ wanted URL) rather than counted.
   const [qr, setQr] = useState<{ url: string; img: HTMLImageElement } | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
+  const [groupImg, setGroupImg] = useState<HTMLImageElement | null>(null);
   const [background, setBackground] = useState<{ url: string; img: HTMLImageElement | null } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
@@ -116,11 +118,14 @@ export function InvitationEditor({
     };
   }, []);
 
-  // Static assets: logo + default background.
+  // Static assets: logo + the no-chief-guest group photo.
   useEffect(() => {
     let cancelled = false;
     loadImage("/images/brand/bwf-logo-512.png")
       .then((img) => !cancelled && setLogoImg(img))
+      .catch(() => undefined);
+    loadImage(DEFAULT_GROUP_SRC)
+      .then((img) => !cancelled && setGroupImg(img))
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -219,10 +224,11 @@ export function InvitationEditor({
         qrCode: qrImg,
         logo: logoImg,
         background: backgroundImg,
+        defaultGroup: groupImg,
       },
       readFonts(wrapperRef.current),
     );
-  }, [values, photoImgs, qrImg, logoImg, backgroundImg, fontsReady]);
+  }, [values, photoImgs, qrImg, logoImg, groupImg, backgroundImg, fontsReady]);
 
   // Unsaved-edit protection for a real page close/refresh.
   useEffect(() => {

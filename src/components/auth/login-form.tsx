@@ -28,7 +28,9 @@ export function LoginForm({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") ?? defaultRedirectTo;
+  // Same-site paths only — never bounce a login out to another origin.
+  const requested = searchParams.get("from");
+  const from = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : defaultRedirectTo;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

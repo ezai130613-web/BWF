@@ -129,6 +129,7 @@ export default async function PaymentMembersPage({
   const approvedMonths = new Set<string>();
   const pendingMonths = new Set<string>();
   for (const p of payments) {
+    if (p.type !== "MEETING") continue;
     const months = parseMonthsCovered(p.monthsCovered);
     for (const m of months) {
       const key = `${m.year}-${m.month}`;
@@ -155,7 +156,7 @@ export default async function PaymentMembersPage({
       </div>
 
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
-        <h3 className="text-sm font-semibold text-neutral-900">Month-by-month coverage</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Month-by-month coverage (meeting fee)</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {monthGrid.map((m) => (
             <span
@@ -176,11 +177,15 @@ export default async function PaymentMembersPage({
         {payments.map((p) => (
           <div key={p.id} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium text-neutral-900">{p.meeting.title}</p>
+              <p className="font-medium text-neutral-900">
+                {p.type === "MEMBERSHIP" ? `Annual membership — ${p.membershipYear}` : "Meeting fee"}
+                <span className="font-normal text-neutral-500">{p.meeting ? ` · at check-in: ${p.meeting.title}` : " · from member portal"}</span>
+              </p>
               <span className="text-xs font-medium text-neutral-500">{p.status.replace(/_/g, " ")}</span>
             </div>
             <p className="mt-1 text-neutral-600">
-              {money.format(Number(p.amountPaidInr))} · {formatMonthsCovered(p.monthsCovered)} · paid{" "}
+              {money.format(Number(p.amountPaidInr))}
+              {p.type === "MEETING" ? ` · ${formatMonthsCovered(p.monthsCovered)}` : ""} · paid{" "}
               {p.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
             </p>
             <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-neutral-500 underline">

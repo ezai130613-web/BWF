@@ -4131,3 +4131,56 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   accepts a new one, new username signs in in lowercase and the temporary one no longer does;
   banners checked at 1366px and 390px; payment QR drawn on the invitation preview. Visitor
   check-in being blocked outside the window was not click-tested.
+
+### Phase 30 correction 13 (2026-10-21) — Group photo on invitations without a chief guest
+
+- **No-chief-guest invitations looked blank** in the middle. When no chief guest is filled in, the
+  generator now uses the client's no-guest reference ("Chennai Chapter - 4"): the green panel runs
+  taller (down to just above "What's in it for you?") and a group of five professionals stands on its
+  lower edge. The cutout is `public/images/invitations/default-group.png`, lifted from the client's
+  reference poster with macOS subject isolation; drawn by `drawDefaultGroup()` in
+  `src/lib/invitations/poster.ts`. Invitations with 1–3 chief guests are unchanged.
+- Verified by rendering a no-guest poster through the shared draw routine in headless Chrome.
+
+### Phase 30 correction 14 (2026-10-21) — Member portal payments, payment links, no repeat payment prompt
+
+- **Approved months aren't asked for again at check-in.** If an APPROVED meeting payment already
+  covers the meeting's IST month (e.g. 6 months paid at once), the check-in page says so and is a
+  one-tap "Check In", with no payment question. If a payment for that month is still pending, it shows
+  an "awaiting approval" note and keeps the question. Coverage: `getMonthCoverage()` in
+  `src/lib/payments/member-payments.ts`.
+- **Payments in the member portal** (`/member/payments`, nav "Payments"): two tabs, **Meeting payment
+  (monthly)**, which uses the ICICI `payment.*` QR/bank details, and **Annual membership**, which uses
+  the IDFC `payment.membership*` details. Status tiles show this month, the month the fee is paid
+  through, and this year's membership. Includes a submission form (months pre-filled from the first
+  unpaid month) and the member's own history with review status/remarks.
+- **Schema** (migration `20261021120000_member_portal_payments`, additive): `Payment.type`
+  (`MEETING` | `MEMBERSHIP`, default `MEETING`); `Payment.meetingId` is now optional (null = paid
+  from the portal); `Payment.membershipYear` (MEMBERSHIP only, with `numberOfMonths` 0 and `monthsCovered` []).
+  Overlap checks are per type.
+- **Admin → Payments → Payment Links** (`/admin/payments/links`, `payments:view`): copy, WhatsApp share
+  with an editable message, and a downloadable QR for `/member/payments?type=meeting` and
+  `?type=membership`. These are generic links; members sign in and pay as themselves.
+- The Payments list (new Type filter), Member-wise view (meeting-fee grid ignores membership),
+  Accounts ledger and both Excel exports show the type and handle portal payments
+  ("Paid from member portal"). The ledger's old "Membership fee — months" label for meeting payments
+  now reads "Meeting fee — months".
+- Member login now keeps the query string in `from` (so `?type=membership` survives sign-in) and only
+  redirects to same-site paths.
+- Verified on a dev server (`TZ=UTC`) with Chrome via Playwright and a temporary chapter, member and
+  Super Admin (all deleted afterwards; approval audit-log entries kept per precedent). Tested: a
+  signed-out membership link → login → lands on the membership tab; membership and 6-month meeting
+  payments submitted; pending note at check-in; admin approved via the Payments page; check-in then
+  skipped payment and recorded Present; portal tiles showed Paid / paid through March 2027 at 1366px and 390px;
+  Payment Links page; payments Excel export returned 200.
+
+### Phase 30 correction 15 (2026-10-21) — Bigger, tappable payment QR
+
+- The uploaded payment QR is usually the bank's whole printed standee, so at the old 160px the code
+  itself was tiny. The new shared `QrPaymentBlock` (`src/components/ui/qr-payment-block.tsx`) shows it
+  at card width (max 320px). Tapping it opens a full-screen view (closes on Esc or a tap). It adds
+  **Download QR**, plus **Pay with UPI app** on phones, which opens GPay/PhonePe etc. with the UPI ID filled
+  in (`upi://pay`, no amount). Used by `BankPaymentDetails` (so /apply's membership QR and /visit's
+  meeting QR) and the member portal Payments page.
+- Verified at 390px on /visit (same component as /apply): large QR, enlarge view, UPI link built
+  from `payment.upiId`. /apply's payment step itself sits behind earlier wizard steps and wasn't clicked through.

@@ -81,7 +81,9 @@ export default auth((request) => {
   if (isMemberRoute) {
     if (!hasMemberRole && !isMemberPublicAuthPage) {
       const loginUrl = new URL("/member/login", request.nextUrl.origin);
-      loginUrl.searchParams.set("from", pathname);
+      // Keep the query too — admin-shared payment links are
+      // /member/payments?type=membership and must land on the right tab.
+      loginUrl.searchParams.set("from", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
     }
     // 2026-10-03 — a member signed in with bulk-issued temporary

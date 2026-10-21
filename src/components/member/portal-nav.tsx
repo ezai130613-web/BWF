@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   LogOut,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/member", label: "Dashboard", icon: LayoutDashboard },
       { href: "/member/meetings", label: "Meetings", icon: CalendarDays },
+      { href: "/member/payments", label: "Payments", icon: Wallet },
       { href: "/member/points", label: "My Points", icon: Trophy },
     ],
   },

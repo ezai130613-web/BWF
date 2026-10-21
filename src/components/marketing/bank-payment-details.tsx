@@ -1,4 +1,5 @@
 import { PaymentScreenshotField } from "@/components/marketing/payment-screenshot-field";
+import { QrPaymentBlock } from "@/components/ui/qr-payment-block";
 
 function DetailRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
@@ -41,13 +42,7 @@ export function BankPaymentDetails({
     <div className="rounded-sm border border-emerald-700 p-5">
       <p className="text-sm font-medium text-ivory-100">Payment</p>
 
-      {qrCodeUrl ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- admin-managed WebsiteContent URL, not a next/image-managed asset */}
-          <img src={qrCodeUrl} alt="Payment QR code" className="mt-3 h-40 w-40 rounded-md border border-emerald-600 bg-white object-contain p-2" />
-          <p className="mt-3 text-sm text-slate-400">Scan the QR code and complete your payment.</p>
-        </>
-      ) : null}
+      {qrCodeUrl ? <QrPaymentBlock qrCodeUrl={qrCodeUrl} upiId={upiId} payeeName={accountName} /> : null}
 
       {accountName || accountNumber || ifsc || upiId || bankName ? (
         <div className="mt-4 flex flex-col gap-1.5 border-t border-emerald-800 pt-4">

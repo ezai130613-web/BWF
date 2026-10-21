@@ -146,7 +146,9 @@ export default async function AccountsPage({
                 <td className="px-4 py-3">
                   <p className="text-neutral-900">{row.purpose}</p>
                   <p className="text-xs text-neutral-500">
-                    {row.meetingTitle} — {row.meetingDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                    {row.meetingTitle && row.meetingDate
+                      ? `${row.meetingTitle} — ${row.meetingDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`
+                      : "Paid from member portal"}
                   </p>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-neutral-900">{money.format(row.amountInr)}</td>

@@ -40,7 +40,7 @@ export function formatMonthsCovered(value: Prisma.JsonValue): string {
  */
 export async function hasApprovedOverlap(memberId: string, monthsCovered: MonthYear[]): Promise<boolean> {
   const approved = await db.payment.findMany({
-    where: { memberId, status: "APPROVED" },
+    where: { memberId, type: "MEETING", status: "APPROVED" },
     select: { monthsCovered: true },
   });
 

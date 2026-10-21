@@ -107,6 +107,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       // Shown only to holders of payments:view (Accounts + Super Admin by default, 2026-10-03).
       { href: "/admin/payments", label: "Payments", icon: IndianRupee, permission: "payments:view", workspace: ["performance", "accounts"] },
       { href: "/admin/payments/members", label: "Member-wise Payments", icon: Receipt, permission: "accounts:view", workspace: "accounts" },
+      { href: "/admin/payments/links", label: "Payment Links", icon: Link2, permission: "payments:view", workspace: ["performance", "accounts"] },
       { href: "/admin/visitors-payment", label: "Visitors Payment", icon: CreditCard, permission: "payments:view", workspace: ["performance", "accounts"] },
     ],
   },

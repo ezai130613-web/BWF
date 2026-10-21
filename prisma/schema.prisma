@@ -1216,14 +1216,30 @@ enum PaymentApprovalStatus {
   CLARIFICATION_REQUESTED
 }
 
+/// 2026-10-21 — members can now pay from their portal (not only while
+/// checking in at a meeting), for either the monthly meeting fee or the
+/// annual BWF membership subscription.
+enum PaymentType {
+  MEETING
+  MEMBERSHIP
+}
+
 model Payment {
   id String @id @default(cuid())
 
   memberId String
   member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
-  meetingId String
-  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  type PaymentType @default(MEETING)
+
+  /// The meeting it was submitted at (QR check-in). Null for payments made
+  /// from the member portal's Payments page / an admin-shared payment link.
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// MEMBERSHIP only — the membership year this annual subscription is for
+  /// (e.g. 2026). Null for MEETING payments, which use monthsCovered.
+  membershipYear Int?
 
   /// The Attendance row this was submitted alongside, when known — nullable
   /// because the spec explicitly allows a payment submitted later, after
@@ -1233,6 +1249,7 @@ model Payment {
   attendanceId String?
   attendance   Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
 
+  /// MEETING only — 0 and [] for MEMBERSHIP payments.
   numberOfMonths    Int
   /// [{ month: 1-12, year: number }, ...], length === numberOfMonths,
   /// validated at the point of writing — same Json-plus-app-level-validation
@@ -1268,6 +1285,7 @@ model Payment {
   @@index([memberId])
   @@index([meetingId])
   @@index([status])
+  @@index([type])
   @@map("payments")
 }
 

@@ -11,7 +11,7 @@ const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ chapterId?: string; meetingId?: string; status?: string; from?: string; to?: string; q?: string }>;
+  searchParams: Promise<{ chapterId?: string; meetingId?: string; status?: string; type?: string; from?: string; to?: string; q?: string }>;
 }) {
   const scope = await getPaymentsScope();
   const session = await requireAdminSession();
@@ -27,6 +27,7 @@ export default async function PaymentsPage({
     ...(effectiveChapterId ? { member: { chapterId: effectiveChapterId } } : {}),
     ...(params.meetingId ? { meetingId: params.meetingId } : {}),
     ...(params.status ? { status: params.status as PaymentApprovalStatus } : {}),
+    ...(params.type === "MEETING" || params.type === "MEMBERSHIP" ? { type: params.type } : {}),
     ...(params.q ? { member: { ...(effectiveChapterId ? { chapterId: effectiveChapterId } : {}), name: { contains: params.q, mode: "insensitive" } } } : {}),
     ...(params.from || params.to
       ? {
@@ -68,11 +69,15 @@ export default async function PaymentsPage({
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             <AdminPageIcon />Payment Management</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Meeting payment submissions — independent of attendance. Pending submissions are never
-            counted as verified receipts.
+            Member payment submissions — monthly meeting fees (at check-in or from the member portal) and
+            annual membership. Independent of attendance. Pending submissions are never counted as
+            verified receipts.
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Link href="/admin/payments/links" className="text-sm text-neutral-600 underline hover:text-emerald-800">
+            Payment links
+          </Link>
           <Link href="/api/admin/exports/payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Export Excel
           </Link>
@@ -119,6 +124,14 @@ export default async function PaymentsPage({
           <input name="q" defaultValue={params.q} placeholder="Search name…" className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+          Type
+          <select name="type" defaultValue={params.type ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
+            <option value="">All</option>
+            <option value="MEETING">Meeting fee</option>
+            <option value="MEMBERSHIP">Annual membership</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Status
           <select name="status" defaultValue={params.status ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All</option>
@@ -150,7 +163,13 @@ export default async function PaymentsPage({
                   {payment.member.name} · {payment.member.chapter.name}
                 </p>
                 <p className="text-xs text-neutral-500">
-                  {payment.meeting.title} — {payment.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                  <span className={payment.type === "MEMBERSHIP" ? "font-medium text-indigo-700" : "font-medium text-emerald-700"}>
+                    {payment.type === "MEMBERSHIP" ? "Annual membership" : "Meeting fee"}
+                  </span>
+                  {" · "}
+                  {payment.meeting
+                    ? `At check-in: ${payment.meeting.title} — ${payment.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`
+                    : "Paid from member portal"}
                 </p>
               </div>
               <StatusBadge status={payment.status} overlap={payment.overlapsApprovedCoverage} />
@@ -163,11 +182,13 @@ export default async function PaymentsPage({
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Months</dt>
-                <dd className="text-neutral-900">{payment.numberOfMonths}</dd>
+                <dd className="text-neutral-900">{payment.type === "MEMBERSHIP" ? "—" : payment.numberOfMonths}</dd>
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Covered</dt>
-                <dd className="text-neutral-900">{formatMonthsCovered(payment.monthsCovered)}</dd>
+                <dd className="text-neutral-900">
+                  {payment.type === "MEMBERSHIP" ? `Membership year ${payment.membershipYear}` : formatMonthsCovered(payment.monthsCovered)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Payment date</dt>

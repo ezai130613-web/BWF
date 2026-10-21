@@ -3,6 +3,9 @@ import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { CheckinForm } from "@/components/checkin/checkin-form";
+import { formatMonthYear } from "@/lib/attendance/manage";
+import { getMonthCoverage, meetingMonth } from "@/lib/payments/member-payments";
+import Link from "next/link";
 
 /**
  * QR Code / Attendance / Payment system (2026-09-17) — the member-facing
@@ -28,6 +31,12 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
   const existingAttendance = await db.attendance.findUnique({
     where: { meetingId_memberId: { meetingId: meeting.id, memberId: member.id } },
   });
+
+  // The meeting's month already paid for (e.g. a 6-month payment made
+  // earlier) — skip the payment question once BWF has approved it.
+  const month = meetingMonth(meeting.startsAt);
+  const coverage = await getMonthCoverage(member.id, month);
+  const monthLabel = formatMonthYear(month);
 
   const withinWindow = isWithinCheckinWindow(meeting);
   const registrationClosed = !meeting.attendanceRegistrationOpen || !withinWindow;
@@ -61,9 +70,31 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
         </dl>
       </div>
 
+      {coverage === "APPROVED" ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Your meeting payment for <span className="font-medium">{monthLabel}</span> is already paid and approved — no payment
+          needed for this meeting.
+        </div>
+      ) : coverage === "PENDING" ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          A payment covering <span className="font-medium">{monthLabel}</span> is awaiting BWF approval. No need to submit it
+          again — answer &ldquo;No&rdquo; below unless this is a new payment.
+        </div>
+      ) : null}
+
       {registrationClosed ? (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
           Check-in for this meeting isn&rsquo;t open right now. Please check with your chapter admin.
+        </div>
+      ) : existingAttendance?.status === "PRESENT" && coverage === "APPROVED" ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
+          <p>You&rsquo;re already checked in as Present for this meeting.</p>
+          <p className="mt-1 text-emerald-700">
+            Paying for other months or your annual membership?{" "}
+            <Link href="/member/payments" className="font-medium underline">
+              Go to Payments
+            </Link>
+          </p>
         </div>
       ) : existingAttendance?.status === "PRESENT" ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
@@ -72,11 +103,11 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
             Made a payment since? You can still submit it below — it won&rsquo;t create a duplicate check-in.
           </p>
           <div className="mt-4">
-            <CheckinForm token={token} alreadyPresent numberOfMonthsOptions={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]} />
+            <CheckinForm token={token} alreadyPresent startMonth={month} />
           </div>
         </div>
       ) : (
-        <CheckinForm token={token} alreadyPresent={false} numberOfMonthsOptions={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]} />
+        <CheckinForm token={token} alreadyPresent={false} paymentCovered={coverage === "APPROVED"} startMonth={month} />
       )}
     </div>
   );

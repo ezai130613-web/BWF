@@ -36,6 +36,7 @@ export async function GET(request: Request) {
   const sheet = workbook.addWorksheet("Payments");
   sheet.columns = [
     { header: "Chapter", key: "chapter", width: 16 },
+    { header: "Type", key: "type", width: 18 },
     { header: "Meeting", key: "meeting", width: 24 },
     { header: "Meeting Date", key: "meetingDate", width: 16 },
     { header: "Member Name", key: "member", width: 24 },
@@ -50,12 +51,13 @@ export async function GET(request: Request) {
   for (const row of rows) {
     sheet.addRow({
       chapter: row.member.chapter.name,
-      meeting: row.meeting.title,
-      meetingDate: row.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+      type: row.type === "MEMBERSHIP" ? "Annual membership" : "Meeting fee",
+      meeting: row.meeting?.title ?? "Member portal",
+      meetingDate: row.meeting?.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) ?? "",
       member: row.member.name,
       amount: Number(row.amountPaidInr),
-      numberOfMonths: row.numberOfMonths,
-      covered: formatMonthsCovered(row.monthsCovered),
+      numberOfMonths: row.type === "MEMBERSHIP" ? "" : row.numberOfMonths,
+      covered: row.type === "MEMBERSHIP" ? `Membership year ${row.membershipYear}` : formatMonthsCovered(row.monthsCovered),
       paymentDate: row.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       status: row.status,
       proof: row.proofUrl,

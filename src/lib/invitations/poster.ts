@@ -60,6 +60,8 @@ export interface InvitationPosterImages {
   qrCode: HTMLImageElement | null;
   logo: HTMLImageElement | null;
   background: HTMLImageElement | null;
+  /** Stock group of five professionals shown when there are no chief guests. */
+  defaultGroup: HTMLImageElement | null;
 }
 
 export interface InvitationPosterFonts {
@@ -202,37 +204,42 @@ function drawBrand(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFonts, 
 // ---------------------------------------------------------------------------
 
 const PANEL = { x: 58, y: 260, w: 784, h: 570, r: 30 };
+// With no chief guest cards hanging below it, the panel runs down to just
+// above the "What's in it for you?" row, as in the client's no-guest reference.
+const PANEL_TALL_H = 730;
+export const DEFAULT_GROUP_SRC = "/images/invitations/default-group.png";
 
-function drawPanel(ctx: CanvasRenderingContext2D, background: HTMLImageElement | null) {
+function drawPanel(ctx: CanvasRenderingContext2D, background: HTMLImageElement | null, h: number) {
+  const { x, y, w, r } = PANEL;
   ctx.save();
-  roundRectPath(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r);
+  roundRectPath(ctx, x, y, w, h, r);
   ctx.clip();
   ctx.fillStyle = GREEN;
-  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+  ctx.fillRect(x, y, w, h);
 
   if (background && typeof document !== "undefined") {
     // Cheap, portable blur: draw tiny, then scale back up with smoothing
     // (ctx.filter isn't supported in every browser the admins use).
     const small = document.createElement("canvas");
     small.width = 72;
-    small.height = Math.round((72 * PANEL.h) / PANEL.w);
+    small.height = Math.round((72 * h) / w);
     const sctx = small.getContext("2d");
     if (sctx) {
       drawCover(sctx, background, 0, 0, small.width, small.height);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.globalAlpha = 0.9;
-      ctx.drawImage(small, PANEL.x - 10, PANEL.y - 10, PANEL.w + 20, PANEL.h + 20);
+      ctx.drawImage(small, x - 10, y - 10, w + 20, h + 20);
       ctx.globalAlpha = 1;
     }
   }
 
-  const overlay = ctx.createLinearGradient(0, PANEL.y, 0, PANEL.y + PANEL.h);
+  const overlay = ctx.createLinearGradient(0, y, 0, y + h);
   overlay.addColorStop(0, "rgba(34,160,72,0.84)");
   overlay.addColorStop(0.55, "rgba(38,165,74,0.70)");
   overlay.addColorStop(1, "rgba(30,150,66,0.80)");
   ctx.fillStyle = overlay;
-  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+  ctx.fillRect(x, y, w, h);
   ctx.restore();
 }
 
@@ -379,6 +386,19 @@ function drawGuestCards(ctx: CanvasRenderingContext2D, fonts: InvitationPosterFo
   }
 }
 
+/** The five-person group, standing on the panel's lower edge (clipped to it). */
+function drawDefaultGroup(ctx: CanvasRenderingContext2D, img: HTMLImageElement, top: number, bottom: number) {
+  const h = Math.min(bottom - top, 430);
+  const w = (h * img.naturalWidth) / img.naturalHeight;
+  ctx.save();
+  roundRectPath(ctx, PANEL.x, PANEL.y, PANEL.w, bottom - PANEL.y, PANEL.r);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, DESIGN_WIDTH / 2 - w / 2, bottom - h, w, h);
+  ctx.restore();
+}
+
 // ---------------------------------------------------------------------------
 // Icons (vector, green)
 // ---------------------------------------------------------------------------
@@ -471,7 +491,9 @@ export function drawInvitationPoster(
 
   drawPageBackground(ctx);
   drawBrand(ctx, fonts, images.logo);
-  drawPanel(ctx, images.background);
+  const guestCount = Math.min(data.guests.length, MAX_INVITATION_GUESTS);
+  const panelH = guestCount > 0 ? PANEL.h : PANEL_TALL_H;
+  drawPanel(ctx, images.background, panelH);
 
   // Eyebrow
   ctx.textAlign = "center";
@@ -481,10 +503,11 @@ export function drawInvitationPoster(
 
   const headlineBottom = drawHeadline(ctx, fonts, data.headline, 352, 680);
 
-  const guestCount = Math.min(data.guests.length, MAX_INVITATION_GUESTS);
   if (guestCount > 0) {
     drawPill(ctx, fonts, guestCount === 1 ? "Chief Guest" : "Chief Guests", DESIGN_WIDTH / 2, Math.max(540, headlineBottom + 46));
     drawGuestCards(ctx, fonts, data.guests, images.guestPhotos);
+  } else if (images.defaultGroup) {
+    drawDefaultGroup(ctx, images.defaultGroup, headlineBottom + 34, PANEL.y + panelH);
   }
 
   // "What's in it for you?"

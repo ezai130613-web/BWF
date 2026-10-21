@@ -2,26 +2,27 @@
 
 import { useActionState, useState } from "react";
 import { checkIn } from "@/app/member/(portal)/checkin/[token]/actions";
-import { PaymentProofField } from "@/components/checkin/payment-proof-field";
+import { MeetingPaymentFields } from "@/components/checkin/meeting-payment-fields";
 
 const initialState: { error?: string; success?: boolean } = {};
-
-const MONTH_LABELS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const inputClass =
-  "w-full min-w-0 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none";
 
 export function CheckinForm({
   token,
   alreadyPresent,
-  numberOfMonthsOptions,
+  paymentCovered = false,
+  startMonth,
 }: {
   token: string;
   alreadyPresent: boolean;
-  numberOfMonthsOptions: number[];
+  /**
+   * The meeting's month is already covered by an APPROVED payment
+   * (2026-10-21: "if a member pays for the next 6 months, it shouldn't
+   * keep showing them every meeting") — the payment question is skipped
+   * and the form is a one-tap check-in.
+   */
+  paymentCovered?: boolean;
+  /** First month pre-filled in the months-covered pickers (the meeting's month). */
+  startMonth: { month: number; year: number };
 }) {
   const [state, formAction, pending] = useActionState(checkIn.bind(null, token), initialState);
 
@@ -31,11 +32,7 @@ export function CheckinForm({
   // or retries").
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
-  const [madePayment, setMadePayment] = useState<"yes" | "no" | null>(alreadyPresent ? "yes" : null);
-  const [monthsChoice, setMonthsChoice] = useState<string>("1");
-  const [customMonths, setCustomMonths] = useState("");
-
-  const numberOfMonths = monthsChoice === "other" ? Number(customMonths) || 0 : Number(monthsChoice);
+  const [madePayment, setMadePayment] = useState<"yes" | "no" | null>(paymentCovered ? "no" : alreadyPresent ? "yes" : null);
 
   if (state?.success) {
     return (
@@ -56,7 +53,9 @@ export function CheckinForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
-      {!alreadyPresent ? (
+      {paymentCovered ? (
+        <input type="hidden" name="madePayment" value="no" />
+      ) : !alreadyPresent ? (
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium text-neutral-700">Have you made a payment?</legend>
           <div className="flex gap-4">
@@ -88,74 +87,7 @@ export function CheckinForm({
 
       {madePayment === "yes" ? (
         <div className="flex flex-col gap-4 rounded-md border border-neutral-200 p-4">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-            Number of months
-            <select value={monthsChoice} onChange={(e) => setMonthsChoice(e.target.value)} className={inputClass}>
-              {numberOfMonthsOptions.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value="other">Other</option>
-            </select>
-          </label>
-
-          {monthsChoice === "other" ? (
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-              How many months?
-              <input
-                type="number"
-                min={1}
-                value={customMonths}
-                onChange={(e) => setCustomMonths(e.target.value)}
-                className={inputClass}
-              />
-            </label>
-          ) : null}
-
-          <input type="hidden" name="numberOfMonths" value={numberOfMonths || ""} />
-
-          {numberOfMonths > 0 ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium text-neutral-700">Exact months covered</p>
-              {Array.from({ length: numberOfMonths }).map((_, i) => (
-                <div key={i} className="grid grid-cols-2 gap-2">
-                  <select name={`month_${i}`} required defaultValue="" className={inputClass}>
-                    <option value="" disabled>
-                      Month…
-                    </option>
-                    {MONTH_LABELS.map((label, idx) => (
-                      <option key={label} value={idx + 1}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    name={`year_${i}`}
-                    required
-                    min={2000}
-                    max={2100}
-                    placeholder="Year"
-                    defaultValue={new Date().getFullYear()}
-                    className={inputClass}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-            Amount paid (INR, total for this payment)
-            <input type="number" name="amountPaidInr" required min={1} step="0.01" className={inputClass} />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-            Actual payment date
-            <input type="date" name="actualPaymentDate" required className={inputClass} />
-          </label>
-
-          <PaymentProofField name="proofUrl" />
+          <MeetingPaymentFields startMonth={startMonth} />
         </div>
       ) : null}
 
@@ -167,7 +99,7 @@ export function CheckinForm({
           disabled={pending}
           className="self-start rounded-md bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          {pending ? "Submitting…" : alreadyPresent ? "Submit Payment" : "Submit"}
+          {pending ? "Submitting…" : paymentCovered ? "Check In" : alreadyPresent ? "Submit Payment" : "Submit"}
         </button>
       )}
     </form>
