@@ -4184,3 +4184,17 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   meeting QR) and the member portal Payments page.
 - Verified at 390px on /visit (same component as /apply): large QR, enlarge view, UPI link built
   from `payment.upiId`. /apply's payment step itself sits behind earlier wizard steps and wasn't clicked through.
+
+### Phase 30 correction 16 (2026-10-21) — Member-wise payment grid: 3 months back, 3 ahead
+
+- **Investigated "payments not reflecting"**: the live database had no member `Payment` rows and no
+  attendance at all, so nothing had been submitted through check-in or the portal yet. A full trial
+  run on a throwaway local database (QR check-in with payment, portal membership payment, portal
+  meeting payment) showed all three on Payments, Accounts and the Member-wise view. R2 upload CORS
+  allows the live domain. No code fault found in the submit path.
+- **Member-wise month grid** (`/admin/payments/members?memberId=…`) used to run from the member's
+  joining month to the current month, so months paid in advance never appeared. It now shows
+  3 months before to 3 months after the current **IST** month, extended further ahead when an
+  approved or pending payment covers a later month. The current month is outlined, with a one-line legend.
+- Verified with typecheck, lint and a check of the month-range calculation. The page itself wasn't
+  re-rendered in a browser after this change.

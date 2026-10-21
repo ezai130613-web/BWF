@@ -3,6 +3,11 @@ import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { istParts } from "@/lib/ist";
+
+/** Month-by-month grid window around the current month. */
+const GRID_MONTHS_BEFORE = 3;
+const GRID_MONTHS_AHEAD = 3;
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -120,14 +125,18 @@ export default async function PaymentMembersPage({
     orderBy: { createdAt: "desc" },
   });
 
-  // Month-by-month coverage since joining, capped at the current month —
+  // Month-by-month coverage from 3 months before to 3 months after the
+  // current IST month (2026-10-21), stretched further ahead when a paid-in-
+  // advance payment covers later months so it's never cut off —
   // "Do not infer nonpayment from incomplete records" means a month simply
   // reads "No approved payment recorded", never a fabricated "Unpaid".
-  const monthGrid: { key: string; label: string; approved: boolean; pending: boolean }[] = [];
-  const cursor = new Date(member.joinedAt.getFullYear(), member.joinedAt.getMonth(), 1);
-  const end = new Date();
+  const monthGrid: { key: string; label: string; approved: boolean; pending: boolean; current: boolean }[] = [];
   const approvedMonths = new Set<string>();
   const pendingMonths = new Set<string>();
+  // Months as a single index (year * 12 + 0-based month) for easy ranges.
+  const now = istParts(new Date());
+  const currentIndex = now.year * 12 + now.month;
+  let endIndex = currentIndex + GRID_MONTHS_AHEAD;
   for (const p of payments) {
     if (p.type !== "MEETING") continue;
     const months = parseMonthsCovered(p.monthsCovered);
@@ -135,13 +144,20 @@ export default async function PaymentMembersPage({
       const key = `${m.year}-${m.month}`;
       if (p.status === "APPROVED") approvedMonths.add(key);
       else if (p.status === "PENDING_APPROVAL" || p.status === "CLARIFICATION_REQUESTED") pendingMonths.add(key);
+      else continue;
+      endIndex = Math.max(endIndex, m.year * 12 + m.month - 1);
     }
   }
-  while (cursor <= end) {
-    const my: MonthYear = { month: cursor.getMonth() + 1, year: cursor.getFullYear() };
+  for (let index = currentIndex - GRID_MONTHS_BEFORE; index <= endIndex; index++) {
+    const my: MonthYear = { month: (index % 12) + 1, year: Math.floor(index / 12) };
     const key = `${my.year}-${my.month}`;
-    monthGrid.push({ key, label: formatMonthYear(my), approved: approvedMonths.has(key), pending: pendingMonths.has(key) });
-    cursor.setMonth(cursor.getMonth() + 1);
+    monthGrid.push({
+      key,
+      label: formatMonthYear(my),
+      approved: approvedMonths.has(key),
+      pending: pendingMonths.has(key),
+      current: index === currentIndex,
+    });
   }
 
   return (
@@ -157,13 +173,17 @@ export default async function PaymentMembersPage({
 
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h3 className="text-sm font-semibold text-neutral-900">Month-by-month coverage (meeting fee)</h3>
+        <p className="mt-1 text-xs text-neutral-500">
+          3 months back to 3 months ahead (further if paid in advance). Green = approved, amber = pending, grey = no
+          approved payment recorded. Outlined = this month.
+        </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {monthGrid.map((m) => (
             <span
               key={m.key}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 m.approved ? "bg-emerald-50 text-emerald-700" : m.pending ? "bg-amber-50 text-amber-700" : "bg-neutral-100 text-neutral-500"
-              }`}
+              } ${m.current ? "ring-2 ring-emerald-800/40" : ""}`}
               title={m.approved ? "Approved" : m.pending ? "Pending" : "No approved payment recorded"}
             >
               {m.label}
