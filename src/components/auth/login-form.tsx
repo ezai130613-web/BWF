@@ -69,9 +69,9 @@ export function LoginForm({
     }
   }
 
-  const inputClass = memberVariant
-    ? "rounded-lg border border-neutral-300 px-3.5 py-2.5 text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
-    : "rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-neutral-900 focus:outline-none";
+  // Admin and member sign-in share the member portal's look (2026-10-21).
+  const inputClass =
+    "rounded-lg border border-neutral-300 px-3.5 py-2.5 text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -114,11 +114,7 @@ export function LoginForm({
       <button
         type="submit"
         disabled={pending}
-        className={
-          memberVariant
-            ? "rounded-lg bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
-            : "rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-        }
+        className="rounded-lg bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

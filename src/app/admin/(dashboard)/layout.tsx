@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { requireAdminSession, getUserPermissionKeys } from "@/lib/auth/rbac";
 import { Sidebar } from "@/components/admin/sidebar";
-import { SignOutButton } from "@/components/sign-out-button";
 import { fixedWorkspaceFor, type AdminWorkspace } from "@/lib/auth/constants";
 
 const ADMIN_WORKSPACES: AdminWorkspace[] = ["website", "performance", "marketing", "accounts"];
@@ -21,7 +20,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
       : null;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen bg-[#f5f7f4] print:bg-white">
       <Sidebar
         userName={session.user.name ?? session.user.email ?? "Admin"}
         permissions={permissions}
@@ -29,11 +28,8 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
         workspace={workspace}
         canSwitchWorkspace={!fixedWorkspace}
       />
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-end border-b border-neutral-200 bg-white px-8">
-          <SignOutButton callbackUrl="/admin/login" />
-        </header>
-        <main className="flex-1 p-8">{children}</main>
+      <div className="lg:pl-64 print:pl-0">
+        <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</main>
       </div>
     </div>
   );

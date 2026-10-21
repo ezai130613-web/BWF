@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateCompanyForm } from "@/components/admin/create-company-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function CompaniesPage() {
   await requirePermission("companies:manage");
@@ -13,7 +14,8 @@ export default async function CompaniesPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Companies</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Companies</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">
           A company is not a member (brief §14) — one company can have several BWF
           representatives across different chapters. Companies can also be created straight from the
@@ -21,7 +23,7 @@ export default async function CompaniesPage() {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>

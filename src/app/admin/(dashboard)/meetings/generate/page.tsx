@@ -3,6 +3,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { nextMonthOf, planMonthMeetings } from "@/lib/meetings/generate";
 import { formatIst } from "@/lib/ist";
 import { GenerateMeetingsConfirm } from "@/components/admin/generate-meetings-confirm";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function GenerateMeetingsPage() {
   const scope = await getChapterScope("meetings:manage");
@@ -13,10 +14,11 @@ export default async function GenerateMeetingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <Link href="/admin/meetings" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/meetings" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Meetings
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">Create {plan.label} Meetings</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Create {plan.label} Meetings</h1>
         <p className="mt-1 max-w-3xl text-sm text-neutral-600">
           Built from each active chapter&rsquo;s recurring schedule (set on the chapter&rsquo;s edit page). Public
           holidays are not skipped. Chief Guest stays <strong>Not Assigned</strong>, the member reminder is
@@ -41,7 +43,7 @@ export default async function GenerateMeetingsPage() {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>

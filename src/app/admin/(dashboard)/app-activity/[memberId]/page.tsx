@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { computeMemberScore } from "@/lib/points/score";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /**
  * Phase 20 Batch 5 — per-member drill-down, reached from the Leaderboard
@@ -59,26 +60,27 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <Link href="/admin/app-activity" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/app-activity" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Back to BWF App Activity
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">{member.name}</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{member.name}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {member.chapter.name} ·{" "}
-          <Link href={`/admin/members/${member.id}`} className="underline hover:text-neutral-900">
+          <Link href={`/admin/members/${member.id}`} className="underline hover:text-emerald-800">
             Edit member
           </Link>
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-8 text-center">
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Overall BWF Score</p>
         <p className="mt-2 text-5xl font-semibold text-neutral-900">{total}</p>
       </div>
 
       <div>
         <h2 className="text-sm font-semibold text-neutral-900">Activity-wise points</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -176,7 +178,7 @@ function ActivitySection({ title, empty, children }: { title: string; empty: str
   return (
     <div>
       <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
-      <div className="mt-3 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         {hasChildren ? (
           <div className="divide-y divide-neutral-100">{children}</div>
         ) : (

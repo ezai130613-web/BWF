@@ -47,7 +47,7 @@ export function SettingsPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+      <section className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-sm font-semibold text-neutral-900">Visitor Feedback Email Recipients</h2>
         <p className="mt-1 text-sm text-neutral-600">
           Every feedback submission is saved in the Admin Panel first, then emailed to the recipients switched on
@@ -104,12 +104,12 @@ export function SettingsPanel({
             type="email"
             required
             placeholder="name@example.com"
-            className="w-72 max-w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            className="w-72 max-w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
           />
           <button
             type="submit"
             disabled={adding}
-            className="rounded-md bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
           >
             {adding ? "Adding…" : "Add recipient"}
           </button>
@@ -117,7 +117,7 @@ export function SettingsPanel({
         </form>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+      <section className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <div className="flex items-start justify-between gap-6">
           <div>
             <h2 className="text-sm font-semibold text-neutral-900">Member first-login email verification</h2>

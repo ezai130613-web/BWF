@@ -5,6 +5,7 @@ import { CreateMeetingForm } from "@/components/admin/create-meeting-form";
 import { ReminderBadge } from "@/components/admin/reminder-badge";
 import { formatIstDateTime } from "@/lib/ist";
 import { reminderScheduledFor } from "@/lib/meetings/reminders";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-emerald-50 text-emerald-700",
@@ -47,20 +48,21 @@ export default async function MeetingsPage({
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Meetings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Meetings</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Chapter meetings that visitors can register to attend online (brief §21/§23). Times are IST.
           </p>
         </div>
         <Link
           href="/admin/meetings/generate"
-          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           Create Next Month&rsquo;s Meetings
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -95,7 +97,7 @@ export default async function MeetingsPage({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/meetings/${m.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
+                  <Link href={`/admin/meetings/${m.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                     Edit →
                   </Link>
                 </td>

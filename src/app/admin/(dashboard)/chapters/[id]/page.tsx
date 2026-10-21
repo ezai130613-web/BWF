@@ -6,6 +6,7 @@ import { AssignLeadershipForm } from "@/components/admin/assign-leadership-form"
 import { AssignRosterRoleForm } from "@/components/admin/assign-roster-role-form";
 import { CreateRosterRoleForm } from "@/components/admin/create-roster-role-form";
 import { removeChapterLeadership, removeRosterAssignment } from "../actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 // Founder/Co-Founder are BWF's own founding roles — fixed for every chapter,
 // not reassignable or removable via this page (client correction, 2026-09-15).
@@ -56,7 +57,8 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{chapter.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{chapter.name}</h1>
         <p className="mt-1 text-sm text-neutral-600">/chapters/{chapter.slug}</p>
       </div>
 
@@ -69,7 +71,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           reassignable, or removable from this page.
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -100,7 +102,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
         <h2 className="text-sm font-semibold text-neutral-900">Leadership</h2>
         <p className="mt-1 text-sm text-neutral-600">Assign members to a leadership role for this chapter.</p>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -116,7 +118,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                   <td className="px-4 py-3 text-neutral-600">{entry.member.name}</td>
                   <td className="px-4 py-3 text-right">
                     <form action={removeChapterLeadership.bind(null, chapter.id, entry.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         Remove
                       </button>
                     </form>
@@ -134,7 +136,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           </table>
         </div>
 
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-6">
+        <div className="mt-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
           {chapter.members.length === 0 ? (
             <p className="text-sm text-neutral-500">
               Add members to this chapter first before assigning leadership.
@@ -154,7 +156,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           afterward reflects the latest assignment.
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -172,7 +174,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                   <td className="px-4 py-3 text-neutral-600">{entry.member.name}</td>
                   <td className="px-4 py-3 text-right">
                     <form action={removeRosterAssignment.bind(null, chapter.id, entry.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         Remove
                       </button>
                     </form>
@@ -190,7 +192,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           </table>
         </div>
 
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-6">
+        <div className="mt-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
           {chapter.members.length === 0 ? (
             <p className="text-sm text-neutral-500">
               Add members to this chapter first before assigning coordinators.
@@ -200,7 +202,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
 
-        <details className="mt-4 rounded-lg border border-neutral-200 bg-white">
+        <details className="mt-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-neutral-900">
             Manage coordinator role types
           </summary>

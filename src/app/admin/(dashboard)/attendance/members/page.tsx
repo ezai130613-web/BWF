@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /**
  * Attendance Management — member-wise view (spec: "Search member and show
@@ -56,12 +57,13 @@ export default async function AttendanceMembersPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Attendance — Member-wise View</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Attendance — Member-wise View</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Search a member to see their full attendance history and percentage.
           </p>
         </div>
-        <Link href="/admin/attendance" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+        <Link href="/admin/attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
           ← Meeting-wise view
         </Link>
       </div>
@@ -75,13 +77,13 @@ export default async function AttendanceMembersPage({
                 name="q"
                 defaultValue={params.q}
                 placeholder="Search member by name…"
-                className="w-full min-w-[16rem] rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                className="w-full min-w-[16rem] rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
               />
             </label>
             {scope === "ALL" ? (
               <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
                 Chapter
-                <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+                <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-2 text-sm">
                   <option value="">All chapters</option>
                   {chapters.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -93,7 +95,7 @@ export default async function AttendanceMembersPage({
             ) : null}
             <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
               Category
-              <select name="categoryId" defaultValue={params.categoryId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+              <select name="categoryId" defaultValue={params.categoryId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-2 text-sm">
                 <option value="">All categories</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -102,12 +104,12 @@ export default async function AttendanceMembersPage({
                 ))}
               </select>
             </label>
-            <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+            <button type="submit" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
               Search
             </button>
           </form>
 
-          <ul className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+          <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
             {matches.map((member) => (
               <li key={member.id} className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -118,7 +120,7 @@ export default async function AttendanceMembersPage({
                 </div>
                 <Link
                   href={`/admin/attendance/members?memberId=${member.id}`}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
                 >
                   View history
                 </Link>
@@ -174,11 +176,11 @@ async function MemberHistory({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/admin/attendance/members" className="text-sm text-neutral-500 hover:text-neutral-900">
+      <Link href="/admin/attendance/members" className="text-sm text-neutral-500 hover:text-emerald-800">
         ← Search a different member
       </Link>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold text-neutral-900">{member.name}</h2>
         <p className="text-sm text-neutral-600">
           {member.chapter.name} · {member.category.name}
@@ -196,27 +198,27 @@ async function MemberHistory({
         <input type="hidden" name="memberId" value={member.id} />
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           From
-          <input type="date" name="from" defaultValue={filters.from} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="from" defaultValue={filters.from} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           To
-          <input type="date" name="to" defaultValue={filters.to} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="to" defaultValue={filters.to} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Status
-          <select name="status" defaultValue={filters.status ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+          <select name="status" defaultValue={filters.status ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All</option>
             <option value="PRESENT">Present</option>
             <option value="ABSENT">Absent</option>
             <option value="NOT_CHECKED_IN">Not Checked In</option>
           </select>
         </label>
-        <button type="submit" className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:border-neutral-400">
+        <button type="submit" className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:border-neutral-400">
           Apply filters
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -265,7 +267,7 @@ async function MemberHistory({
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
     </div>

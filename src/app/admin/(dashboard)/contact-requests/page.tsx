@@ -1,6 +1,7 @@
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const PAGE_LIMIT = 200;
 
@@ -60,18 +61,19 @@ export default async function ContactRequestsPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Vendor Contact Requests</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Vendor Contact Requests</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           People who asked to see a member&rsquo;s phone, WhatsApp and email from their public
           profile. {total} request{total === 1 ? "" : "s"} match these filters.
         </p>
       </div>
 
-      <form action="/admin/contact-requests" method="GET" className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+      <form action="/admin/contact-requests" method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
         {scope === "ALL" ? (
           <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
             Chapter
-            <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+            <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
               <option value="">All chapters</option>
               {chapters.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -83,22 +85,22 @@ export default async function ContactRequestsPage({
         ) : null}
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Search
-          <input name="q" defaultValue={q} placeholder="Requester, phone or member…" className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input name="q" defaultValue={q} placeholder="Requester, phone or member…" className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           From
-          <input type="date" name="from" defaultValue={from} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="from" defaultValue={from} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           To
-          <input type="date" name="to" defaultValue={to} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="to" defaultValue={to} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
-        <button type="submit" className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800">
+        <button type="submit" className="rounded-lg bg-emerald-800 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
           Apply
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase tracking-wide text-neutral-500">
             <tr>

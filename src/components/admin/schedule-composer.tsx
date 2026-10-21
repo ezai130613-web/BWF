@@ -21,7 +21,7 @@ type Entry = {
 const emptyEntry: Entry = { caption: "", hashtags: "", title: "", destinationLink: "", boardName: "", date: "", time: "", publishNow: false };
 
 const inputClass =
-  "rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none";
+  "rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15";
 
 /**
  * Brief §5-7 — select platforms, configure each independently, Confirm &
@@ -108,14 +108,14 @@ export function ScheduleComposer({
 
   if (availablePlatforms.length === 0) {
     return (
-      <div className="rounded-lg border border-neutral-200 bg-white p-6 text-sm text-neutral-500">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-sm text-neutral-500">
         This content is already scheduled to every platform. Cancel an existing schedule below to reschedule it elsewhere.
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-5 rounded-lg border border-neutral-200 bg-white p-6">
+    <form action={formAction} className="flex flex-col gap-5 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
       <h2 className="text-sm font-semibold text-neutral-900">Schedule Posts</h2>
 
       <div className="flex flex-wrap gap-4">
@@ -136,7 +136,7 @@ export function ScheduleComposer({
           <button
             type="button"
             onClick={applyCommonCaption}
-            className="self-start text-xs font-medium text-neutral-600 underline hover:text-neutral-900"
+            className="self-start text-xs font-medium text-neutral-600 underline hover:text-emerald-800"
           >
             Apply to all selected platforms below
           </button>
@@ -232,7 +232,7 @@ export function ScheduleComposer({
       <button
         type="submit"
         disabled={pending || selected.size === 0}
-        className="self-start rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        className="self-start rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
       >
         {pending ? "Scheduling…" : "Confirm & Schedule"}
       </button>

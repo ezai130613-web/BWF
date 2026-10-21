@@ -5,6 +5,7 @@ import { CreateUserForm } from "@/components/admin/create-user-form";
 import { ChangeUserRoleForm } from "@/components/admin/change-user-role-form";
 import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { toggleUserStatus } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function UsersPage() {
   const session = await requirePermission("users:manage");
@@ -21,14 +22,15 @@ export default async function UsersPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Users</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Users</h1>
         <p className="mt-1 text-sm text-neutral-600">
           Admin accounts only — member portal logins are managed from each member&apos;s profile.
         </p>
       </div>
 
       <ReauthGuard>
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -75,7 +77,7 @@ export default async function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <form action={toggleUserStatus.bind(null, user.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {user.status === "ACTIVE" ? "Suspend" : "Reactivate"}
                       </button>
                     </form>

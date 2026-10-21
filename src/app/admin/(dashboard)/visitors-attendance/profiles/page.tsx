@@ -3,6 +3,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { LinkVisitorToMemberForm } from "@/components/admin/link-visitor-to-member-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const SOURCE_LABELS: Record<string, string> = {
   INVITED_BY_MEMBER: "Invited by member",
@@ -45,13 +46,14 @@ export default async function VisitorProfilesPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Visitors Attendance — Visitor-wise View</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Visitors Attendance — Visitor-wise View</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Search a visitor by name or phone to see their full history across chapters and
             meetings.
           </p>
         </div>
-        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
           ← Meeting-wise view
         </Link>
       </div>
@@ -65,15 +67,15 @@ export default async function VisitorProfilesPage({
                 name="q"
                 defaultValue={params.q}
                 placeholder="Search visitors…"
-                className="w-full min-w-[16rem] rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                className="w-full min-w-[16rem] rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
               />
             </label>
-            <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+            <button type="submit" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
               Search
             </button>
           </form>
 
-          <ul className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+          <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
             {matches.map((profile) => (
               <li key={profile.id} className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -82,7 +84,7 @@ export default async function VisitorProfilesPage({
                 </div>
                 <Link
                   href={`/admin/visitors-attendance/profiles?visitorProfileId=${profile.id}`}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
                 >
                   View history
                 </Link>
@@ -134,11 +136,11 @@ async function ProfileHistory({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/admin/visitors-attendance/profiles" className="text-sm text-neutral-500 hover:text-neutral-900">
+      <Link href="/admin/visitors-attendance/profiles" className="text-sm text-neutral-500 hover:text-emerald-800">
         ← Search a different visitor
       </Link>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold text-neutral-900">{profile.name}</h2>
         <p className="text-sm text-neutral-600">
           {profile.phone}
@@ -162,7 +164,7 @@ async function ProfileHistory({
         <StatCard label="Chapters Visited" value={chaptersVisited} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -201,7 +203,7 @@ async function ProfileHistory({
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
     </div>

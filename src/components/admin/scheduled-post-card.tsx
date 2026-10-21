@@ -7,7 +7,7 @@ import type { MarketingPlatform, ScheduledPostStatus } from "@/generated/prisma/
 
 const initialState: { error?: string } = {};
 const inputClass =
-  "rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none";
+  "rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15";
 
 export type ScheduledPostRow = {
   id: string;
@@ -118,11 +118,11 @@ export function ScheduledPostCard({ post }: { post: ScheduledPostRow }) {
             <button
               type="submit"
               disabled={pending}
-              className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
             >
               {pending ? "Saving…" : "Save changes"}
             </button>
-            <button type="button" onClick={() => setEditing(false)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700">
+            <button type="button" onClick={() => setEditing(false)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700">
               Cancel edit
             </button>
           </div>
@@ -130,7 +130,7 @@ export function ScheduledPostCard({ post }: { post: ScheduledPostRow }) {
       ) : (
         <div className="flex flex-wrap gap-3">
           {editable ? (
-            <button type="button" onClick={() => setEditing(true)} className="text-sm text-neutral-600 underline hover:text-neutral-900">
+            <button type="button" onClick={() => setEditing(true)} className="text-sm text-neutral-600 underline hover:text-emerald-800">
               Edit
             </button>
           ) : null}
@@ -158,7 +158,7 @@ export function ScheduledPostCard({ post }: { post: ScheduledPostRow }) {
                   await retryScheduledPost(post.id);
                 });
               }}
-              className="text-sm text-neutral-600 underline hover:text-neutral-900 disabled:opacity-50"
+              className="text-sm text-neutral-600 underline hover:text-emerald-800 disabled:opacity-50"
             >
               Retry
             </button>

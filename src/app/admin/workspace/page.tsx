@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Globe, Megaphone, Trophy, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { selectWorkspace } from "./actions";
@@ -29,13 +30,13 @@ export default async function WorkspaceSelectPage() {
   const canSeeAccounts = permissions.has("accounts:view");
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
+    <main className="flex min-h-screen items-center justify-center bg-[#f5f7f4] px-4 py-10">
       <div className="w-full max-w-3xl">
         <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={48} height={48} className="h-12 w-12" priority />
         <p className="mt-3 text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
           Builders World Forum
         </p>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">Select Admin Workspace</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">Select Admin Workspace</h1>
         <p className="mt-2 max-w-md text-sm text-neutral-600">
           Choose which side of the admin you want to work in — you can switch anytime from the
           sidebar.
@@ -45,9 +46,12 @@ export default async function WorkspaceSelectPage() {
           <form action={selectWebsite}>
             <button
               type="submit"
-              className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
             >
-              <p className="text-base font-semibold text-neutral-900">Website Admin</p>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                <Globe className="h-5 w-5" aria-hidden />
+              </span>
+              <p className="mt-3 text-base font-semibold text-neutral-900">Website Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
                 Chapters, Members, Companies, Categories, Applications, Meetings, Visitors, Blog,
                 Testimonials, Chief Guests, Website Content, Users &amp; Roles.
@@ -58,9 +62,12 @@ export default async function WorkspaceSelectPage() {
           <form action={selectPerformance}>
             <button
               type="submit"
-              className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
             >
-              <p className="text-base font-semibold text-neutral-900">Member Performance Admin</p>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                <Trophy className="h-5 w-5" aria-hidden />
+              </span>
+              <p className="mt-3 text-base font-semibold text-neutral-900">Member Performance Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
                 App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
                 Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Visitors QR &amp; Visitors Attendance.
@@ -71,9 +78,12 @@ export default async function WorkspaceSelectPage() {
           <form action={selectMarketing}>
             <button
               type="submit"
-              className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
             >
-              <p className="text-base font-semibold text-neutral-900">Marketing Admin</p>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                <Megaphone className="h-5 w-5" aria-hidden />
+              </span>
+              <p className="mt-3 text-base font-semibold text-neutral-900">Marketing Admin</p>
               <p className="mt-1.5 text-sm text-neutral-600">
                 Content Calendar, Content Creation, Scheduling, Script Writing, Content Library,
                 Publishing History &amp; Connected Accounts.
@@ -85,9 +95,12 @@ export default async function WorkspaceSelectPage() {
             <form action={selectAccounts}>
               <button
                 type="submit"
-                className="w-full rounded-lg border border-neutral-200 bg-white p-6 text-left hover:border-neutral-900"
+                className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
               >
-                <p className="text-base font-semibold text-neutral-900">Accounts</p>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                <Wallet className="h-5 w-5" aria-hidden />
+              </span>
+              <p className="mt-3 text-base font-semibold text-neutral-900">Accounts</p>
                 <p className="mt-1.5 text-sm text-neutral-600">
                   Complete payment history across all chapters — member and visitor payments, who
                   paid, purpose, pending approvals, approve/reject &amp; Excel export.

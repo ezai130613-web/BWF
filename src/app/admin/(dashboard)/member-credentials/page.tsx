@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { MemberCredentialsPanel, type CredentialMemberRow } from "@/components/admin/member-credentials-panel";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MemberCredentialsPage() {
   await requirePermission("users:manage");
@@ -26,7 +27,8 @@ export default async function MemberCredentialsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Member Login Credentials</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Member Login Credentials</h1>
         <p className="mt-1 max-w-3xl text-sm text-neutral-600">
           Issue temporary logins in bulk: username <strong>BWFCC</strong> + chapter number + serial (Chapter 1 →
           BWFCC101, BWFCC102…; Chapter 2 → BWFCC201…), temporary password <strong>1234</strong>. On first sign-in

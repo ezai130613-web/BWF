@@ -74,7 +74,7 @@ export function ContentCalendarView({
               key={v}
               href={viewLink(v, anchorKey)}
               className={`rounded px-3 py-1.5 text-xs font-medium capitalize ${
-                v === view ? "bg-neutral-900 text-white" : "text-neutral-600 hover:bg-neutral-100"
+                v === view ? "bg-emerald-800 text-white" : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >
               {v}
@@ -83,14 +83,14 @@ export function ContentCalendarView({
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href={prevHref} className="text-sm text-neutral-600 hover:text-neutral-900">
+          <Link href={prevHref} className="text-sm text-neutral-600 hover:text-emerald-800">
             ← Prev
           </Link>
           <h2 className="text-sm font-semibold text-neutral-900">{headerLabel}</h2>
-          <Link href={nextHref} className="text-sm text-neutral-600 hover:text-neutral-900">
+          <Link href={nextHref} className="text-sm text-neutral-600 hover:text-emerald-800">
             Next →
           </Link>
-          <Link href={todayHref} className="text-xs font-medium text-neutral-500 underline hover:text-neutral-900">
+          <Link href={todayHref} className="text-xs font-medium text-neutral-500 underline hover:text-emerald-800">
             Today
           </Link>
         </div>
@@ -98,7 +98,7 @@ export function ContentCalendarView({
         <button
           type="button"
           onClick={() => setModal({ mode: "create", date: view === "day" ? days[0].dateKey : anchorKey })}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           + Add Content
         </button>
@@ -160,7 +160,7 @@ function GridView({
   onEdit: (entry: ContentPlanEntryRow) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
       <div className="grid min-w-[700px] grid-cols-7 border-b border-neutral-200 bg-neutral-50 text-xs font-medium uppercase tracking-wide text-neutral-500">
         {WEEKDAYS.map((d) => (
           <div key={d} className="px-2 py-2">
@@ -209,11 +209,11 @@ function DayView({ day, onAdd, onEdit }: { day: CalendarDay; onAdd: (date: strin
   ].sort((a, b) => a.time.getTime() - b.time.getTime());
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <button
         type="button"
         onClick={() => onAdd(day.dateKey)}
-        className="self-start rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+        className="self-start rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
       >
         + Add content for this day
       </button>

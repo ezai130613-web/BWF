@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/site";
 import { MAX_INVITATION_GUESTS, type InvitationGuest } from "@/lib/invitations/poster";
 import { InvitationEditor } from "./invitation-editor";
 import type { InvitationFormValues, InvitationSourceData, QrTarget } from "./types";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 // The reference invitation's typography: a geometric sans throughout plus a
 // script tagline under the wordmark. Loaded only on this page.
@@ -157,7 +158,8 @@ export default async function InvitationEditPage({ params }: { params: Promise<{
   return (
     <div className={`flex flex-col gap-6 ${posterSans.variable} ${posterScript.variable}`}>
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{meeting.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{meeting.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">{source.chapterLabel}</p>
       </div>
 

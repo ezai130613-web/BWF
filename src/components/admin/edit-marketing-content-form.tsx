@@ -7,7 +7,7 @@ import { MediaUploadField } from "@/components/ui/media-upload-field";
 const initialState: { error?: string } = {};
 
 const inputClass =
-  "rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none";
+  "rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15";
 
 export type EditableMarketingContent = {
   id: string;
@@ -34,7 +34,7 @@ export function EditMarketingContentForm({ content }: { content: EditableMarketi
 
   if (!editing) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className="self-start text-sm text-neutral-600 underline hover:text-neutral-900">
+      <button type="button" onClick={() => setEditing(true)} className="self-start text-sm text-neutral-600 underline hover:text-emerald-800">
         Edit details
       </button>
     );
@@ -68,11 +68,11 @@ export function EditMarketingContentForm({ content }: { content: EditableMarketi
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
-        <button type="button" onClick={() => setEditing(false)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700">
+        <button type="button" onClick={() => setEditing(false)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700">
           Cancel
         </button>
       </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { ScheduledPostCard } from "@/components/admin/scheduled-post-card";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /** Brief §10 — publishing history: platforms published to, date/time, status, and published URL where available. */
 export default async function MarketingHistoryPage() {
@@ -16,7 +17,8 @@ export default async function MarketingHistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Publishing History</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Publishing History</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">Published and failed posts across every platform.</p>
       </div>
 
@@ -30,7 +32,7 @@ export default async function MarketingHistoryPage() {
           </div>
         ))}
         {posts.length === 0 ? (
-          <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-400">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-8 text-center text-sm text-neutral-400">
             Nothing published or failed yet.
           </div>
         ) : null}

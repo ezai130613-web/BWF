@@ -40,7 +40,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10 sm:pt-16" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`flex w-full flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-xl ${wide ? "max-w-2xl" : "max-w-lg"}`}
+        className={`flex w-full flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 shadow-xl ${wide ? "max-w-2xl" : "max-w-lg"}`}
       >
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>

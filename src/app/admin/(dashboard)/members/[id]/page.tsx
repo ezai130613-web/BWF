@@ -7,6 +7,7 @@ import { MemberPortalAccess } from "@/components/admin/member-portal-access";
 import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-revision-form";
 import { MemberTestimonials } from "@/components/admin/member-testimonials";
 import { MemberInductionForm } from "@/components/admin/member-induction-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,11 +51,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{member.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{member.name}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {member.chapter.name} · {member.category.name} · {member.company.name}
         </p>
-        <Link href={`/members/${member.slug}`} target="_blank" className="mt-1 inline-block text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href={`/members/${member.slug}`} target="_blank" className="mt-1 inline-block text-sm text-neutral-500 hover:text-emerald-800">
           View public profile /members/{member.slug} →
         </Link>
       </div>
@@ -83,7 +85,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
       <MemberTestimonials memberId={member.id} testimonials={testimonials} />
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-neutral-900">Visitors Invited</h2>
           <p className="text-xs text-neutral-500">

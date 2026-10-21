@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { EditBlogForm } from "@/components/admin/edit-blog-form";
 import { RejectArticleForm } from "@/components/admin/reject-article-form";
 import { deleteBlog } from "../actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function BlogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("blogs:manage");
@@ -22,9 +23,10 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ id:
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">{post.title || "Untitled post"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />{post.title || "Untitled post"}</h1>
           {post.status === "PUBLISHED" ? (
-            <Link href={`/insights/${post.slug}`} target="_blank" className="mt-1 inline-block text-sm text-neutral-500 hover:text-neutral-900">
+            <Link href={`/insights/${post.slug}`} target="_blank" className="mt-1 inline-block text-sm text-neutral-500 hover:text-emerald-800">
               View live /insights/{post.slug} →
             </Link>
           ) : null}

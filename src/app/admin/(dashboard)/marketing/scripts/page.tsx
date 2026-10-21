@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { ScriptWritingWorkspace } from "@/components/admin/script-writing-workspace";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /**
  * Script Writing (2026-09-18 client correction, brief §5) — a separate page
@@ -33,7 +34,8 @@ export default async function ScriptWritingPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Script Writing</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Script Writing</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Chat with the AI assistant to draft and refine scripts, captions, and content ideas — save any reply straight into My Scripts below.
         </p>

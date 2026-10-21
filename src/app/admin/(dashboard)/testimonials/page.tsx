@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateTestimonialForm } from "@/components/admin/create-testimonial-form";
 import { setTestimonialStatus, toggleTestimonialFeatured } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700",
@@ -28,7 +29,8 @@ export default async function TestimonialsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Testimonials</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Testimonials</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">
           Public submissions require approval (brief §33) — nothing appears on the site until
           approved here.
@@ -64,7 +66,7 @@ export default async function TestimonialsPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -87,7 +89,7 @@ export default async function TestimonialsPage() {
                 <td className="px-4 py-3 text-right">
                   {t.status === "APPROVED" ? (
                     <form action={toggleTestimonialFeatured.bind(null, t.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {t.featured ? "Unfeature" : "Feature"}
                       </button>
                     </form>

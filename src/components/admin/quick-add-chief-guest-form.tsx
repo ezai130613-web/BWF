@@ -53,7 +53,7 @@ export function QuickAddChiefGuestForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="self-start text-xs text-neutral-500 underline hover:text-neutral-900"
+        className="self-start text-xs text-neutral-500 underline hover:text-emerald-800"
       >
         + Add a new Chief Guest
       </button>
@@ -91,7 +91,7 @@ export function QuickAddChiefGuestForm({
         <select
           value={chapterId}
           onChange={(e) => setManualChapterId(e.target.value)}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">Select a chapter…</option>
           {chapters.map((c) => (
@@ -106,20 +106,20 @@ export function QuickAddChiefGuestForm({
         onChange={(e) => setName(e.target.value)}
         placeholder="Name"
         required
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
       />
       <input
         value={company}
         onChange={(e) => setCompany(e.target.value)}
         placeholder="Company / organisation"
         required
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
       />
       <input
         value={designation}
         onChange={(e) => setDesignation(e.target.value)}
         placeholder="Designation (optional)"
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
       />
       <p className="text-xs text-neutral-500">
         Adds them to the Chief Guest catalog and selects them above. For a photo or more detail,
@@ -135,11 +135,11 @@ export function QuickAddChiefGuestForm({
           type="button"
           onClick={handleAdd}
           disabled={pending || !canSubmit}
-          className="self-start rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="self-start rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add Chief Guest"}
         </button>
-        <button type="button" onClick={close} className="text-xs text-neutral-500 hover:text-neutral-900">
+        <button type="button" onClick={close} className="text-xs text-neutral-500 hover:text-emerald-800">
           Cancel
         </button>
       </div>

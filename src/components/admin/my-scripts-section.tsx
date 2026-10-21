@@ -27,13 +27,13 @@ export function MyScriptsSection({
   }, [scripts, query, statusFilter]);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-6">
+    <div className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-neutral-900">My Scripts</h2>
         <button
           type="button"
           onClick={onCreate}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           + Create New Script
         </button>
@@ -44,12 +44,12 @@ export function MyScriptsSection({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by title, topic, or script number…"
-          className="min-w-[220px] flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="min-w-[220px] flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="ALL">All statuses</option>
           {SCRIPT_STATUSES.map((s) => (

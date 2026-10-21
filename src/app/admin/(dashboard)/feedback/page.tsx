@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatIst, formatIstDateTime } from "@/lib/ist";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function FeedbackPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   await requirePermission("feedback:view");
@@ -16,19 +17,20 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Feedback</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Feedback</h1>
           <p className="mt-1 max-w-xl text-sm text-neutral-600">
             Super Admin only (brief §34) — never published, and not shown to Central or Chapter
             Admins unless a Super Admin later grants that explicitly. Every submission is also emailed to the
             recipients configured in Settings.
           </p>
         </div>
-        <Link href="/admin/settings" className="text-sm text-neutral-500 underline hover:text-neutral-900">
+        <Link href="/admin/settings" className="text-sm text-neutral-500 underline hover:text-emerald-800">
           Email recipients →
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>

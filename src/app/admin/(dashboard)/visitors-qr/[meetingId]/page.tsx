@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { generateAttendanceToken, getVisitorCheckinUrl } from "@/lib/attendance/qr";
 import { setVisitorCheckinOpen } from "./actions";
 import { PrintButton } from "@/components/admin/print-button";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 async function getMeetingWithToken(meetingId: string) {
   const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
@@ -41,24 +42,25 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
         }
       `}</style>
       <div>
-        <Link href="/admin/visitors-qr" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/visitors-qr" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Back to Visitors QR
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">{meeting.title}</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{meeting.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div id="qr-print-area" className="flex flex-col items-center gap-4 rounded-lg border border-neutral-200 bg-white p-8">
+        <div id="qr-print-area" className="flex flex-col items-center gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-8">
           {/* eslint-disable-next-line @next/next/no-img-element -- server-rendered PNG from our own API route, not a next/image-managed asset */}
           <img src={qrImageUrl} alt="Visitor check-in QR code" className="h-64 w-64" />
           <p className="text-center text-sm text-neutral-600">{meeting.title} — Visitor Check-In</p>
           <div className="flex flex-wrap items-center justify-center gap-2 print:hidden">
             <a
               href={`${qrImageUrl}?download=1`}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
             >
               Download
             </a>
@@ -67,7 +69,7 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
               href={checkinUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
             >
               Open Registration Link
             </a>
@@ -76,7 +78,7 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Registration</h2>
             <p className="mt-1 text-sm text-neutral-600">
               Currently{" "}
@@ -90,7 +92,7 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
                 <button
                   type="submit"
                   disabled={meeting.visitorCheckInOpen}
-                  className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Open Registration
                 </button>
@@ -99,7 +101,7 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
                 <button
                   type="submit"
                   disabled={!meeting.visitorCheckInOpen}
-                  className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Close Registration
                 </button>

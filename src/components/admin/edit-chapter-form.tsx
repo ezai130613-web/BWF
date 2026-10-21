@@ -10,7 +10,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
   const [state, formAction, pending] = useActionState(updateChapter, initialState);
 
   return (
-    <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+    <form action={formAction} className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
       <input type="hidden" name="chapterId" value={chapter.id} />
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -19,7 +19,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
           name="name"
           defaultValue={chapter.name}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -27,7 +27,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
         <select
           name="status"
           defaultValue={chapter.status}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="DRAFT">Draft (internal only)</option>
           <option value="ACTIVE">Active (public)</option>
@@ -39,7 +39,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
         <input
           name="location"
           defaultValue={chapter.location ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -48,7 +48,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
           name="meetingSchedule"
           placeholder="e.g. First Tuesday, 7:00 PM"
           defaultValue={chapter.meetingSchedule ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <fieldset className="grid gap-4 rounded-md border border-emerald-200 bg-emerald-50/40 p-4 sm:col-span-2 sm:grid-cols-3">
@@ -61,7 +61,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
           <select
             name="meetingWeekday"
             defaultValue={chapter.meetingWeekday ?? ""}
-            className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
           >
             <option value="">Not set</option>
             {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((d, i) => (
@@ -94,7 +94,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
             name="meetingTime"
             type="time"
             defaultValue={chapter.meetingTime ?? ""}
-            className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
           />
         </label>
       </fieldset>
@@ -103,7 +103,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
         <input
           name="meetingVenue"
           defaultValue={chapter.meetingVenue ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -111,7 +111,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
         <input
           name="meetingAddress"
           defaultValue={chapter.meetingAddress ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -120,7 +120,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
           name="googleMapsUrl"
           type="url"
           defaultValue={chapter.googleMapsUrl ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
@@ -129,7 +129,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
           name="description"
           rows={3}
           defaultValue={chapter.description ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
 
@@ -139,7 +139,7 @@ export function EditChapterForm({ chapter }: { chapter: Chapter }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

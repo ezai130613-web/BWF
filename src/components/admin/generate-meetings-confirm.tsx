@@ -57,7 +57,7 @@ export function GenerateMeetingsConfirm({
             </ul>
           </>
         ) : null}
-        <Link href="/admin/meetings" className="mt-4 inline-block rounded-md bg-emerald-800 px-4 py-2 font-medium text-white hover:bg-emerald-700">
+        <Link href="/admin/meetings" className="mt-4 inline-block rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white shadow-sm hover:bg-emerald-700">
           Back to Meetings
         </Link>
       </div>
@@ -76,11 +76,11 @@ export function GenerateMeetingsConfirm({
             if (!r.error) router.refresh();
           })
         }
-        className="rounded-md bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
       >
         {pending ? "Creating…" : createCount === 0 ? "Nothing to create" : `Confirm — create ${createCount} meeting${createCount === 1 ? "" : "s"}`}
       </button>
-      <Link href="/admin/meetings" className="text-sm text-neutral-500 hover:text-neutral-900">
+      <Link href="/admin/meetings" className="text-sm text-neutral-500 hover:text-emerald-800">
         Cancel
       </Link>
       {result?.error ? <p className="w-full text-sm text-red-700">{result.error}</p> : null}

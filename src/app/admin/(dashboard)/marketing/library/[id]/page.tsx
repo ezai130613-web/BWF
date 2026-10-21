@@ -5,6 +5,7 @@ import { ScheduleComposer } from "@/components/admin/schedule-composer";
 import { ScheduledPostCard } from "@/components/admin/scheduled-post-card";
 import { DeleteMarketingContentButton } from "@/components/admin/delete-marketing-content-button";
 import { EditMarketingContentForm } from "@/components/admin/edit-marketing-content-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MarketingContentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("marketing:manage");
@@ -21,7 +22,8 @@ export default async function MarketingContentDetailPage({ params }: { params: P
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{content.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{content.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">Uploaded {content.createdAt.toLocaleDateString()}</p>
       </div>
 
@@ -31,7 +33,7 @@ export default async function MarketingContentDetailPage({ params }: { params: P
             // eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset
             <img src={content.thumbnailUrl} alt="" className="w-full rounded-lg border border-neutral-200 object-cover" />
           ) : null}
-          <a href={content.videoUrl} target="_blank" rel="noreferrer" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+          <a href={content.videoUrl} target="_blank" rel="noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             View uploaded video →
           </a>
           {content.script ? (

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CorrectVisitorAttendanceForm } from "@/components/admin/correct-visitor-attendance-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const SOURCE_LABELS: Record<string, string> = {
   INVITED_BY_MEMBER: "Invited by member",
@@ -55,10 +56,11 @@ export default async function VisitorsAttendanceMeetingPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Back to Visitors Attendance
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">{meeting.title}</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{meeting.title}</h1>
         <p className="text-sm text-neutral-600">
           {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
         </p>
@@ -79,7 +81,7 @@ export default async function VisitorsAttendanceMeetingPage({
             name="q"
             defaultValue={filters.q}
             placeholder="Search by name…"
-            className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
@@ -88,12 +90,12 @@ export default async function VisitorsAttendanceMeetingPage({
             name="category"
             defaultValue={filters.category}
             placeholder="Business category…"
-            className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Inviting member
-          <select name="invitingMemberId" defaultValue={filters.invitingMemberId ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+          <select name="invitingMemberId" defaultValue={filters.invitingMemberId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All</option>
             {invitingMembers.map((m) => (
               <option key={m.id} value={m.id}>
@@ -104,7 +106,7 @@ export default async function VisitorsAttendanceMeetingPage({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Source
-          <select name="source" defaultValue={filters.source ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+          <select name="source" defaultValue={filters.source ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All</option>
             {Object.entries(SOURCE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -113,12 +115,12 @@ export default async function VisitorsAttendanceMeetingPage({
             ))}
           </select>
         </label>
-        <button type="submit" className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:border-neutral-400">
+        <button type="submit" className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:border-neutral-400">
           Apply filters
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -171,7 +173,7 @@ export default async function VisitorsAttendanceMeetingPage({
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
     </div>

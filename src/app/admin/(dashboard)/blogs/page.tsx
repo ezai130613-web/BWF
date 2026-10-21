@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { CreateBlogForm } from "@/components/admin/create-blog-form";
 import { CreateBlogCategoryForm } from "@/components/admin/create-blog-category-form";
 import { CreateAuthorForm } from "@/components/admin/create-author-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-500",
@@ -38,14 +39,15 @@ export default async function BlogsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Blog</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Blog</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Start a draft here, then fill in content/SEO/FAQ on the post&rsquo;s own page. Posts
           members submit for review (brief §31) show up here too, marked Pending.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -78,7 +80,7 @@ export default async function BlogsPage() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/blogs/${post.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
+                  <Link href={`/admin/blogs/${post.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                     Edit →
                   </Link>
                 </td>
@@ -97,7 +99,7 @@ export default async function BlogsPage() {
 
       <CreateBlogForm categories={categories} authors={authors} />
 
-      <details className="rounded-lg border border-neutral-200 bg-white">
+      <details className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-neutral-900">
           Blog Categories
         </summary>
@@ -124,7 +126,7 @@ export default async function BlogsPage() {
         </div>
       </details>
 
-      <details className="rounded-lg border border-neutral-200 bg-white">
+      <details className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-neutral-900">
           Authors
         </summary>

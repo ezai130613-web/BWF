@@ -33,13 +33,13 @@ export function CreateMeetingForm({
   );
 
   return (
-    <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+    <form action={formAction} className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Title
         <input
           name="title"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -49,7 +49,7 @@ export function CreateMeetingForm({
           required
           value={chapterId}
           onChange={(e) => setChapterId(e.target.value)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">Select…</option>
           {chapters.map((c) => (
@@ -65,21 +65,21 @@ export function CreateMeetingForm({
           name="startsAt"
           type="datetime-local"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Venue
         <input
           name="venue"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Address
         <input
           name="address"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
@@ -87,7 +87,7 @@ export function CreateMeetingForm({
         <input
           name="googleMapsUrl"
           type="url"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <div className="flex flex-wrap items-start gap-4 sm:col-span-2">
@@ -97,7 +97,7 @@ export function CreateMeetingForm({
             name="chiefGuestId"
             value={chiefGuestId}
             onChange={(e) => setChiefGuestId(e.target.value)}
-            className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none sm:max-w-sm"
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15 sm:max-w-sm"
           >
             <option value="">None</option>
             {availableChiefGuests.map((g) => (
@@ -127,7 +127,7 @@ export function CreateMeetingForm({
         Agenda
         <input
           name="agenda"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
@@ -135,7 +135,7 @@ export function CreateMeetingForm({
         <textarea
           name="description"
           rows={3}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 sm:col-span-2">
@@ -150,7 +150,7 @@ export function CreateMeetingForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add meeting"}
         </button>

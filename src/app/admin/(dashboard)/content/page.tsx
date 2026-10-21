@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
 import { updateWebsiteContent } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /** Keys whose value is an image URL get the upload widget instead of a plain textarea. */
 const IMAGE_KEYS = new Set(["payment.qrCodeUrl", "payment.membershipQrCodeUrl", "roster.visitorFeedbackQrUrl"]);
@@ -19,7 +20,8 @@ export default async function ContentPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Website Content</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Website Content</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Named copy blocks the public site reads at render time (brief §62) — not a full page
           builder. Leave a field blank to fall back to the site&rsquo;s default copy.
@@ -27,14 +29,14 @@ export default async function ContentPage() {
       </div>
 
       {[...bySection.entries()].map(([section, items]) => (
-        <div key={section} className="rounded-lg border border-neutral-200 bg-white p-6">
+        <div key={section} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
           <h2 className="text-sm font-semibold text-neutral-900">{section}</h2>
           <div className="mt-4 flex flex-col gap-4">
             {items.map((item) =>
               IMAGE_KEYS.has(item.key) ? (
                 <form key={item.key} action={updateWebsiteContent.bind(null, item.key)} className="flex flex-col gap-1.5">
                   <MediaUploadField label={item.label} name="value" kind="image" defaultValue={item.value} />
-                  <button type="submit" className="self-start rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+                  <button type="submit" className="self-start rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
                     Save
                   </button>
                 </form>
@@ -49,9 +51,9 @@ export default async function ContentPage() {
                       name="value"
                       rows={2}
                       defaultValue={item.value ?? ""}
-                      className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                      className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
                     />
-                    <button type="submit" className="self-start rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+                    <button type="submit" className="self-start rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
                       Save
                     </button>
                   </div>

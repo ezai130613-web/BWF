@@ -15,13 +15,13 @@ export function CreateBlogForm({
   const [state, formAction, pending] = useActionState(createBlog, initialState);
 
   return (
-    <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-3">
+    <form action={formAction} className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-3">
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-3">
         Title
         <input
           name="title"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -29,7 +29,7 @@ export function CreateBlogForm({
         <select
           name="categoryId"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">Select…</option>
           {categories.map((c) => (
@@ -44,7 +44,7 @@ export function CreateBlogForm({
         <select
           name="authorId"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">Select…</option>
           {authors.map((a) => (
@@ -58,7 +58,7 @@ export function CreateBlogForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Creating…" : "Start draft"}
         </button>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /**
  * Visitors Attendance — meeting-wise view, step 1/2 (Select Chapter, Select
@@ -23,17 +24,18 @@ export default async function VisitorsAttendancePage({
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Visitors Attendance</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Visitors Attendance</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Meeting-wise visitor check-ins — total registered, checked in, member-invited, and
             other-source visitors.
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/api/admin/exports/visitor-attendance" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+          <Link href="/api/admin/exports/visitor-attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Export Excel
           </Link>
-          <Link href="/admin/visitors-attendance/profiles" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+          <Link href="/admin/visitors-attendance/profiles" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Visitor-wise view →
           </Link>
         </div>
@@ -43,14 +45,14 @@ export default async function VisitorsAttendancePage({
         <form
           action="/admin/visitors-attendance"
           method="GET"
-          className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:max-w-sm"
+          className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:max-w-sm"
         >
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
             Chapter
             <select
               name="chapterId"
               required
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
             >
               <option value="">Select a chapter…</option>
               {chapters.map((chapter) => (
@@ -60,7 +62,7 @@ export default async function VisitorsAttendancePage({
               ))}
             </select>
           </label>
-          <button type="submit" className="self-start rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+          <button type="submit" className="self-start rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
             Continue
           </button>
         </form>
@@ -86,12 +88,12 @@ async function MeetingPicker({ chapterId, showChapterPicker }: { chapterId: stri
   return (
     <div className="flex flex-col gap-4">
       {showChapterPicker ? (
-        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/visitors-attendance" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Choose a different chapter
         </Link>
       ) : null}
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-sm font-semibold text-neutral-900">{chapter.name}</h2>
 
         {meetings.length === 0 ? (
@@ -112,7 +114,7 @@ async function MeetingPicker({ chapterId, showChapterPicker }: { chapterId: stri
                   </span>
                   <Link
                     href={`/admin/visitors-attendance/${meeting.id}`}
-                    className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
+                    className="rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
                   >
                     View visitors
                   </Link>

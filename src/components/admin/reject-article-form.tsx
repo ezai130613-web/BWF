@@ -25,7 +25,7 @@ export function RejectArticleForm({ blogId }: { blogId: string }) {
         <textarea
           name="reviewNotes"
           rows={2}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       {state?.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
@@ -37,7 +37,7 @@ export function RejectArticleForm({ blogId }: { blogId: string }) {
         >
           {pending ? "Rejecting…" : "Confirm reject"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900">
+        <button type="button" onClick={() => setOpen(false)} className="text-sm text-neutral-500 hover:text-emerald-800">
           Cancel
         </button>
       </div>

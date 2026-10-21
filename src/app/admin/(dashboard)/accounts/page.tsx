@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getLedgerRows, getLedgerSummary, parseLedgerFilters, STATUS_LABELS } from "@/lib/accounts/ledger";
 import { PaymentReviewActions } from "@/components/admin/payment-review-actions";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const PAGE_LIMIT = 200;
@@ -47,7 +48,8 @@ export default async function AccountsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">All Payments</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />All Payments</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Complete payment history across all chapters — member membership fees and visitor
             meeting fees in one list. Pending submissions are never counted as received.
@@ -55,7 +57,7 @@ export default async function AccountsPage({
         </div>
         <Link
           href={`/api/admin/exports/accounts${exportQuery ? `?${exportQuery}` : ""}`}
-          className="text-sm text-neutral-600 underline hover:text-neutral-900"
+          className="text-sm text-neutral-600 underline hover:text-emerald-800"
         >
           Export Excel
         </Link>
@@ -68,7 +70,7 @@ export default async function AccountsPage({
         <StatCard label="Rejected" value={money.format(summary.REJECTED.amountInr)} hint={`${summary.REJECTED.count} payments`} tone="red" />
       </div>
 
-      <form action="/admin/accounts" method="GET" className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+      <form action="/admin/accounts" method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
         <Field label="Type">
           <select name="type" defaultValue={filters.type ?? ""} className={inputClass}>
             <option value="">Members &amp; visitors</option>
@@ -105,7 +107,7 @@ export default async function AccountsPage({
         <Field label="Paid to">
           <input type="date" name="to" defaultValue={filters.to} className={inputClass} />
         </Field>
-        <button type="submit" className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800">
+        <button type="submit" className="rounded-lg bg-emerald-800 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
           Apply
         </button>
         <Link href="/admin/accounts?status=PENDING_APPROVAL" className="text-sm text-amber-700 underline hover:text-amber-900">
@@ -113,7 +115,7 @@ export default async function AccountsPage({
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-medium uppercase tracking-wide text-neutral-500">
             <tr>
@@ -166,7 +168,7 @@ export default async function AccountsPage({
                   ) : null}
                 </td>
                 <td className="px-4 py-3">
-                  <a href={row.proofUrl} target="_blank" rel="noopener noreferrer" className="text-neutral-600 underline hover:text-neutral-900">
+                  <a href={row.proofUrl} target="_blank" rel="noopener noreferrer" className="text-neutral-600 underline hover:text-emerald-800">
                     View
                   </a>
                 </td>
@@ -191,7 +193,7 @@ export default async function AccountsPage({
   );
 }
 
-const inputClass = "rounded-md border border-neutral-300 px-2 py-1.5 text-sm";
+const inputClass = "rounded-lg border border-neutral-300 px-2 py-1.5 text-sm";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">{label}{children}</label>;
@@ -200,7 +202,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function StatCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "emerald" | "amber" | "red" }) {
   const toneClass = tone === "emerald" ? "text-emerald-700" : tone === "amber" ? "text-amber-700" : tone === "red" ? "text-red-700" : "text-neutral-900";
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${toneClass}`}>{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-neutral-500">{hint}</p> : null}

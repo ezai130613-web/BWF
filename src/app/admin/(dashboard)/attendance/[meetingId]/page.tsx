@@ -4,6 +4,7 @@ import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CorrectAttendanceForm } from "@/components/admin/correct-attendance-form";
 import { CloseAttendanceButton } from "@/components/admin/close-attendance-button";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function AttendanceMeetingPage({ params }: { params: Promise<{ meetingId: string }> }) {
   const { meetingId } = await params;
@@ -31,12 +32,13 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/attendance" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/admin/attendance" className="text-sm text-neutral-500 hover:text-emerald-800">
           ← Back to Attendance Management
         </Link>
         <div className="mt-2 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">{meeting.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+              <AdminPageIcon />{meeting.title}</h1>
             <p className="text-sm text-neutral-600">
               {meeting.chapter.name} ·{" "}
               {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
@@ -53,7 +55,7 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
         <StatCard label="Attendance %" value={`${percentage}%`} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -102,7 +104,7 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
     </div>

@@ -306,7 +306,7 @@ export function InvitationEditor({
 
   return (
     <div ref={wrapperRef} className="flex flex-col gap-6">
-      <button type="button" onClick={goBack} className="self-start text-sm text-neutral-500 hover:text-neutral-900">
+      <button type="button" onClick={goBack} className="self-start text-sm text-neutral-500 hover:text-emerald-800">
         ← Back to Meeting Invitation Generator
       </button>
 
@@ -323,7 +323,7 @@ export function InvitationEditor({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Edit */}
-        <div className="flex flex-col gap-5 rounded-lg border border-neutral-200 bg-white p-6">
+        <div className="flex flex-col gap-5 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
           <Section title="Header">
             <Field label="Top line">
               <input value={values.eyebrow} onChange={(e) => update("eyebrow", e.target.value)} className={inputClass} />
@@ -339,14 +339,14 @@ export function InvitationEditor({
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Guest {i + 1}</p>
                   <div className="flex items-center gap-2 text-xs">
-                    <button type="button" disabled={i === 0} onClick={() => moveGuest(i, -1)} className="text-neutral-500 hover:text-neutral-900 disabled:opacity-30">
+                    <button type="button" disabled={i === 0} onClick={() => moveGuest(i, -1)} className="text-neutral-500 hover:text-emerald-800 disabled:opacity-30">
                       ← Move left
                     </button>
                     <button
                       type="button"
                       disabled={i === values.guests.length - 1}
                       onClick={() => moveGuest(i, 1)}
-                      className="text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
+                      className="text-neutral-500 hover:text-emerald-800 disabled:opacity-30"
                     >
                       Move right →
                     </button>
@@ -502,7 +502,7 @@ export function InvitationEditor({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-md bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Invitation"}
             </button>
@@ -524,7 +524,7 @@ export function InvitationEditor({
             type="button"
             onClick={handleDownload}
             disabled={downloadDisabled}
-            className="w-full max-w-sm rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full max-w-sm rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {downloadDisabled ? "Preparing poster…" : "Download Invitation (PNG)"}
           </button>
@@ -538,7 +538,7 @@ export function InvitationEditor({
 }
 
 const inputClass =
-  "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none";
+  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

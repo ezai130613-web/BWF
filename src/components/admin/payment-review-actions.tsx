@@ -54,7 +54,7 @@ export function PaymentReviewActions({ paymentId, status }: { paymentId: string;
         <button
           type="submit"
           disabled={approvePending}
-          className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50"
         >
           {approvePending ? "Approving…" : "Approve"}
         </button>
@@ -98,14 +98,14 @@ function ReasonForm({
     <form action={formAction} className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
       <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
         {label}
-        <textarea name="remarks" required={required} rows={2} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+        <textarea name="remarks" required={required} rows={2} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
       </label>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+        <button type="submit" disabled={pending} className="rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50">
           {pending ? "Saving…" : submitLabel}
         </button>
-        <button type="button" onClick={onCancel} className="text-xs text-neutral-500 hover:text-neutral-900">
+        <button type="button" onClick={onCancel} className="text-xs text-neutral-500 hover:text-emerald-800">
           Cancel
         </button>
       </div>

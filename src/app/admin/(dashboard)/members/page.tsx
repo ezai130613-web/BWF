@@ -3,6 +3,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateMemberForm } from "@/components/admin/create-member-form";
 import { updateMemberStatus } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -58,7 +59,8 @@ export default async function MembersPage({
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Members</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Members</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Only one ACTIVE member may hold a given category within a chapter (brief §15) — this
           is enforced by a database constraint, not just this form, so it can&rsquo;t be
@@ -66,14 +68,14 @@ export default async function MembersPage({
         </p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-white p-4" method="GET">
+      <form className="flex flex-wrap items-end gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4" method="GET">
         {scope === "ALL" ? (
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
             Chapter
             <select
               name="chapterId"
               defaultValue={chapterId ?? ""}
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
             >
               <option value="">All chapters</option>
               {chapters.map((c) => (
@@ -89,7 +91,7 @@ export default async function MembersPage({
           <select
             name="categoryId"
             defaultValue={categoryId ?? ""}
-            className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -101,18 +103,18 @@ export default async function MembersPage({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           Filter
         </button>
         {chapterId || categoryId ? (
-          <Link href="/admin/members" className="text-sm text-neutral-500 hover:text-neutral-900">
+          <Link href="/admin/members" className="text-sm text-neutral-500 hover:text-emerald-800">
             Clear filters
           </Link>
         ) : null}
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -145,7 +147,7 @@ export default async function MembersPage({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-4">
-                    <Link href={`/admin/members/${member.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
+                    <Link href={`/admin/members/${member.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                       Edit
                     </Link>
                     <form
@@ -154,7 +156,7 @@ export default async function MembersPage({
                         await updateMemberStatus(member.id, member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE");
                       }}
                     >
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
                       </button>
                     </form>

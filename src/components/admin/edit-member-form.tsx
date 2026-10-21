@@ -46,13 +46,13 @@ function GalleryList({
                 next[i] = { ...next[i], caption: e.target.value };
                 onChange(next);
               }}
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
             />
           </div>
           <button
             type="button"
             onClick={() => onChange(entries.filter((_, idx) => idx !== i))}
-            className="self-start text-sm text-neutral-500 hover:text-neutral-900"
+            className="self-start text-sm text-neutral-500 hover:text-emerald-800"
           >
             Remove
           </button>
@@ -61,7 +61,7 @@ function GalleryList({
       <button
         type="button"
         onClick={() => onChange([...entries, { url: "", caption: "" }])}
-        className="self-start text-sm text-neutral-500 hover:text-neutral-900"
+        className="self-start text-sm text-neutral-500 hover:text-emerald-800"
       >
         + Add {label.toLowerCase()}
       </button>
@@ -90,14 +90,14 @@ function Field({
           name={name}
           rows={3}
           defaultValue={defaultValue ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       ) : (
         <input
           name={name}
           type={type}
           defaultValue={defaultValue ?? ""}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       )}
     </label>
@@ -119,7 +119,7 @@ export function EditMemberForm({ member }: { member: Member }) {
       <input type="hidden" name="photos" value={JSON.stringify(photos)} />
       <input type="hidden" name="videos" value={JSON.stringify(videos)} />
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Personal</h2>
         <Field label="Name" name="name" defaultValue={member.name} />
         <Field label="Designation" name="designation" defaultValue={member.designation} />
@@ -127,7 +127,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <MediaUploadField label="Photo" name="photoUrl" kind="image" defaultValue={member.photoUrl} />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">
           Business profile
         </h2>
@@ -141,7 +141,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <Field label="Clientele" name="clientele" defaultValue={member.clientele} textarea />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Contact</h2>
         <Field label="Email" name="email" type="email" defaultValue={member.email} />
         <Field label="Phone" name="phone" defaultValue={member.phone} />
@@ -152,7 +152,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <LocationPickerField defaultLabel={member.locationLabel} defaultLat={member.latitude} defaultLng={member.longitude} />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Social & media</h2>
         <Field label="Instagram URL" name="instagramUrl" type="url" defaultValue={member.instagramUrl} />
         <Field label="LinkedIn URL" name="linkedinUrl" type="url" defaultValue={member.linkedinUrl} />
@@ -168,7 +168,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         />
       </section>
 
-      <section className="grid gap-6 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+      <section className="grid gap-6 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
         <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">Gallery</h2>
         <GalleryList label="Photo" kind="image" entries={photos} onChange={setPhotos} />
         <GalleryList label="Video" kind="video" entries={videos} onChange={setVideos} />
@@ -180,7 +180,7 @@ export function EditMemberForm({ member }: { member: Member }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save profile"}
         </button>

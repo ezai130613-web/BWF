@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { PLATFORM_LABELS } from "@/lib/marketing/constants";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_LABEL: Record<string, string> = {
   NOT_CONNECTED: "Not connected",
@@ -33,13 +34,14 @@ export default async function MarketingConnectedAccountsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Connected Accounts</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Connected Accounts</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Manage which BWF social media accounts this system can publish to.
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         {connections.map((c) => (
           <div key={c.id} className="flex items-center justify-between border-b border-neutral-100 p-4 last:border-b-0">
             <div>
@@ -52,7 +54,7 @@ export default async function MarketingConnectedAccountsPage() {
                 type="button"
                 disabled
                 title="Available once BWF's developer app for this platform is registered"
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-400"
+                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-400"
               >
                 Connect
               </button>

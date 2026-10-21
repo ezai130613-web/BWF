@@ -23,7 +23,7 @@ export function LinkVisitorToMemberForm({
     <form action={formAction} className="flex flex-wrap items-end gap-2">
       <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
         Mark as converted to member
-        <select name="memberId" required defaultValue="" className="min-w-[14rem] rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+        <select name="memberId" required defaultValue="" className="min-w-[14rem] rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
           <option value="" disabled>
             Select a member…
           </option>
@@ -34,7 +34,7 @@ export function LinkVisitorToMemberForm({
           ))}
         </select>
       </label>
-      <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50">
         {pending ? "Linking…" : "Link"}
       </button>
       {state?.error ? <p className="w-full text-xs text-red-600">{state.error}</p> : null}

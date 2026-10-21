@@ -3,6 +3,7 @@ import { getPaymentsScope, getUserPermissionKeys, requireAdminSession } from "@/
 import { db } from "@/lib/db";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -64,13 +65,14 @@ export default async function VisitorsPaymentPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Visitors Payment</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Visitors Payment</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Visitor meeting payment submissions — independent of Visitors Attendance and Member
             Payments. Pending submissions are never counted as verified receipts.
           </p>
         </div>
-        <Link href="/api/admin/exports/visitor-payments" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+        <Link href="/api/admin/exports/visitor-payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
           Export Excel
         </Link>
       </div>
@@ -82,11 +84,11 @@ export default async function VisitorsPaymentPage({
         <StatCard label="Rejected" value={money.format(rejectedValue)} tone="red" />
       </div>
 
-      <form action="/admin/visitors-payment" method="GET" className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+      <form action="/admin/visitors-payment" method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
         {scope === "ALL" ? (
           <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
             Chapter
-            <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+            <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
               <option value="">All chapters</option>
               {chapters.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -98,7 +100,7 @@ export default async function VisitorsPaymentPage({
         ) : null}
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Meeting
-          <select name="meetingId" defaultValue={params.meetingId ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+          <select name="meetingId" defaultValue={params.meetingId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All meetings</option>
             {meetings.map((m) => (
               <option key={m.id} value={m.id}>
@@ -109,11 +111,11 @@ export default async function VisitorsPaymentPage({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Visitor
-          <input name="q" defaultValue={params.q} placeholder="Search name…" className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+          <input name="q" defaultValue={params.q} placeholder="Search name…" className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Status
-          <select name="status" defaultValue={params.status ?? ""} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+          <select name="status" defaultValue={params.status ?? ""} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm">
             <option value="">All</option>
             <option value="PENDING_APPROVAL">Pending Approval</option>
             <option value="APPROVED">Approved</option>
@@ -121,14 +123,14 @@ export default async function VisitorsPaymentPage({
             <option value="CLARIFICATION_REQUESTED">Clarification Requested</option>
           </select>
         </label>
-        <button type="submit" className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800">
+        <button type="submit" className="rounded-lg bg-emerald-800 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
           Apply
         </button>
       </form>
 
       <div className="flex flex-col gap-4">
         {payments.map((payment) => (
-          <div key={payment.id} className="rounded-lg border border-neutral-200 bg-white p-5">
+          <div key={payment.id} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-neutral-900">
@@ -158,7 +160,7 @@ export default async function VisitorsPaymentPage({
             </dl>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+              <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
                 View proof
               </a>
               {payment.reviewRemarks ? <p className="text-xs text-neutral-500">Remarks: {payment.reviewRemarks}</p> : null}
@@ -168,7 +170,7 @@ export default async function VisitorsPaymentPage({
           </div>
         ))}
         {payments.length === 0 ? (
-          <p className="rounded-lg border border-neutral-200 bg-white px-4 py-8 text-center text-sm text-neutral-400">
+          <p className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm px-4 py-8 text-center text-sm text-neutral-400">
             No visitor payment submissions match these filters.
           </p>
         ) : null}
@@ -180,7 +182,7 @@ export default async function VisitorsPaymentPage({
 function StatCard({ label, value, tone }: { label: string; value: string; tone?: "emerald" | "amber" | "red" }) {
   const toneClass = tone === "emerald" ? "text-emerald-700" : tone === "amber" ? "text-amber-700" : tone === "red" ? "text-red-700" : "text-neutral-900";
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${toneClass}`}>{value}</p>
     </div>

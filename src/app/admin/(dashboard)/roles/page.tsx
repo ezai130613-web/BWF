@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { toggleRolePermission } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function RolesPage() {
   await requirePermission("roles:manage");
@@ -17,7 +18,8 @@ export default async function RolesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Roles & Permissions</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Roles & Permissions</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Tick a box to grant a permission to a role, untick to remove it — changes apply on each
           user&rsquo;s next sign-in. Payment permissions are held by Accounts Department and Super
@@ -28,7 +30,7 @@ export default async function RolesPage() {
       </div>
 
       <ReauthGuard>
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -56,7 +58,7 @@ export default async function RolesPage() {
                             aria-label={`${isGranted ? "Revoke" : "Grant"} ${permission.label} for ${role.label}`}
                             className={
                               isGranted
-                                ? "h-5 w-5 rounded border border-neutral-900 bg-neutral-900 disabled:opacity-60"
+                                ? "h-5 w-5 rounded border border-emerald-800 bg-emerald-800 disabled:opacity-60"
                                 : "h-5 w-5 rounded border border-neutral-300 disabled:opacity-40"
                             }
                           />

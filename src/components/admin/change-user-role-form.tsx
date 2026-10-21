@@ -26,7 +26,7 @@ export function ChangeUserRoleForm({
         name="roleKey"
         value={roleKey}
         onChange={(e) => setRoleKey(e.target.value)}
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+        className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
       >
         <option value="CENTRAL_ADMIN">Central Admin</option>
         <option value="CHAPTER_ADMIN">Chapter Admin</option>
@@ -42,7 +42,7 @@ export function ChangeUserRoleForm({
           name="chapterId"
           required
           defaultValue={currentChapterId ?? ""}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">Select chapter…</option>
           {chapters.map((chapter) => (
@@ -56,7 +56,7 @@ export function ChangeUserRoleForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 disabled:opacity-50"
+        className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-700 hover:border-emerald-700 hover:text-emerald-800 disabled:opacity-50"
       >
         {pending ? "Saving…" : "Save"}
       </button>

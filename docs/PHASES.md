@@ -4076,3 +4076,25 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   link returns the file, the route redirects signed-out users; member page checked at 1366px and
   390px; bubbles shown only after member sign-in. Temp application, R2 files and login deleted.
   Convert to member was not click-tested.
+
+### Phase 30 correction 11 (2026-10-21) — admin panel restyled like the member portal
+
+- **Sidebar** (`src/components/admin/sidebar.tsx`) now matches the member portal's: fixed
+  emerald gradient, items grouped (Overview / Membership / Meetings & attendance / Visitors /
+  Payments / Member performance / Marketing / Website / Administration) with an icon each, gold
+  active state (longest-prefix match, so detail pages light up their list item), a mobile top bar
+  + slide-in drawer, and an account block with Switch workspace + Sign out (the old top header
+  bar is gone). Items live in `src/components/admin/nav-config.ts`; permission and workspace
+  filtering is unchanged.
+- **Every admin page title** gets an icon badge (`AdminPageIcon`, picked from the current path
+  via nav-config) like the member `PageHeader`; titles are `text-2xl`.
+- **Shared look:** admin buttons, inputs, cards and tables use the member kit's styling (emerald
+  primary buttons, emerald focus ring, `rounded-2xl` shadowed cards) — a class-level sweep over
+  `src/app/admin` and `src/components/admin`; no behaviour changed.
+- **Dashboard** rebuilt with the member dashboard's hero, quick-action cards (permission-filtered),
+  `StatTile`s with icons and `Card`s from `src/components/member/ui.tsx`.
+- Admin login and the workspace picker match the member sign-in / card styling.
+- Verified on a dev server with a temporary Super Admin (deleted afterwards): all 42 admin list
+  pages return 200 with no client errors across the Website, Performance and Marketing
+  workspaces; checked at 1366px and 390px including the mobile menu. Detail pages and forms
+  were not click-tested.

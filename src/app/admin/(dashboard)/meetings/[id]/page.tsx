@@ -5,6 +5,7 @@ import { EditMeetingForm } from "@/components/admin/edit-meeting-form";
 import { ReminderBadge } from "@/components/admin/reminder-badge";
 import { formatIstDateTime } from "@/lib/ist";
 import { getReminderRecipients, reminderScheduledFor } from "@/lib/meetings/reminders";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,14 +43,15 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{meeting.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{meeting.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {meeting.chapter.name} · {formatIstDateTime(meeting.startsAt)} IST · Chief Guest:{" "}
           {meeting.chiefGuestId ? chiefGuests.find((g) => g.id === meeting.chiefGuestId)?.name ?? "Assigned" : "Not Assigned"}
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-neutral-900">Member reminder email</h2>
           <ReminderBadge
@@ -120,7 +122,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
 
       <EditMeetingForm meeting={meeting} chiefGuests={chiefGuests} canManageChiefGuests={canManageChiefGuests} />
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <div className="border-b border-neutral-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-neutral-900">Registered visitors ({visitors.length})</h2>
         </div>

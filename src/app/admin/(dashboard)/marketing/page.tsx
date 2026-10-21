@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { PLATFORM_LABELS, STATUS_BADGE_CLASSES, STATUS_LABELS, formatIst } from "@/lib/marketing/constants";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MarketingDashboardPage() {
   await requirePermission("marketing:manage");
@@ -31,7 +32,8 @@ export default async function MarketingDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Marketing</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Marketing</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Upload a video once, schedule it across Instagram, Facebook, YouTube, and Pinterest, and track what&rsquo;s published.
         </p>
@@ -50,14 +52,14 @@ export default async function MarketingDashboardPage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {tiles.map((tile) => (
-          <div key={tile.label} className="rounded-lg border border-neutral-200 bg-white p-4">
+          <div key={tile.label} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
             <p className="text-2xl font-semibold text-neutral-900">{tile.value}</p>
             <p className="mt-1 text-xs text-neutral-500">{tile.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-sm font-semibold text-neutral-900">Upcoming scheduled posts</h2>
         <div className="mt-4 flex flex-col divide-y divide-neutral-100">
           {upcoming.map((post) => (
@@ -78,12 +80,12 @@ export default async function MarketingDashboardPage() {
       </div>
 
       <div className="flex gap-3">
-        <Link href="/admin/marketing/create" className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800">
+        <Link href="/admin/marketing/create" className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
           Write &amp; create content
         </Link>
         <Link
           href="/admin/marketing/calendar"
-          className="rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
         >
           View calendar
         </Link>

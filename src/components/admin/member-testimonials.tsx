@@ -24,7 +24,7 @@ export function MemberTestimonials({ memberId, testimonials }: { memberId: strin
   const [state, formAction, pending] = useActionState(createTestimonialDirect, initialState);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-6">
+    <div className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
       <h2 className="text-sm font-semibold text-neutral-900">Testimonials & success stories</h2>
 
       {testimonials.length > 0 ? (
@@ -50,7 +50,7 @@ export function MemberTestimonials({ memberId, testimonials }: { memberId: strin
                 ) : null}
                 {t.status === "APPROVED" ? (
                   <form action={toggleTestimonialFeatured.bind(null, t.id)}>
-                    <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                    <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                       {t.featured ? "Unfeature" : "Feature"}
                     </button>
                   </form>
@@ -68,11 +68,11 @@ export function MemberTestimonials({ memberId, testimonials }: { memberId: strin
         <input type="hidden" name="memberId" value={memberId} />
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Name (who it&apos;s from)
-          <input name="name" required className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+          <input name="name" required className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Type
-          <select name="type" required defaultValue="MEMBER" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none">
+          <select name="type" required defaultValue="MEMBER" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
             <option value="MEMBER">Member</option>
             <option value="CLIENT">Client</option>
             <option value="VIDEO">Video</option>
@@ -81,15 +81,15 @@ export function MemberTestimonials({ memberId, testimonials }: { memberId: strin
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Company (optional)
-          <input name="company" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+          <input name="company" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Role (optional)
-          <input name="role" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+          <input name="role" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
           Content
-          <textarea name="content" rows={3} required className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+          <textarea name="content" rows={3} required className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
         </label>
         <MediaUploadField label="Photo (optional)" name="imageUrl" kind="image" />
         <MediaUploadField label="Video (optional)" name="videoUrl" kind="video" helperText="For a Video-type testimonial." />
@@ -99,7 +99,7 @@ export function MemberTestimonials({ memberId, testimonials }: { memberId: strin
         </label>
         {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}
         <div className="sm:col-span-2">
-          <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50">
+          <button type="submit" disabled={pending} className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50">
             {pending ? "Adding…" : "Publish"}
           </button>
         </div>

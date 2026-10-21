@@ -51,7 +51,7 @@ export function MemberPortalAccess({
 
   if (linkedUser) {
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-neutral-900">
@@ -73,13 +73,13 @@ export function MemberPortalAccess({
                 type="button"
                 disabled={pending}
                 onClick={() => run(() => resetMemberTemporaryPassword(memberId), "Reset this member's password back to the temporary password?")}
-                className="text-sm text-neutral-600 underline hover:text-neutral-900 disabled:opacity-50"
+                className="text-sm text-neutral-600 underline hover:text-emerald-800 disabled:opacity-50"
               >
                 Reset to temporary password
               </button>
             ) : null}
             <form action={toggleMemberPortalAccess.bind(null, memberId)}>
-              <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+              <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                 {linkedUser.status === "ACTIVE" ? "Revoke access" : "Restore access"}
               </button>
             </form>
@@ -92,7 +92,7 @@ export function MemberPortalAccess({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-6">
+    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-neutral-900">Member portal login</h2>
@@ -104,7 +104,7 @@ export function MemberPortalAccess({
           type="button"
           disabled={pending || memberStatus !== "ACTIVE"}
           onClick={() => run(() => createMemberLogin(memberId))}
-          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create login"}
         </button>

@@ -22,7 +22,7 @@ export function VisitorStatusControl({ visitorId, status }: { visitorId: string;
       defaultValue={status}
       disabled={pending}
       onChange={(e) => startTransition(() => updateVisitorStatus(visitorId, e.target.value as $Enums.VisitorStatus))}
-      className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs text-neutral-900 focus:border-neutral-900 focus:outline-none disabled:opacity-50"
+      className="rounded-lg border border-neutral-300 px-2 py-1.5 text-xs text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15 disabled:opacity-50"
     >
       {STATUSES.map((s) => (
         <option key={s} value={s}>

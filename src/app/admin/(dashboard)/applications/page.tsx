@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const STATUS_STYLES: Record<string, string> = {
   NEW: "bg-blue-50 text-blue-700",
@@ -25,14 +26,15 @@ export default async function ApplicationsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Membership Applications</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Membership Applications</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Approval alone never creates a public member (brief §17) — convert an application from
           its own page once payment is confirmed.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -57,7 +59,7 @@ export default async function ApplicationsPage() {
                 </td>
                 <td className="px-4 py-3 text-neutral-500">{app.createdAt.toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/applications/${app.id}`} className="text-sm text-neutral-500 hover:text-neutral-900">
+                  <Link href={`/admin/applications/${app.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                     View →
                   </Link>
                 </td>

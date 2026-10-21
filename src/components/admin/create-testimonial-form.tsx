@@ -35,7 +35,7 @@ export function CreateTestimonialForm({
   }
 
   return (
-    <form action={formAction} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-2">
+    <form action={formAction} className="grid gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:grid-cols-2">
       <h2 className="text-sm font-semibold text-neutral-900 sm:col-span-2">
         Add testimonial directly (publishes immediately)
       </h2>
@@ -45,7 +45,7 @@ export function CreateTestimonialForm({
           name="memberId"
           defaultValue=""
           onChange={(e) => handleMemberSelect(e.target.value)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         >
           <option value="">None (not linked to a member)</option>
           {members.map((m) => (
@@ -61,12 +61,12 @@ export function CreateTestimonialForm({
           ref={nameRef}
           name="name"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Type
-        <select name="type" required defaultValue="MEMBER" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none">
+        <select name="type" required defaultValue="MEMBER" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
           <option value="MEMBER">Member</option>
           <option value="VISITOR">Visitor</option>
           <option value="CLIENT">Client</option>
@@ -76,15 +76,15 @@ export function CreateTestimonialForm({
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Company (optional)
-        <input ref={companyRef} name="company" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <input ref={companyRef} name="company" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Role (optional)
-        <input ref={roleRef} name="role" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <input ref={roleRef} name="role" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Chapter (optional)
-        <select name="chapterId" className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none">
+        <select name="chapterId" className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
           <option value="">None</option>
           {chapters.map((c) => (
             <option key={c.id} value={c.id}>
@@ -95,7 +95,7 @@ export function CreateTestimonialForm({
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700 sm:col-span-2">
         Testimonial
-        <textarea name="content" rows={3} required className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none" />
+        <textarea name="content" rows={3} required className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15" />
       </label>
       <MediaUploadField label="Photo (optional)" name="imageUrl" kind="image" />
       <MediaUploadField
@@ -110,7 +110,7 @@ export function CreateTestimonialForm({
       </label>
       {state?.error ? <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p> : null}
       <div className="sm:col-span-2">
-        <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50">
+        <button type="submit" disabled={pending} className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50">
           {pending ? "Adding…" : "Publish testimonial"}
         </button>
       </div>

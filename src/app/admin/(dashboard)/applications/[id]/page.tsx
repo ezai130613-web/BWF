@@ -6,6 +6,7 @@ import { ApplicationStatusControl } from "@/components/admin/application-status-
 import { ApplicationNotesForm } from "@/components/admin/application-notes-form";
 import { ReassignChapterForm } from "@/components/admin/reassign-chapter-form";
 import { ConvertApplicationForm } from "@/components/admin/convert-application-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("applications:manage");
@@ -33,7 +34,8 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{application.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{application.name}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {application.category.name} · {application.chapter?.name ?? "No chapter assigned (waiting list)"}
         </p>
@@ -41,7 +43,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Application details</h2>
             <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -113,7 +115,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
           </div>
 
           {application.photoUrl || application.companyLogoUrl || application.aadhaarFileKey ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+            <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
               <h2 className="text-sm font-semibold text-neutral-900">Photo &amp; documents</h2>
               <div className="mt-3 flex flex-wrap items-start gap-6">
                 {application.photoUrl ? (
@@ -136,7 +138,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                       href={`/api/admin/applications/${application.id}/aadhaar`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 hover:bg-neutral-50"
+                      className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 hover:bg-neutral-50"
                     >
                       View Aadhaar card
                     </a>
@@ -148,7 +150,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
           ) : null}
 
           {application.paymentScreenshotUrl ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+            <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
               <h2 className="text-sm font-semibold text-neutral-900">Payment screenshot</h2>
               <a href={application.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block w-fit">
                 {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
@@ -161,7 +163,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Notes</h2>
             <div className="mt-3">
               <ApplicationNotesForm applicationId={application.id} notes={application.notes} />
@@ -170,7 +172,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Status</h2>
             <div className="mt-3">
               <ApplicationStatusControl applicationId={application.id} status={application.status} />
@@ -178,7 +180,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
           </div>
 
           {!application.chapterId ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+            <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
               <h2 className="text-sm font-semibold text-neutral-900">Waiting list — assign a chapter</h2>
               <p className="mt-1 text-xs text-neutral-500">
                 Includes draft/internal chapters not yet public (brief §16).
@@ -189,7 +191,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Convert to member</h2>
             {application.convertedMember ? (
               <p className="mt-3 text-sm text-emerald-700">

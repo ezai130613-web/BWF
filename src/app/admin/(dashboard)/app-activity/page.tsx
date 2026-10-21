@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatInr } from "@/lib/format";
 import { getLeaderboard } from "@/lib/points/score";
 import { jumpToMember } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 /**
  * Chapter-wide admin visibility into the BWF App's member-recorded activity
@@ -327,7 +328,8 @@ export default async function AppActivityPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">BWF App Activity</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />BWF App Activity</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
           Chapter-wide visibility into what members are logging in the BWF App — read-only, since
           these are private records between members, not content that needs admin approval.
@@ -341,7 +343,7 @@ export default async function AppActivityPage({
             name="memberId"
             defaultValue=""
             required
-            className="w-64 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+            className="w-64 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
           >
             <option value="" disabled>
               Select a member…
@@ -355,7 +357,7 @@ export default async function AppActivityPage({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           Go
         </button>
@@ -367,7 +369,7 @@ export default async function AppActivityPage({
             key={t.key}
             href={`/admin/app-activity?tab=${t.key}`}
             className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
-              tab === t.key ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              tab === t.key ? "bg-emerald-800 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
             }`}
           >
             {t.label}
@@ -375,7 +377,7 @@ export default async function AppActivityPage({
         ))}
       </nav>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full min-w-[500px] text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>

@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateFaqForm } from "@/components/admin/create-faq-form";
 import { EditFaqForm } from "@/components/admin/edit-faq-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function FaqsPage() {
   await requirePermission("content:manage");
@@ -11,7 +12,8 @@ export default async function FaqsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">FAQs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />FAQs</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">Shown on the public /faqs page.</p>
       </div>
 

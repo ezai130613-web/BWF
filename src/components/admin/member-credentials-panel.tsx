@@ -92,14 +92,14 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
     <div className="flex flex-col gap-6">
       <div className="grid gap-3 sm:grid-cols-3">
         {(["NONE", "PENDING", "ACTIVATED"] as const).map((state) => (
-          <div key={state} className="rounded-lg border border-neutral-200 bg-white p-4">
+          <div key={state} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
             <p className="text-xs uppercase tracking-wide text-neutral-500">{STATE_LABEL[state].text}</p>
             <p className="mt-1 text-2xl font-semibold text-neutral-900">{counts[state]}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">
         <button
           type="button"
           disabled={pending || counts.NONE === 0}
@@ -108,7 +108,7 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
               run(generateMemberCredentials, "Generated");
             }
           }}
-          className="rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {pending ? "Working…" : `Generate Member Login Credentials (${counts.NONE})`}
         </button>
@@ -120,7 +120,7 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
               run(() => reissueTemporaryCredentials(selected), "Reset");
             }
           }}
-          className="rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:opacity-50"
+          className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:opacity-50"
         >
           Reset to temporary password ({selected.length})
         </button>
@@ -141,14 +141,14 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
                 <button
                   type="button"
                   onClick={() => downloadCsv(issued)}
-                  className="rounded-md bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                  className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
                 >
                   Download CSV (Excel)
                 </button>
                 <button
                   type="button"
                   onClick={() => setIssued(null)}
-                  className="rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:border-neutral-400"
+                  className="rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:border-neutral-400"
                 >
                   Hide
                 </button>
@@ -208,7 +208,7 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
             </button>
           ) : null}
         </div>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>

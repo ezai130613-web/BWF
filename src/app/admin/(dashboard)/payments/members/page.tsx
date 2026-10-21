@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -41,8 +42,9 @@ export default async function PaymentMembersPage({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-neutral-900">Payments — Member-wise View</h1>
-          <Link href="/admin/payments" className="text-sm text-neutral-600 underline hover:text-neutral-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Payments — Member-wise View</h1>
+          <Link href="/admin/payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             ← Payment list
           </Link>
         </div>
@@ -53,13 +55,13 @@ export default async function PaymentMembersPage({
               name="q"
               defaultValue={params.q}
               placeholder="Search member by name…"
-              className="w-full min-w-[16rem] rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              className="w-full min-w-[16rem] rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
             />
           </label>
           {scope === "ALL" ? (
             <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
               Chapter
-              <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+              <select name="chapterId" defaultValue={params.chapterId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-2 text-sm">
                 <option value="">All chapters</option>
                 {chapters.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -71,7 +73,7 @@ export default async function PaymentMembersPage({
           ) : null}
           <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
             Category
-            <select name="categoryId" defaultValue={params.categoryId ?? ""} className="rounded-md border border-neutral-300 px-2 py-2 text-sm">
+            <select name="categoryId" defaultValue={params.categoryId ?? ""} className="rounded-lg border border-neutral-300 px-2 py-2 text-sm">
               <option value="">All categories</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -80,11 +82,11 @@ export default async function PaymentMembersPage({
               ))}
             </select>
           </label>
-          <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+          <button type="submit" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
             Search
           </button>
         </form>
-        <ul className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+        <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           {members.map((member) => (
             <li key={member.id} className="flex items-center justify-between px-4 py-3">
               <div>
@@ -95,7 +97,7 @@ export default async function PaymentMembersPage({
               </div>
               <Link
                 href={`/admin/payments/members?memberId=${member.id}`}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
               >
                 View history
               </Link>
@@ -143,16 +145,16 @@ export default async function PaymentMembersPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/admin/payments/members" className="text-sm text-neutral-500 hover:text-neutral-900">
+      <Link href="/admin/payments/members" className="text-sm text-neutral-500 hover:text-emerald-800">
         ← Search a different member
       </Link>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold text-neutral-900">{member.name}</h2>
         <p className="text-sm text-neutral-600">{member.chapter.name}</p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h3 className="text-sm font-semibold text-neutral-900">Month-by-month coverage</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {monthGrid.map((m) => (
@@ -172,7 +174,7 @@ export default async function PaymentMembersPage({
       <div className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-neutral-900">Submissions</h3>
         {payments.map((p) => (
-          <div key={p.id} className="rounded-lg border border-neutral-200 bg-white p-4 text-sm">
+          <div key={p.id} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium text-neutral-900">{p.meeting.title}</p>
               <span className="text-xs font-medium text-neutral-500">{p.status.replace(/_/g, " ")}</span>
@@ -187,7 +189,7 @@ export default async function PaymentMembersPage({
           </div>
         ))}
         {payments.length === 0 ? (
-          <p className="rounded-lg border border-neutral-200 bg-white px-4 py-8 text-center text-sm text-neutral-400">
+          <p className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm px-4 py-8 text-center text-sm text-neutral-400">
             No payment submissions from this member yet.
           </p>
         ) : null}

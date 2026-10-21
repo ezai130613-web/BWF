@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateCategoryForm } from "@/components/admin/create-category-form";
 import { toggleCategoryActive, toggleShowInOpenCategories, toggleShowOnApplyForm } from "./actions";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function CategoriesPage() {
   await requirePermission("categories:manage");
@@ -14,7 +15,8 @@ export default async function CategoriesPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">Categories</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />Categories</h1>
         <p className="mt-1 max-w-xl text-sm text-neutral-600">
           The business-category taxonomy used for the category-exclusivity rule (brief §15) —
           seeded with a starter list, edit freely. Deactivating a category hides it everywhere
@@ -37,7 +39,7 @@ export default async function CategoriesPage() {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -90,17 +92,17 @@ export default async function CategoriesPage() {
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-3">
                     <form action={toggleShowOnApplyForm.bind(null, category.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {category.showOnApplyForm ? "Hide from apply form" : "Show on apply form"}
                       </button>
                     </form>
                     <form action={toggleShowInOpenCategories.bind(null, category.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {category.showInOpenCategories ? "Hide from roster" : "Show on roster"}
                       </button>
                     </form>
                     <form action={toggleCategoryActive.bind(null, category.id)}>
-                      <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-900">
+                      <button type="submit" className="text-sm text-neutral-500 hover:text-emerald-800">
                         {category.isActive ? "Deactivate" : "Activate"}
                       </button>
                     </form>

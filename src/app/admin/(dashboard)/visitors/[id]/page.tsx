@@ -4,6 +4,7 @@ import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { VisitorStatusControl } from "@/components/admin/visitor-status-control";
 import { VisitorNotesForm } from "@/components/admin/visitor-notes-form";
+import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function VisitorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,7 +20,8 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-900">{visitor.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <AdminPageIcon />{visitor.name}</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {visitor.category.name} · {visitor.chapter.name}
         </p>
@@ -27,7 +29,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Visitor details</h2>
             <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -82,7 +84,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
           </div>
 
           {visitor.paymentScreenshotUrl ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6">
+            <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
               <h2 className="text-sm font-semibold text-neutral-900">Payment screenshot</h2>
               <a href={visitor.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block w-fit">
                 {/* eslint-disable-next-line @next/next/no-img-element -- R2 URL, not a next/image-managed asset */}
@@ -95,7 +97,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Notes</h2>
             <div className="mt-3">
               <VisitorNotesForm visitorId={visitor.id} notes={visitor.notes} />
@@ -104,14 +106,14 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Status</h2>
             <div className="mt-3">
               <VisitorStatusControl visitorId={visitor.id} status={visitor.status} />
             </div>
           </div>
 
-          <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Ready to apply?</h2>
             <p className="mt-1 text-xs text-neutral-500">
               Visitor interest doesn&rsquo;t auto-create a membership application (brief §17) —
@@ -120,7 +122,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
             <Link
               href="/apply"
               target="_blank"
-              className="mt-3 inline-block rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+              className="mt-3 inline-block rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
             >
               Open Apply page →
             </Link>

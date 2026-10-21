@@ -6,12 +6,12 @@ export default function AdminResetPasswordPage() {
   const usingRealEmail = isEmailProviderConfigured();
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-8 shadow-sm">
         <Image src="/images/brand/bwf-logo-512.png" alt="Builders World Forum" width={48} height={48} className="h-12 w-12" priority />
         <p className="mt-3 text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
           Builders World Forum
         </p>
-        <h1 className="mt-2 text-xl font-semibold text-neutral-900">Reset password</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">Reset password</h1>
         <div className="mt-6">
           <ResetPasswordForm
             requestUrl="/api/admin/auth/request-password-reset"

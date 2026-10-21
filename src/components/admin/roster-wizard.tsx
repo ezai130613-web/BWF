@@ -156,7 +156,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
             onClick={() => setStep(n)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
               step === n
-                ? "border-neutral-900 bg-neutral-900 text-white"
+                ? "border-emerald-800 bg-emerald-800 text-white"
                 : "border-neutral-300 text-neutral-600 hover:border-neutral-400"
             }`}
           >
@@ -213,7 +213,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
           type="button"
           disabled={step === 3}
           onClick={() => setStep((s) => (s > 3 ? ((s - 1) as StepNumber) : s))}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
           ← Back
         </button>
@@ -224,7 +224,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
               type="button"
               onClick={handleSave}
               disabled={pending}
-              className="rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
             >
               {pending ? "Saving…" : "Save Roster"}
             </button>
@@ -233,7 +233,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
             type="button"
             disabled={step === 7}
             onClick={() => setStep((s) => (s < 7 ? ((s + 1) as StepNumber) : s))}
-            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next →
           </button>
@@ -357,7 +357,7 @@ function ManageMembersStep({
           <button
             type="button"
             onClick={onRefreshFromPoints}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
           >
             Reset all scores to overall points{editedCount ? ` (${editedCount} edited)` : ""}
           </button>
@@ -369,7 +369,7 @@ function ManageMembersStep({
             {orderMode === "AUTO" ? "Re-rank by score now" : "Return to auto ranking"}
           </button>
         </div>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -401,7 +401,7 @@ function ManageMembersStep({
                         onKeyDown={(e) => {
                           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                         }}
-                        className="w-14 rounded-md border border-neutral-300 px-1.5 py-1 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                        className="w-14 rounded-lg border border-neutral-300 px-1.5 py-1 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
                       />
                       <div className="flex flex-col">
                         <button
@@ -409,7 +409,7 @@ function ManageMembersStep({
                           aria-label={`Move ${m.name} up`}
                           disabled={i === 0}
                           onClick={() => onMove(m.id, i - 1)}
-                          className="px-1 text-xs leading-none text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
+                          className="px-1 text-xs leading-none text-neutral-500 hover:text-emerald-800 disabled:opacity-30"
                         >
                           ▲
                         </button>
@@ -418,7 +418,7 @@ function ManageMembersStep({
                           aria-label={`Move ${m.name} down`}
                           disabled={i === members.length - 1}
                           onClick={() => onMove(m.id, i + 1)}
-                          className="px-1 text-xs leading-none text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
+                          className="px-1 text-xs leading-none text-neutral-500 hover:text-emerald-800 disabled:opacity-30"
                         >
                           ▼
                         </button>
@@ -439,7 +439,7 @@ function ManageMembersStep({
                       min={0}
                       value={m.score}
                       onChange={(e) => onScoreChange(m.id, e.target.value)}
-                      className={`w-20 rounded-md border px-2 py-1 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none ${
+                      className={`w-20 rounded-md border px-2 py-1 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15 ${
                         m.score !== m.systemPoints ? "border-amber-400 bg-amber-50" : "border-neutral-300"
                       }`}
                     />
@@ -581,7 +581,7 @@ function ReviewStep({
           <OrderModeBadge mode={orderMode} />
         </div>
         <p className="mt-1 text-xs text-neutral-500">This is the order Save Roster will persist and the PDF will print.</p>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
@@ -624,7 +624,7 @@ function ReviewStep({
         )}
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-5">
         <h3 className="text-sm font-semibold text-neutral-900">{GUEST_SELF_INTRODUCTION_HEADING}</h3>
         <p className="mt-2 text-sm text-neutral-700">{GUEST_SELF_INTRODUCTION_SALUTATION}</p>
         <p className="mt-1 text-sm text-neutral-600">{GUEST_SELF_INTRODUCTION_INSTRUCTIONS}</p>
@@ -635,7 +635,7 @@ function ReviewStep({
         </ul>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-5">
         <h3 className="text-sm font-semibold text-neutral-900">{PLEDGE_HEADING}</h3>
         <ul className="mt-2 flex flex-col gap-1.5 text-sm text-neutral-600">
           {PLEDGE_LINES.map((line) => (
@@ -662,7 +662,7 @@ function DownloadStep({ meetingId, canDownload, isSaved, dirty }: { meetingId: s
       {canDownload ? (
         <a
           href={`/api/admin/roster?meetingId=${meetingId}`}
-          className="mt-3 inline-block rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+          className="mt-3 inline-block rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
           Download Roster PDF
         </a>
