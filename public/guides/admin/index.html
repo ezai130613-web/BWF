@@ -48,7 +48,7 @@ section.step{display:grid;gap:16px;scroll-margin-top:20px}
 .step h3{font:600 24px/1.2 var(--display);margin:0;text-wrap:balance}
 .step .intro{margin:0;max-width:68ch;color:var(--ink)}
 figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 1px 0 rgba(0,0,0,.03),0 10px 30px -18px rgba(10,33,24,.35)}
-figure button{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden}
+figure button{all:unset;cursor:zoom-in;display:block;width:100%;border-radius:8px;overflow:hidden}
 figure img{display:block;width:100%;height:auto;border-radius:8px}
 figure.phone{max-width:360px}
 figcaption{font-size:13px;color:var(--muted);padding:8px 4px 2px}
@@ -513,7 +513,7 @@ window.__guideSearch=search;
 var f=document.getElementById('ask-f'),q=document.getElementById('ask-q'),r=document.getElementById('ask-r');
 function e(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function go(id,n){var el=document.getElementById(id);if(!el)return;if(el.tagName==='DETAILS')el.open=true;var t=el;if(n){var li=el.querySelectorAll('ol.marks li')[n-1];if(li)t=li;}
-  (n?el:t).scrollIntoView({behavior:'smooth',block:'start'});t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash');history.replaceState(null,'','#'+id);}
+  t.scrollIntoView({behavior:'smooth',block:n?'center':'start'});t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash');history.replaceState(null,'','#'+id);}
 f.addEventListener('submit',function(ev){ev.preventDefault();var v=q.value.trim();if(!v){r.innerHTML='';return;}var o=search(v);
   if(!o.hits.length){r.innerHTML='<div class="none">Sorry, this information isn\'t available in the guide. Try different words, check the <a href="#common-questions">common questions</a>, or contact '+e(D.contact)+'.</div>';return;}
   r.innerHTML=o.hits.map(function(h,i){var d=h.x.d;var sn=d.faq?d.a:(d.snip||d.text);var snip=sn.length>190?sn.slice(0,190)+'…':sn;
