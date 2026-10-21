@@ -53,6 +53,15 @@ const nextConfig: NextConfig = {
   async redirects() {
     return legacyRedirects;
   },
+  // Portal user guides (2026-10-21) — static pages in public/guides/{member,admin}/
+  // (annotated screenshots built from demo data). Rewrites give them clean,
+  // shareable URLs without the trailing /index.html.
+  async rewrites() {
+    return [
+      { source: "/guides/member", destination: "/guides/member/index.html" },
+      { source: "/guides/admin", destination: "/guides/admin/index.html" },
+    ];
+  },
   images: {
     remotePatterns: storagePublicUrl ? [{ protocol: "https", hostname: new URL(storagePublicUrl).hostname }] : [],
   },

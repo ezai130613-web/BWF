@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex"><link rel="icon" href="/favicon.ico">
+<title>BWF Member Portal Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column of numbered screenshots on the right; stacks on phones. */
+:root{
+  --bg:#f5f3ec; --surface:#ffffff; --ink:#14231c; --muted:#5b6b62; --line:#e2ddd0;
+  --forest:#0a2118; --forest-2:#123528; --gold:#b8913f; --gold-soft:#f3e9d2; --mark:#ff6a13; --mark-ink:#ffffff;
+  --tip:#eef5ef; --tip-line:#cfe2d4;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0c1511; --surface:#121f19; --ink:#ece6d8; --muted:#a3b0a8; --line:#24362d;
+  --forest:#081a12; --forest-2:#0f2a1f; --gold:#d8b879; --gold-soft:#2a2516; --tip:#13271d; --tip-line:#24402f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0c1511; --surface:#121f19; --ink:#ece6d8; --muted:#a3b0a8; --line:#24362d;
+  --forest:#081a12; --forest-2:#0f2a1f; --gold:#d8b879; --gold-soft:#2a2516; --tip:#13271d; --tip-line:#24402f; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--body);margin:0}
+a{color:inherit}
+.hero{background:linear-gradient(160deg,#0a2118,#123528 70%,#1a4433);color:#f4eee1;padding-block:56px 48px;padding-inline:20px}
+.hero-in{max-width:1180px;margin:0 auto;display:grid;gap:14px}
+.eyebrow{font:600 12px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:#d8b879}
+.hero h1{font:600 clamp(34px,5vw,56px)/1.05 var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.hero p{margin:0;max-width:62ch;color:#d9d3c3;font-size:17px}
+.legend-demo{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px;font-size:14px;color:#d9d3c3}
+.legend-demo span{display:inline-flex;align-items:center;gap:8px}
+.dot{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--mark);color:var(--mark-ink);font:700 13px/1 var(--body);border:2px solid #fff;flex:none}
+.box{display:inline-block;width:34px;height:20px;border:3px solid var(--mark);border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:32px 80px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:48px}
+nav.toc{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto;font-size:14px;padding-right:6px}
+.toc input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;margin-bottom:14px}
+.toc input:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.toc h4{font:600 11px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:18px 0 6px}
+.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:1px}
+.toc a{display:block;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--muted)}
+.toc a:hover{background:var(--surface);color:var(--ink)}
+.toc a.on{background:var(--forest-2);color:#f4eee1}
+main{min-width:0;display:grid;gap:64px}
+.group-head{border-top:1px solid var(--line);padding-top:28px;display:grid;gap:8px}
+.group-head h2{font:600 clamp(26px,3vw,34px)/1.15 var(--display);margin:0;text-wrap:balance}
+.group-head p{margin:0;color:var(--muted);max-width:65ch}
+section.step{display:grid;gap:16px;scroll-margin-top:20px}
+.step-kicker{font:600 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.step h3{font:600 24px/1.2 var(--display);margin:0;text-wrap:balance}
+.step .intro{margin:0;max-width:68ch;color:var(--ink)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 1px 0 rgba(0,0,0,.03),0 10px 30px -18px rgba(10,33,24,.35)}
+figure button{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden}
+figure img{display:block;width:100%;height:auto;border-radius:8px}
+figure.phone{max-width:360px}
+figcaption{font-size:13px;color:var(--muted);padding:8px 4px 2px}
+ol.marks{list-style:none;margin:0;padding:0;display:grid;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+ol.marks li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:14px 18px;border-top:1px solid var(--line)}
+ol.marks li:first-child{border-top:0}
+ol.marks b{display:block;font-weight:600;margin-bottom:2px}
+ol.marks p{margin:0;color:var(--muted)}
+.tips{background:var(--tip);border:1px solid var(--tip-line);border-radius:12px;padding:14px 18px;display:grid;gap:6px;font-size:15px}
+.tips strong{font:600 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.tips ul{margin:0;padding-left:18px}
+.callout{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
+.callout h3{font:600 22px/1.2 var(--display);margin:0}
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px;margin:0;padding:0;list-style:none;counter-reset:q}
+.quick li{counter-increment:q;border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:4px;background:var(--bg)}
+.quick li::before{content:counter(q);font:600 28px/1 var(--display);color:var(--gold)}
+.quick b{font-weight:600}
+.quick span{color:var(--muted);font-size:14px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface)}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+th{font:600 12px/1.2 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0;background:var(--bg)}
+.note{font-size:14px;color:var(--muted)}
+.foot{border-top:1px solid var(--line);padding-top:24px;color:var(--muted);font-size:14px}
+.lb{position:fixed;inset:0;background:rgba(5,12,9,.88);z-index:50;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) 16px 16px;display:grid;justify-items:center;align-content:start}
+.lb img{max-width:min(1440px,100%);height:auto;border-radius:8px;cursor:zoom-out}
+.lb .x{position:sticky;top:0;justify-self:end;background:#fff;color:#0a2118;border:0;border-radius:999px;padding:8px 16px;font:600 14px var(--body);cursor:pointer;margin-bottom:10px}
+.mobile-toc{display:none} [hidden]{display:none!important} .lb[hidden]{display:none!important}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:28px}
+  nav.toc{display:none}
+  .mobile-toc{display:block;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+  .mobile-toc summary{cursor:pointer;font-weight:600}
+  .mobile-toc nav.toc{display:block;position:static;max-height:none;margin-top:8px}
+  ol.marks li{padding:12px 14px;gap:10px}
+}
+@media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth} }
+ .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}</style></head><body>
+<header class="hero"><div class="hero-in">
+<span class="eyebrow">Builders World Forum · Member Portal</span>
+<h1>Member Portal Guide</h1>
+<p>A step-by-step walkthrough of the BWF member portal: signing in for the first time, checking in at meetings, paying fees, recording referrals and thank you slips, and keeping your profile up to date.</p>
+<div class="legend-demo"><span><span class="dot">1</span> Numbered marker on the screenshot</span><span><span class="box"></span> The part of the screen it points to</span><span>The explanation for each number is right below the picture.</span></div>
+</div></header>
+<div class="wrap">
+<nav class="toc" aria-label="Contents"><input type="search" id="toc-filter" placeholder="Find a page…" aria-label="Find a page in this guide"><h4>Getting started</h4><ol><li><a href="#login" data-k="sign in getting started">Sign in</a></li><li><a href="#activate" data-k="first-time activation getting started">First-time activation</a></li><li><a href="#phone" data-k="using the portal on your phone getting started">Using the portal on your phone</a></li><li><a href="#phone-menu" data-k="the phone menu getting started">The phone menu</a></li></ol><h4>Overview</h4><ol><li><a href="#dashboard" data-k="dashboard overview">Dashboard</a></li><li><a href="#meetings" data-k="meetings overview">Meetings</a></li><li><a href="#checkin" data-k="check in at a meeting (scan the qr) overview">Check in at a meeting (scan the QR)</a></li><li><a href="#payments" data-k="payments overview">Payments</a></li><li><a href="#points" data-k="my points overview">My Points</a></li></ol><h4>Record activity</h4><ol><li><a href="#referrals-banners" data-k="referrals — share banners record activity">Referrals — share banners</a></li><li><a href="#referrals-form" data-k="referrals — record a referral record activity">Referrals — record a referral</a></li><li><a href="#tys" data-k="thank you slips record activity">Thank You Slips</a></li><li><a href="#one-to-ones" data-k="one-to-ones record activity">One-to-Ones</a></li><li><a href="#power-dates" data-k="power dates record activity">Power Dates</a></li><li><a href="#conclaves" data-k="conclaves record activity">Conclaves</a></li><li><a href="#consumers" data-k="consumers record activity">Consumers</a></li><li><a href="#chief-guests" data-k="chief guests record activity">Chief Guests</a></li></ol><h4>Insights &amp; network</h4><ol><li><a href="#activity" data-k="my activity insights &amp; network">My Activity</a></li><li><a href="#detailed" data-k="detailed reports insights &amp; network">Detailed Reports</a></li><li><a href="#nearby" data-k="find members nearby insights &amp; network">Find Members Nearby</a></li></ol><h4>You</h4><ol><li><a href="#profile" data-k="my profile you">My Profile</a></li><li><a href="#articles" data-k="articles you">Articles</a></li><li><a href="#signout" data-k="signing out you">Signing out</a></li></ol></nav>
+<main>
+<details class="mobile-toc"><summary>Contents (23 pages)</summary><nav class="toc" aria-label="Contents"><h4>Getting started</h4><ol><li><a href="#login" data-k="sign in getting started">Sign in</a></li><li><a href="#activate" data-k="first-time activation getting started">First-time activation</a></li><li><a href="#phone" data-k="using the portal on your phone getting started">Using the portal on your phone</a></li><li><a href="#phone-menu" data-k="the phone menu getting started">The phone menu</a></li></ol><h4>Overview</h4><ol><li><a href="#dashboard" data-k="dashboard overview">Dashboard</a></li><li><a href="#meetings" data-k="meetings overview">Meetings</a></li><li><a href="#checkin" data-k="check in at a meeting (scan the qr) overview">Check in at a meeting (scan the QR)</a></li><li><a href="#payments" data-k="payments overview">Payments</a></li><li><a href="#points" data-k="my points overview">My Points</a></li></ol><h4>Record activity</h4><ol><li><a href="#referrals-banners" data-k="referrals — share banners record activity">Referrals — share banners</a></li><li><a href="#referrals-form" data-k="referrals — record a referral record activity">Referrals — record a referral</a></li><li><a href="#tys" data-k="thank you slips record activity">Thank You Slips</a></li><li><a href="#one-to-ones" data-k="one-to-ones record activity">One-to-Ones</a></li><li><a href="#power-dates" data-k="power dates record activity">Power Dates</a></li><li><a href="#conclaves" data-k="conclaves record activity">Conclaves</a></li><li><a href="#consumers" data-k="consumers record activity">Consumers</a></li><li><a href="#chief-guests" data-k="chief guests record activity">Chief Guests</a></li></ol><h4>Insights &amp; network</h4><ol><li><a href="#activity" data-k="my activity insights &amp; network">My Activity</a></li><li><a href="#detailed" data-k="detailed reports insights &amp; network">Detailed Reports</a></li><li><a href="#nearby" data-k="find members nearby insights &amp; network">Find Members Nearby</a></li></ol><h4>You</h4><ol><li><a href="#profile" data-k="my profile you">My Profile</a></li><li><a href="#articles" data-k="articles you">Articles</a></li><li><a href="#signout" data-k="signing out you">Signing out</a></li></ol></nav></details>
+<div class="callout"><h3>Start here</h3><ol class="quick">
+<li><b>Sign in</b><span>Use the username and temporary password BWF sent you.</span></li>
+<li><b>Activate</b><span>Choose your own username, confirm your email and set a private password.</span></li>
+<li><b>Record every activity</b><span>Referrals, thank you slips, one-to-ones and more. Each one earns points.</span></li>
+<li><b>Check in and pay</b><span>Scan the QR at each meeting and upload your fee receipt under Payments.</span></li>
+</ol></div>
+<div class="group-head" id="getting-started"><span class="eyebrow" style="color:var(--gold)">Part 1</span><h2>Getting started</h2><p>Signing in, activating your account and using the portal on your phone.</p></div><section class="step" id="login">
+<span class="step-kicker">Getting started · 1</span>
+<h3>Sign in</h3>
+<p class="intro">Open the member portal sign-in page on your phone or computer. BWF gives every member a username and a temporary password for the first sign-in.</p>
+<figure class="" style="max-width:582px"><button type="button" data-full="/guides/member/img/login.jpg" aria-label="Enlarge screenshot: Sign in"><img src="/guides/member/img/login.jpg" width="560" height="820" alt="Screenshot of Sign in with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Email or username</b><p>The first time, type the username BWF gave you (for example BWFCC101). After you activate your account you can use your own username or your email.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Password</b><p>Type the temporary password from BWF the first time. After activation, use the private password you chose.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Keep me signed in</b><p>Leave this ticked on your own phone so you don't have to sign in every time. Untick it on a shared or office computer.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Sign in</b><p>Opens the portal. If you are signing in for the first time you will be taken to the activation screen first.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Forgot password?</b><p>Sends a reset code to your registered email so you can set a new password.</p></div></li></ol></section>
+<section class="step" id="activate">
+<span class="step-kicker">Getting started · 2</span>
+<h3>First-time activation</h3>
+<p class="intro">The first time you sign in with the temporary password, the portal asks you to make the account your own. You only do this once.</p>
+<figure class="" style="max-width:582px"><button type="button" data-full="/guides/member/img/activate.jpg" aria-label="Enlarge screenshot: First-time activation"><img src="/guides/member/img/activate.jpg" width="560" height="1049" alt="Screenshot of First-time activation with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Your temporary username</b><p>Shows the username BWF gave you, so you know you're on the right account.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Choose your own username</b><p>Pick a username you will remember: 4 to 30 letters or numbers (dots, dashes and underscores allowed). It replaces the temporary one.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Email and verification code</b><p>Type your email and tap Send code. BWF emails you a 6-digit code; type it in the Verification code box.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>New private password</b><p>At least 12 characters, and not the temporary password. Type it twice.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Activate &amp; continue</b><p>Finishes activation and opens your dashboard.</p></div></li></ol><div class="tips"><strong>Good to know</strong><ul><li>From now on, sign in with your new username or email and your new password. The temporary password stops working.</li><li>Keep your password private. BWF staff can reset it but can never see it.</li></ul></div></section>
+<section class="step" id="phone">
+<span class="step-kicker">Getting started · 3</span>
+<h3>Using the portal on your phone</h3>
+<p class="intro">The portal works in your phone's browser. No app download is needed.</p>
+<figure class="phone"><button type="button" data-full="/guides/member/img/phone.jpg" aria-label="Enlarge screenshot: Using the portal on your phone"><img src="/guides/member/img/phone.jpg" width="390" height="844" alt="Screenshot of Using the portal on your phone with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Menu button</b><p>Tap ☰ to open the full menu. Tap a section to go there; the menu closes by itself.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Your score</b><p>Same dashboard as on a computer, arranged for a narrow screen. Scroll down for everything else.</p></div></li></ol><div class="tips"><strong>Good to know</strong><ul><li>Tip: in your phone browser choose 'Add to Home screen' to open the portal like an app.</li></ul></div></section>
+<section class="step" id="phone-menu">
+<span class="step-kicker">Getting started · 4</span>
+<h3>The phone menu</h3>
+<p class="intro">The menu groups every section the same way as on a computer.</p>
+<figure class="phone"><button type="button" data-full="/guides/member/img/phone-menu.jpg" aria-label="Enlarge screenshot: The phone menu"><img src="/guides/member/img/phone-menu.jpg" width="390" height="844" alt="Screenshot of The phone menu with 3 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Overview</b><p>Dashboard, Meetings, Payments and My Points.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Record activity</b><p>Where you log referrals, thank you slips, one-to-ones, power dates, conclaves, consumers and chief guests.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Insights &amp; network</b><p>Your activity reports and the nearby-member search. Scroll the menu for My Profile, Articles and Sign out.</p></div></li></ol></section>
+<div class="group-head" id="overview"><span class="eyebrow" style="color:var(--gold)">Part 2</span><h2>Overview</h2><p>Your dashboard, meetings, meeting check-in, payments and points.</p></div><section class="step" id="dashboard">
+<span class="step-kicker">Overview · 5</span>
+<h3>Dashboard</h3>
+<p class="intro">The dashboard is the first page you see after signing in. It shows your score, quick buttons for the things you do most, this month's numbers and your next meeting.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/dashboard.jpg" aria-label="Enlarge screenshot: Dashboard"><img src="/guides/member/img/dashboard.jpg" width="1440" height="1017" alt="Screenshot of Dashboard with 8 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Menu</b><p>Every section of the portal. On a phone, tap the ☰ button at the top right to open this menu.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Overall BWF Score</b><p>Your total points from everything you have recorded. Tap it to see how the points add up.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Quick actions</b><p>One tap to record a referral, a thank you slip, a one-to-one or a power date.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Shortcuts</b><p>Jump to your meetings, points, activity reports or the nearby-member search.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>This month</b><p>Referrals given and received, business given and received, one-to-ones and power dates for the current month. 'Full report' opens My Activity.</p></div></li><li><span class="dot" aria-hidden="true">6</span><div><b><span class="sr">Marker 6: </span>Next chapter meeting</b><p>Date, time, venue and chief guest of your chapter's next meeting.</p></div></li><li><span class="dot" aria-hidden="true">7</span><div><b><span class="sr">Marker 7: </span>Your profile</b><p>Link to your public profile page and buttons to edit your profile or submit an article.</p></div></li><li><span class="dot" aria-hidden="true">8</span><div><b><span class="sr">Marker 8: </span>Account &amp; security</b><p>Lost your phone, or signed in on someone else's computer? 'Sign out of all devices' signs you out everywhere.</p></div></li></ol></section>
+<section class="step" id="meetings">
+<span class="step-kicker">Overview · 6</span>
+<h3>Meetings</h3>
+<p class="intro">See your chapter's upcoming meetings. All times are Indian Standard Time (IST).</p>
+<figure class=""><button type="button" data-full="/guides/member/img/meetings.jpg" aria-label="Enlarge screenshot: Meetings"><img src="/guides/member/img/meetings.jpg" width="1440" height="900" alt="Screenshot of Meetings with 3 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Next meeting</b><p>Highlighted in green. Shows the date, time, venue, chief guest and agenda.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Later meetings</b><p>Further upcoming meetings for your chapter.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Recent meetings</b><p>Meetings that have already happened.</p></div></li></ol></section>
+<section class="step" id="checkin">
+<span class="step-kicker">Overview · 7</span>
+<h3>Check in at a meeting (scan the QR)</h3>
+<p class="intro">At the meeting venue, BWF shows a QR code. Scan it with your phone camera. It opens this check-in page in the portal (sign in if asked).</p>
+<figure class="phone"><button type="button" data-full="/guides/member/img/checkin.jpg" aria-label="Enlarge screenshot: Check in at a meeting (scan the QR)"><img src="/guides/member/img/checkin.jpg" width="390" height="844" alt="Screenshot of Check in at a meeting (scan the QR) with 4 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Which meeting</b><p>The meeting name, chapter, date and time, so you know you scanned the right QR.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Your details</b><p>Your name, category and chapter as BWF has them.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Payment status</b><p>If this month's meeting fee is already approved, the page says so and doesn't ask for payment. Otherwise it asks whether you paid, and you can upload the payment screenshot right here.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Check In</b><p>Tap to mark yourself Present for the meeting.</p></div></li></ol><div class="tips"><strong>Good to know</strong><ul><li>Check-in works only while the admin has registration open for that meeting. If it says check-in isn't open, ask your chapter admin.</li><li>Already checked in? Scanning again won't create a duplicate.</li></ul></div></section>
+<section class="step" id="payments">
+<span class="step-kicker">Overview · 8</span>
+<h3>Payments</h3>
+<p class="intro">Pay your monthly meeting fee or your annual membership, then upload the payment proof so BWF can approve it.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/payments.jpg" aria-label="Enlarge screenshot: Payments"><img src="/guides/member/img/payments.jpg" width="1440" height="1421" alt="Screenshot of Payments with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Your status</b><p>Whether this month's meeting fee is paid, the month you are paid up to, and whether your yearly membership is paid.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Choose what you are paying</b><p>Monthly meeting fee or annual membership. The payment details and form change to match.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>How to pay</b><p>Scan the QR code with any UPI app (tap it to enlarge, or Download QR), or transfer directly to the bank account shown.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Submit your payment</b><p>Choose how many months you paid for and which months, type the total amount, the date you paid, and upload the screenshot or receipt. Then tap Submit payment.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Payment history</b><p>Every payment you have submitted with its status: Pending approval, Approved, Rejected or Clarification requested.</p></div></li></ol><div class="tips"><strong>Good to know</strong><ul><li>A payment counts only after BWF approves it. Approved months are not asked for again at meeting check-in.</li><li>Bank details and the QR are blurred in this guide. You will see the real ones in your portal.</li></ul></div></section>
+<section class="step" id="points">
+<span class="step-kicker">Overview · 9</span>
+<h3>My Points</h3>
+<p class="intro">Every activity you record earns points. This page shows your overall BWF Score and exactly where it comes from.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/points.jpg" aria-label="Enlarge screenshot: My Points"><img src="/guides/member/img/points.jpg" width="1440" height="900" alt="Screenshot of My Points with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Overall BWF Score</b><p>The total of all your points.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Activity-wise points</b><p>For each activity: how many you recorded (Count), points for each one, and the subtotal. BWF sets the point values and may change them.</p></div></li></ol></section>
+<div class="group-head" id="record-activity"><span class="eyebrow" style="color:var(--gold)">Part 3</span><h2>Record activity</h2><p>Log what you do for the network. Every entry counts towards your BWF Score, and the other member sees it too. On each page the form is on the left and your history is on the right.</p></div><section class="step" id="referrals-banners">
+<span class="step-kicker">Record activity · 10</span>
+<h3>Referrals — share banners</h3>
+<p class="intro">A referral is a genuine business opportunity you pass to another BWF member. 'Outside' means someone from your own network; 'Self / Inside' means you bought from the member yourself.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/referrals-banners.jpg" aria-label="Enlarge screenshot: Referrals — share banners"><img src="/guides/member/img/referrals-banners.jpg" width="1440" height="1337" alt="Screenshot of Referrals — share banners with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Share on WhatsApp</b><p>A ready-made banner for each referral you give or receive. Take a screenshot of a banner and post it in your chapter WhatsApp group.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Show all banners</b><p>Only the latest banners show at first. Tap to see the rest.</p></div></li></ol></section>
+<section class="step" id="referrals-form">
+<span class="step-kicker">Record activity · 11</span>
+<h3>Referrals — record a referral</h3>
+<p class="intro">Use the form at the bottom of the Referrals page each time you pass business to a member.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/referrals-form.jpg" aria-label="Enlarge screenshot: Referrals — record a referral"><img src="/guides/member/img/referrals-form.jpg" width="1440" height="900" alt="Screenshot of Referrals — record a referral with 7 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>1. Chapter</b><p>Pick the chapter of the member you are referring.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>2. Category</b><p>Pick their business category. Each chapter has only one member per category.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>3. Member</b><p>Pick the member, or type part of their name or company to find them.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Type of referral</b><p>Outside = someone from your own network needs their service. Self / inside = you are buying from them yourself.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Description</b><p>Optional. A line about the opportunity, such as who needs what.</p></div></li><li><span class="dot" aria-hidden="true">6</span><div><b><span class="sr">Marker 6: </span>Record Referral</b><p>Saves it. The member sees it as a referral received, and you earn referral points.</p></div></li><li><span class="dot" aria-hidden="true">7</span><div><b><span class="sr">Marker 7: </span>Given and Received</b><p>Lists of the referrals you have passed and the ones passed to you.</p></div></li></ol></section>
+<section class="step" id="tys">
+<span class="step-kicker">Record activity · 12</span>
+<h3>Thank You Slips</h3>
+<p class="intro">A thank you slip records business that actually happened because of a BWF referral. Referral = opportunity given. Thank you slip = business done.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/tys.jpg" aria-label="Enlarge screenshot: Thank You Slips"><img src="/guides/member/img/tys.jpg" width="1440" height="891" alt="Screenshot of Thank You Slips with 3 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Business totals</b><p>Business you received: the value of slips you recorded. Business you generated: the value of slips other members recorded to thank you.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Add a Thank You Slip</b><p>Pick the member you are thanking (chapter, category, member), type the business value in ₹, optionally link it to the referral they gave you, add a description and tap Record Thank You Slip.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Given and Received</b><p>Slips you have given and slips you have received, with amounts and dates.</p></div></li></ol><div class="tips"><strong>Good to know</strong><ul><li>Each slip also gets a shareable banner at the top of the page, like referrals.</li></ul></div></section>
+<section class="step" id="one-to-ones">
+<span class="step-kicker">Record activity · 13</span>
+<h3>One-to-Ones</h3>
+<p class="intro">A one-to-one is a meeting between you and one other member, outside the regular chapter meeting, to understand each other's business. Record it once and it counts for both of you.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/one-to-ones.jpg" aria-label="Enlarge screenshot: One-to-Ones"><img src="/guides/member/img/one-to-ones.jpg" width="1440" height="900" alt="Screenshot of One-to-Ones with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Record a One-to-One</b><p>Pick the member you met (chapter, category, member), add notes if you like, then tap Record One-to-One.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Your One-to-Ones</b><p>Everyone you have met one-to-one, with your notes and the date.</p></div></li></ol></section>
+<section class="step" id="power-dates">
+<span class="step-kicker">Record activity · 14</span>
+<h3>Power Dates</h3>
+<p class="intro">A power date is when you take a fellow member to meet one of your own business contacts, opening a door for them.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/power-dates.jpg" aria-label="Enlarge screenshot: Power Dates"><img src="/guides/member/img/power-dates.jpg" width="1440" height="900" alt="Screenshot of Power Dates with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Add a Power Date</b><p>Pick the member you took along, type your contact's name and company, add notes and tap Record Power Date. Took two members? Record one power date for each.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>You hosted</b><p>Power dates you hosted. 'You joined' below lists the ones other members took you on.</p></div></li></ol></section>
+<section class="step" id="conclaves">
+<span class="step-kicker">Record activity · 15</span>
+<h3>Conclaves</h3>
+<p class="intro">A conclave is three or more members meeting together outside the regular chapter meeting.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/conclaves.jpg" aria-label="Enlarge screenshot: Conclaves"><img src="/guides/member/img/conclaves.jpg" width="1440" height="900" alt="Screenshot of Conclaves with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Record a Conclave</b><p>Add at least 2 fellow members (pick each one through chapter and category), add the location and notes, then tap Record Conclave.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Your Conclaves</b><p>Conclaves you organised or joined, with who was there.</p></div></li></ol></section>
+<section class="step" id="consumers">
+<span class="step-kicker">Record activity · 16</span>
+<h3>Consumers</h3>
+<p class="intro">A consumer is someone with a real construction requirement (not a prospective member) that you bring to a chapter meeting.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/consumers.jpg" aria-label="Enlarge screenshot: Consumers"><img src="/guides/member/img/consumers.jpg" width="1440" height="900" alt="Screenshot of Consumers with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Record a Consumer</b><p>Type the consumer's name, and optionally company, phone and what they need. Tap Record Consumer.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Consumers brought</b><p>Everyone you have brought, with date.</p></div></li></ol></section>
+<section class="step" id="chief-guests">
+<span class="step-kicker">Record activity · 17</span>
+<h3>Chief Guests</h3>
+<p class="intro">A chief guest is a business leader or decision-maker you invited to a chapter meeting.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/chief-guests.jpg" aria-label="Enlarge screenshot: Chief Guests"><img src="/guides/member/img/chief-guests.jpg" width="1440" height="900" alt="Screenshot of Chief Guests with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Record a Chief Guest</b><p>Type the guest's name, and optionally designation, company and notes. Tap Record Chief Guest.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Chief Guests brought</b><p>Every chief guest you have brought.</p></div></li></ol></section>
+<div class="group-head" id="insights-network"><span class="eyebrow" style="color:var(--gold)">Part 4</span><h2>Insights &amp; network</h2><p>Reports on your activity, and a search for members near you.</p></div><section class="step" id="activity">
+<span class="step-kicker">Insights &amp; network · 18</span>
+<h3>My Activity</h3>
+<p class="intro">A summary of your BWF activity this week and over a longer period.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/activity.jpg" aria-label="Enlarge screenshot: My Activity"><img src="/guides/member/img/activity.jpg" width="1440" height="915" alt="Screenshot of My Activity with 3 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>This week</b><p>121s (one-to-ones), RFLs (referrals), BIZ (business), visitors, inductions, chief guests, power dates and consumers for the current week.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Choose the period</b><p>Switch the table between the last 6 months, the last 12 months or your whole membership.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Performance report</b><p>Totals for each activity over the period you chose.</p></div></li></ol></section>
+<section class="step" id="detailed">
+<span class="step-kicker">Insights &amp; network · 19</span>
+<h3>Detailed Reports</h3>
+<p class="intro">The full list behind every number: who, what and when.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/detailed.jpg" aria-label="Enlarge screenshot: Detailed Reports"><img src="/guides/member/img/detailed.jpg" width="1440" height="900" alt="Screenshot of Detailed Reports with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Report tabs</b><p>Pick what to see: referrals given or received, business, one-to-ones, power dates, conclaves, visitors, chief guests, consumers or inductions. Scroll sideways on a phone to see all tabs.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Details</b><p>Each entry with the other member, type, description and date.</p></div></li></ol></section>
+<section class="step" id="nearby">
+<span class="step-kicker">Insights &amp; network · 20</span>
+<h3>Find Members Nearby</h3>
+<p class="intro">In an area with time to spare? Find BWF members close by so you can drop in and meet.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/nearby.jpg" aria-label="Enlarge screenshot: Find Members Nearby"><img src="/guides/member/img/nearby.jpg" width="1440" height="900" alt="Screenshot of Find Members Nearby with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Where are you?</b><p>Type an area or locality, for example Royapettah.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Within</b><p>How far to search (5 km by default). Results are sorted nearest first.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Name or company</b><p>Optional. Search for a particular person or company.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Chapter and category</b><p>Optional filters, for example only architects.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Search</b><p>Shows matching members with their business and contact details below.</p></div></li></ol></section>
+<div class="group-head" id="you"><span class="eyebrow" style="color:var(--gold)">Part 5</span><h2>You</h2><p>Your profile, articles and signing out.</p></div><section class="step" id="profile">
+<span class="step-kicker">You · 21</span>
+<h3>My Profile</h3>
+<p class="intro">Keep your public business profile up to date. Changes don't go live straight away: BWF reviews every change first.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/profile.jpg" aria-label="Enlarge screenshot: My Profile"><img src="/guides/member/img/profile.jpg" width="1440" height="1832" alt="Screenshot of My Profile with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Personal</b><p>Name, designation, a short bio and your photo (paste a link or tap Upload file).</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Business profile</b><p>Services, specialisations, what makes you different (USP), years in business, areas served, certifications, major projects and clients.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Contact</b><p>Email, phone, WhatsApp, website, address and Google Maps link. Your business location is used by Find Members Nearby.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Social &amp; media</b><p>Instagram, LinkedIn, Facebook and YouTube links, a brochure PDF and a video (upload a file or paste a Google Drive link).</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Submit for review</b><p>Sends your changes to BWF. Your public profile updates once they approve them.</p></div></li></ol></section>
+<section class="step" id="articles">
+<span class="step-kicker">You · 22</span>
+<h3>Articles</h3>
+<p class="intro">Write an article for the BWF website blog. Nothing is published until an admin approves it.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/articles.jpg" aria-label="Enlarge screenshot: Articles"><img src="/guides/member/img/articles.jpg" width="1440" height="905" alt="Screenshot of Articles with 5 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Title</b><p>The headline of your article.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Excerpt</b><p>Optional one or two line summary shown on the blog list.</p></div></li><li><span class="dot" aria-hidden="true">3</span><div><b><span class="sr">Marker 3: </span>Content</b><p>The article itself. You can use simple formatting: # for headings, **bold**, - for bullet points.</p></div></li><li><span class="dot" aria-hidden="true">4</span><div><b><span class="sr">Marker 4: </span>Category and image</b><p>Pick a blog category and optionally add a cover image.</p></div></li><li><span class="dot" aria-hidden="true">5</span><div><b><span class="sr">Marker 5: </span>Submit for review</b><p>Sends it to BWF. You will see it on the website once it's approved.</p></div></li></ol></section>
+<section class="step" id="signout">
+<span class="step-kicker">You · 23</span>
+<h3>Signing out</h3>
+<p class="intro">Your name and chapter are always shown at the bottom of the menu.</p>
+<figure class=""><button type="button" data-full="/guides/member/img/signout.jpg" aria-label="Enlarge screenshot: Signing out"><img src="/guides/member/img/signout.jpg" width="1440" height="900" alt="Screenshot of Signing out with 2 numbered markers" loading="lazy"></button><figcaption>Tap the screenshot to enlarge. The numbers match the list below.</figcaption></figure>
+<ol class="marks"><li><span class="dot" aria-hidden="true">1</span><div><b><span class="sr">Marker 1: </span>Your account</b><p>Your name, category and chapter, with the Sign out button below them.</p></div></li><li><span class="dot" aria-hidden="true">2</span><div><b><span class="sr">Marker 2: </span>Sign out of all devices</b><p>Use this if you lose your phone or forgot to sign out somewhere. You will need your password again on every device.</p></div></li></ol></section>
+<p class="foot">All screenshots in this guide use demo data. The members, companies, phone numbers and amounts are made up; your portal will show your real chapter. Bank details and payment QR codes are blurred. Questions about your account? Contact your chapter admin.</p>
+</main></div>
+<div class="lb" id="lb" hidden><button class="x" type="button" id="lb-x">Close ✕</button><img id="lb-img" alt=""></div>
+<script>
+(function(){
+  var lb=document.getElementById('lb'),li=document.getElementById('lb-img');
+  document.addEventListener('click',function(e){var b=e.target.closest('[data-full]');if(b){li.src=b.getAttribute('data-full');li.alt=b.getAttribute('aria-label')||'';lb.hidden=false;document.getElementById('lb-x').focus();}else if(e.target===li||e.target.id==='lb-x'||e.target===lb){lb.hidden=true;}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')lb.hidden=true;});
+  var f=document.getElementById('toc-filter');
+  f&&f.addEventListener('input',function(){var q=f.value.trim().toLowerCase();document.querySelectorAll('nav.toc a[data-k]').forEach(function(a){a.parentElement.hidden=q&&a.getAttribute('data-k').indexOf(q)<0;});});
+  var links=[].slice.call(document.querySelectorAll('nav.toc:not(.mobile-toc nav) a[data-k]'));
+  if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id);});}});},{rootMargin:'-20% 0px -70% 0px'});document.querySelectorAll('section.step').forEach(function(s){io.observe(s);});}
+})();
+</script></body></html>
