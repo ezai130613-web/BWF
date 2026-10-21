@@ -131,8 +131,8 @@ export default async function AccountsPage({
             {rows.map((row) => (
               <tr key={`${row.type}-${row.id}`} className="align-top">
                 <td className="whitespace-nowrap px-4 py-3 text-neutral-900">
-                  {row.paymentDate.toLocaleDateString("en-IN")}
-                  <p className="text-xs text-neutral-400">Submitted {row.submittedAt.toLocaleDateString("en-IN")}</p>
+                  {row.paymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                  <p className="text-xs text-neutral-400">Submitted {row.submittedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
                 </td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-neutral-900">{row.payerName}</p>
@@ -146,7 +146,7 @@ export default async function AccountsPage({
                 <td className="px-4 py-3">
                   <p className="text-neutral-900">{row.purpose}</p>
                   <p className="text-xs text-neutral-500">
-                    {row.meetingTitle} — {row.meetingDate.toLocaleDateString("en-IN")}
+                    {row.meetingTitle} — {row.meetingDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                   </p>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-neutral-900">{money.format(row.amountInr)}</td>
@@ -155,7 +155,7 @@ export default async function AccountsPage({
                   {row.reviewedBy ? (
                     <p className="mt-1 text-xs text-neutral-500">
                       by {row.reviewedBy}
-                      {row.reviewedAt ? ` · ${row.reviewedAt.toLocaleDateString("en-IN")}` : ""}
+                      {row.reviewedAt ? ` · ${row.reviewedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}
                     </p>
                   ) : null}
                   {row.reviewRemarks ? <p className="mt-1 text-xs text-neutral-500">Remarks: {row.reviewRemarks}</p> : null}

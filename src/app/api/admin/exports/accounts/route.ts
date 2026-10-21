@@ -34,19 +34,19 @@ export async function GET(request: Request) {
 
   for (const row of rows) {
     sheet.addRow({
-      paymentDate: row.paymentDate.toLocaleDateString("en-IN"),
-      submittedAt: row.submittedAt.toLocaleDateString("en-IN"),
+      paymentDate: row.paymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+      submittedAt: row.submittedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       type: row.type === "MEMBER" ? "Member" : "Visitor",
       payer: row.payerName,
       contact: row.payerContact ?? "",
       chapter: row.chapterName,
       purpose: row.purpose,
       meeting: row.meetingTitle,
-      meetingDate: row.meetingDate.toLocaleDateString("en-IN"),
+      meetingDate: row.meetingDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       amount: row.amountInr,
       status: STATUS_LABELS[row.status],
       reviewedBy: row.reviewedBy ?? "",
-      reviewedAt: row.reviewedAt ? row.reviewedAt.toLocaleDateString("en-IN") : "",
+      reviewedAt: row.reviewedAt ? row.reviewedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "",
       remarks: row.reviewRemarks ?? "",
       proof: row.proofUrl,
     });

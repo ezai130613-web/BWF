@@ -59,7 +59,7 @@ export default async function VisitorsPage() {
                     {v.status.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-neutral-500">{v.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-neutral-500">{v.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/admin/visitors/${v.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                     View →

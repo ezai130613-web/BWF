@@ -144,7 +144,7 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
     });
   }
 
-  const meetingDate = new Date(data.meetingStartsAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  const meetingDate = new Date(data.meetingStartsAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
 
   return (
     <div className="flex flex-col gap-6">

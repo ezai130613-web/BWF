@@ -73,7 +73,7 @@ export default async function UsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-neutral-500">
-                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Never"}
+                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Never"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <form action={toggleUserStatus.bind(null, user.id)}>

@@ -196,7 +196,7 @@ export default async function ChapterDetailPage({ params }: { params: Promise<{ 
                   <div key={meeting.id} className="rounded-sm border border-emerald-800 p-4">
                     <p className="text-ivory-100">{meeting.title}</p>
                     <p className="mt-1 text-sm text-slate-400">
-                      {meeting.startsAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
                     </p>
                     {meeting.venue ? <p className="text-sm text-slate-400">{meeting.venue}</p> : null}
                     {meeting.visitorRegistrationEnabled ? (

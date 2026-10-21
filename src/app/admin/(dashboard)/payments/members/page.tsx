@@ -181,7 +181,7 @@ export default async function PaymentMembersPage({
             </div>
             <p className="mt-1 text-neutral-600">
               {money.format(Number(p.amountPaidInr))} · {formatMonthsCovered(p.monthsCovered)} · paid{" "}
-              {p.actualPaymentDate.toLocaleDateString("en-IN")}
+              {p.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
             </p>
             <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-neutral-500 underline">
               View proof

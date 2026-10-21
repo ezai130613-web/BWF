@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
+import { parseIstDateTimeLocal } from "@/lib/ist";
 
 async function getMeetingOrThrow(meetingId: string) {
   const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
@@ -29,9 +30,21 @@ export async function setRegistrationOpen(meetingId: string, open: boolean) {
   revalidatePath(`/admin/qr-codes/${meetingId}`);
 }
 
+// datetime-local values carry no timezone; they're entered in IST, and `new Date(v)` on a UTC
+// host would read them as UTC and shift the window by 5h30m.
+const istDateTime = z
+  .string()
+  .optional()
+  .transform((v, ctx) => {
+    if (!v) return null;
+    const date = parseIstDateTimeLocal(v);
+    if (!date) ctx.addIssue({ code: "custom", message: "Invalid date." });
+    return date;
+  });
+
 const windowSchema = z.object({
-  checkInOpensAt: z.string().optional().transform((v) => (v ? new Date(v) : null)),
-  checkInClosesAt: z.string().optional().transform((v) => (v ? new Date(v) : null)),
+  checkInOpensAt: istDateTime,
+  checkInClosesAt: istDateTime,
 });
 
 /** Spec: "Allow configurable check-in opening and closing times." Optional — clearing both fields removes the schedule and leaves only the manual toggle above. */
@@ -58,5 +71,6 @@ export async function setCheckinWindow(
   await logActivity({ userId: session.user.id, action: "attendance.window_updated", entity: "Meeting", entityId: meetingId });
 
   revalidatePath(`/admin/qr-codes/${meetingId}`);
+  revalidatePath(`/admin/visitors-qr/${meetingId}`);
   return { error: undefined, success: true };
 }

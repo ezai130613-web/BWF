@@ -62,7 +62,7 @@ export default async function VisitorsAttendanceMeetingPage({
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
           <AdminPageIcon />{meeting.title}</h1>
         <p className="text-sm text-neutral-600">
-          {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
@@ -150,7 +150,7 @@ export default async function VisitorsAttendanceMeetingPage({
                   <StatusBadge status={a.status} corrected={Boolean(a.correctedByUserId)} />
                 </td>
                 <td className="px-4 py-3 text-neutral-600">
-                  {a.checkedInAt ? a.checkedInAt.toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                  {a.checkedInAt ? a.checkedInAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "short", timeStyle: "short" }) : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <CorrectVisitorAttendanceForm visitorAttendanceId={a.id} currentStatus={a.status} />

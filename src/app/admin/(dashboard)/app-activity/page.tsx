@@ -100,7 +100,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             ...(showChapter ? [r.fromMember.chapter.name] : []),
             r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral",
             r.description ?? "—",
-            r.createdAt.toLocaleDateString(),
+            r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -128,7 +128,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             ...(showChapter ? [s.fromMember.chapter.name] : []),
             formatInr(String(s.amountInr)),
             s.description ?? "—",
-            s.createdAt.toLocaleDateString(),
+            s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -155,7 +155,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             o.withMember.name,
             ...(showChapter ? [o.member.chapter.name] : []),
             o.notes ?? "—",
-            o.metAt.toLocaleDateString(),
+            o.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -186,7 +186,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             ...(showChapter ? [p.hostMember.chapter.name] : []),
             p.externalContactName,
             p.externalContactCompany ?? "—",
-            p.metAt.toLocaleDateString(),
+            p.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -220,7 +220,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             c.participants.map((p) => p.member.name).join(", "),
             ...(showChapter ? [c.organizedByMember.chapter.name] : []),
             c.location ?? "—",
-            c.metAt.toLocaleDateString(),
+            c.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -246,7 +246,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             ...(showChapter ? [c.member.chapter.name] : []),
             c.name,
             c.company ?? "—",
-            c.metAt.toLocaleDateString(),
+            c.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -272,7 +272,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             ...(showChapter ? [g.member.chapter.name] : []),
             g.name,
             g.company ?? "—",
-            g.metAt.toLocaleDateString(),
+            g.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -299,7 +299,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             m.referredBy!.name,
             ...(showChapter ? [m.referredBy!.chapter.name] : []),
             m.name,
-            m.createdAt.toLocaleDateString(),
+            m.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };

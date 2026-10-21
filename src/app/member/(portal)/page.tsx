@@ -192,7 +192,7 @@ export default async function MemberDashboardPage() {
           </p>
           {pendingRevision ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Edit request awaiting review — submitted {pendingRevision.createdAt.toLocaleDateString("en-IN")}.
+              Edit request awaiting review — submitted {pendingRevision.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}.
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">

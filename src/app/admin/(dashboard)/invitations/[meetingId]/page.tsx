@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Poppins, Dancing_Script } from "next/font/google";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { getContent } from "@/lib/content";
 import { generateAttendanceToken, getVisitorCheckinUrl } from "@/lib/attendance/qr";
 import { formatIst, istParts } from "@/lib/ist";
 import { SITE_URL } from "@/lib/site";
@@ -66,6 +67,13 @@ function parseGuests(value: unknown): InvitationGuest[] {
     .slice(0, MAX_INVITATION_GUESTS);
 }
 
+/** A saved target whose link/image no longer exists falls back to the venue location. */
+function initialQrTarget(saved: QrTarget | undefined, source: InvitationSourceData): QrTarget {
+  if (saved === "REGISTRATION" && source.checkinUrl) return "REGISTRATION";
+  if (saved === "PAYMENT" && source.paymentQrImageUrl) return "PAYMENT";
+  return "LOCATION";
+}
+
 export default async function InvitationEditPage({ params }: { params: Promise<{ meetingId: string }> }) {
   const { meetingId } = await params;
 
@@ -124,6 +132,7 @@ export default async function InvitationEditPage({ params }: { params: Promise<{
     guestCatalog: catalog.map((g) => ({ id: g.id, ...toGuest(g) })),
     checkinUrl,
     locationUrl,
+    paymentQrImageUrl: (await getContent(["payment.qrCodeUrl"]))["payment.qrCodeUrl"] || null,
   };
 
   const eyebrowDefault = `${chapter.location ? `${chapter.location} ` : ""}${chapter.name} Meeting Invitation`.toUpperCase();
@@ -148,7 +157,7 @@ export default async function InvitationEditPage({ params }: { params: Promise<{
     feeNote: style?.feeNote ?? "+ GST 18% only (Including Breakfast)",
     isComplimentary: invitation?.isComplimentary ?? false,
     includeQr: invitation?.includeQr ?? true,
-    qrTarget: ((style?.qrTarget as QrTarget | undefined) ?? "LOCATION") === "REGISTRATION" && checkinUrl ? "REGISTRATION" : "LOCATION",
+    qrTarget: initialQrTarget(style?.qrTarget as QrTarget | undefined, source),
     backgroundPhotoUrl: style?.backgroundPhotoUrl ?? "",
   };
 

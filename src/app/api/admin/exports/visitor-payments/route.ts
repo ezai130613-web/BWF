@@ -46,12 +46,12 @@ export async function GET(request: Request) {
     sheet.addRow({
       chapter: row.visitorAttendance.chapter.name,
       meeting: row.visitorAttendance.meeting.title,
-      meetingDate: row.visitorAttendance.meeting.startsAt.toLocaleDateString("en-IN"),
+      meetingDate: row.visitorAttendance.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       visitorName: row.visitorAttendance.visitorProfile.name,
       phone: row.visitorAttendance.visitorProfile.phone,
       amount: Number(row.amountInr),
-      paymentDate: row.actualPaymentDate.toLocaleDateString("en-IN"),
-      submitted: row.createdAt.toLocaleString("en-IN"),
+      paymentDate: row.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+      submitted: row.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
       status: row.status,
       proof: row.proofUrl,
     });

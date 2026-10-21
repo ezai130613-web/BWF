@@ -11,6 +11,7 @@ import { getBooleanSetting } from "@/lib/settings";
 import { rateLimit, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/audit";
+import { hasTemporaryUsername, normalizeChosenUsername } from "@/lib/auth/member-credentials";
 
 /**
  * First sign-in with temporary credentials — members and admins (2026-10-03):
@@ -22,6 +23,7 @@ import { logActivity } from "@/lib/audit";
 
 const CODE_RESEND_COOLDOWN_MS = 60 * 1000;
 const EMAIL_TAKEN_ERROR = "That email address is already linked to another BWF login. Use a different one, or contact BWF.";
+const USERNAME_TAKEN_ERROR = "That username is already taken — choose another.";
 const emailSchema = z.email("Enter a valid email address.").transform((v) => v.trim().toLowerCase());
 
 /** Shared by member (/member/activate) and admin (/admin/activate) first sign-in. */
@@ -34,6 +36,11 @@ async function requirePendingActivation() {
 
 async function emailTakenByAnotherUser(email: string, userId: string) {
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
+  return Boolean(existing && existing.id !== userId);
+}
+
+async function usernameTakenByAnotherUser(username: string, userId: string) {
+  const existing = await db.user.findUnique({ where: { username }, select: { id: true } });
   return Boolean(existing && existing.id !== userId);
 }
 
@@ -89,6 +96,7 @@ const completeSchema = z
   .refine((v) => v.password === v.confirmPassword, { message: "The two passwords don't match.", path: ["confirmPassword"] });
 
 export async function completeActivation(input: {
+  username?: string;
   email: string;
   code?: string;
   password: string;
@@ -105,6 +113,16 @@ export async function completeActivation(input: {
     return { error: "Choose a new password — not the temporary one you were given." };
   }
   if (await emailTakenByAnotherUser(email, user.id)) return { error: EMAIL_TAKEN_ERROR };
+
+  // 2026-10-21 (client request): members on a temporary BWFCC### username must
+  // choose their own, so the shared temporary usernames stop circulating.
+  let newUsername: string | null = null;
+  if (hasTemporaryUsername(user.username)) {
+    const chosen = normalizeChosenUsername(input.username ?? "");
+    if ("error" in chosen) return { error: chosen.error };
+    if (await usernameTakenByAnotherUser(chosen.username, user.id)) return { error: USERNAME_TAKEN_ERROR };
+    newUsername = chosen.username;
+  }
 
   const requireCode = await getBooleanSetting("memberActivation.requireEmailCode");
   let challengeId: string | null = null;
@@ -131,6 +149,7 @@ export async function completeActivation(input: {
         where: { id: user.id },
         data: {
           email,
+          ...(newUsername ? { username: newUsername } : {}),
           emailVerifiedAt: requireCode ? new Date() : null,
           password: passwordHash,
           mustChangePassword: false,
@@ -142,10 +161,11 @@ export async function completeActivation(input: {
       }),
     ]);
   } catch {
-    // Unique-constraint race on email between the check above and here.
+    // Unique-constraint race on email/username between the checks above and here.
+    if (newUsername && (await usernameTakenByAnotherUser(newUsername, user.id))) return { error: USERNAME_TAKEN_ERROR };
     return { error: EMAIL_TAKEN_ERROR };
   }
 
-  await logActivity({ userId: user.id, action: "member.account_activated", metadata: { emailVerified: requireCode } });
+  await logActivity({ userId: user.id, action: "member.account_activated", metadata: { emailVerified: requireCode, ...(newUsername ? { previousUsername: user.username, username: newUsername } : {}) } });
   return { ok: true };
 }

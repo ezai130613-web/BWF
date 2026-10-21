@@ -23,7 +23,7 @@ export default async function MemberProfilePage() {
       {pendingRevision ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-6">
           <p className="text-sm font-medium text-amber-900">
-            You have an edit request awaiting review, submitted {pendingRevision.createdAt.toLocaleString()}.
+            You have an edit request awaiting review, submitted {pendingRevision.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}.
           </p>
           <p className="mt-2 text-sm text-amber-800">
             You can submit a new request once this one has been reviewed. Your public profile still shows your

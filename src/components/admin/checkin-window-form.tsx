@@ -2,13 +2,13 @@
 
 import { useActionState } from "react";
 import { setCheckinWindow } from "@/app/admin/(dashboard)/qr-codes/[meetingId]/actions";
+import { formatIstDateTime, toIstDateTimeLocal } from "@/lib/ist";
 
 const initialState: { error?: string; success?: boolean } = {};
 
+/** Pre-fills in IST regardless of where this renders (the server is UTC). */
 function toLocalInputValue(date: Date | null): string {
-  if (!date) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return date ? toIstDateTimeLocal(date) : "";
 }
 
 export function CheckinWindowForm({
@@ -24,8 +24,20 @@ export function CheckinWindowForm({
 
   return (
     <form action={formAction} className="mt-4 flex flex-col gap-4">
+      <p className="text-sm text-neutral-600">
+        {checkInOpensAt || checkInClosesAt ? (
+          <>
+            Saved window (IST):{" "}
+            <span className="font-medium text-neutral-900">
+              {checkInOpensAt ? formatIstDateTime(checkInOpensAt) : "any time"} → {checkInClosesAt ? formatIstDateTime(checkInClosesAt) : "no end"}
+            </span>
+          </>
+        ) : (
+          "No window saved — check-in follows the Open/Close button only."
+        )}
+      </p>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Check-in opens at
+        Check-in opens at (IST)
         <input
           type="datetime-local"
           name="checkInOpensAt"
@@ -34,7 +46,7 @@ export function CheckinWindowForm({
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Check-in closes at
+        Check-in closes at (IST)
         <input
           type="datetime-local"
           name="checkInClosesAt"

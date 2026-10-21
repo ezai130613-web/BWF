@@ -55,7 +55,7 @@ export default async function MarketingLibraryPage() {
                     <span className="font-medium text-neutral-900">{item.title}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-neutral-600">{item.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-neutral-600">{item.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3 text-neutral-600">
                   {item.scheduledPosts.length === 0 ? (
                     <span className="text-neutral-400">Not scheduled yet</span>

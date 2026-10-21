@@ -70,7 +70,7 @@ export default async function InsightsPage({
               {post.excerpt ? <p className="mt-2 text-sm text-slate-400">{post.excerpt}</p> : null}
               <p className="mt-3 text-xs text-slate-400">
                 {post.author.name}
-                {post.publishedAt ? ` · ${post.publishedAt.toLocaleDateString()}` : ""}
+                {post.publishedAt ? ` · ${post.publishedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}
               </p>
             </Link>
           ))}

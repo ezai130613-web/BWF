@@ -57,7 +57,7 @@ export default async function ApplicationsPage() {
                     {app.status.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-neutral-500">{app.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-neutral-500">{app.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/admin/applications/${app.id}`} className="text-sm text-neutral-500 hover:text-emerald-800">
                     View →

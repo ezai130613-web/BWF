@@ -35,7 +35,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "To" }, { header: "Type" }, { header: "Description" }, { header: "Date" }],
         rows: referrals.map((r) => ({
           key: r.id,
-          cells: [r.toMember.name, r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral", r.description ?? "—", r.createdAt.toLocaleDateString()],
+          cells: [r.toMember.name, r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral", r.description ?? "—", r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -49,7 +49,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "From" }, { header: "Type" }, { header: "Description" }, { header: "Date" }],
         rows: referrals.map((r) => ({
           key: r.id,
-          cells: [r.fromMember.name, r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral", r.description ?? "—", r.createdAt.toLocaleDateString()],
+          cells: [r.fromMember.name, r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral", r.description ?? "—", r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -63,7 +63,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "Thanking" }, { header: "Amount" }, { header: "Description" }, { header: "Date" }],
         rows: slips.map((s) => ({
           key: s.id,
-          cells: [s.toMember.name, formatInr(String(s.amountInr)), s.description ?? "—", s.createdAt.toLocaleDateString()],
+          cells: [s.toMember.name, formatInr(String(s.amountInr)), s.description ?? "—", s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -77,7 +77,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "From" }, { header: "Amount" }, { header: "Description" }, { header: "Date" }],
         rows: slips.map((s) => ({
           key: s.id,
-          cells: [s.fromMember.name, formatInr(String(s.amountInr)), s.description ?? "—", s.createdAt.toLocaleDateString()],
+          cells: [s.fromMember.name, formatInr(String(s.amountInr)), s.description ?? "—", s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -91,7 +91,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "With" }, { header: "Notes" }, { header: "Date" }],
         rows: items.map((o) => ({
           key: o.id,
-          cells: [o.memberId === memberId ? o.withMember.name : o.member.name, o.notes ?? "—", o.metAt.toLocaleDateString()],
+          cells: [o.memberId === memberId ? o.withMember.name : o.member.name, o.notes ?? "—", o.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -105,7 +105,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "Fellow Member" }, { header: "External Contact" }, { header: "Company" }, { header: "Date" }],
         rows: items.map((p) => ({
           key: p.id,
-          cells: [p.participantMember.name, p.externalContactName, p.externalContactCompany ?? "—", p.metAt.toLocaleDateString()],
+          cells: [p.participantMember.name, p.externalContactName, p.externalContactCompany ?? "—", p.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -122,7 +122,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
           cells: [
             [c.organizedByMember, ...c.participants.map((p) => p.member)].map((m) => m.name).join(", "),
             c.location ?? "—",
-            c.metAt.toLocaleDateString(),
+            c.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
         })),
       };
@@ -144,7 +144,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "Name" }, { header: "Phone" }, { header: "Status" }, { header: "Date" }],
         rows: visitors.map((v) => ({
           key: v.id,
-          cells: [v.name, v.phone, v.status.replace(/_/g, " "), v.createdAt.toLocaleDateString()],
+          cells: [v.name, v.phone, v.status.replace(/_/g, " "), v.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }
@@ -157,7 +157,7 @@ async function loadTab(tab: TabKey, memberId: string): Promise<{ columns: Column
         columns: [{ header: "Name" }, { header: "Phone" }, { header: "Registered" }, { header: "Date" }],
         rows: visitors.map((v) => ({
           key: v.id,
-          cells: [v.name, v.phone, v.createdAt.toLocaleDateString(), v.updatedAt.toLocaleDateString()],
+          cells: [v.name, v.phone, v.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }), v.updatedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
         })),
       };
     }

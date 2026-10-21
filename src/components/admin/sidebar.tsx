@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
-import { ArrowLeftRight, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeftRight, KeyRound, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_GROUPS, WORKSPACE_LABELS, activeNavHref, type AdminNavItem, type Workspace } from "./nav-config";
 
@@ -106,6 +106,9 @@ function AccountBlock({ userName, isChapterAdmin, workspace, canSwitchWorkspace 
             <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Switch workspace
           </Link>
         ) : null}
+        <Link href="/admin/account" className="inline-flex items-center gap-2 text-xs font-medium text-ivory-200/80 hover:text-gold-300">
+          <KeyRound className="h-3.5 w-3.5" aria-hidden /> Change password
+        </Link>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/admin/login" })}

@@ -51,12 +51,12 @@ export async function GET(request: Request) {
     sheet.addRow({
       chapter: row.member.chapter.name,
       meeting: row.meeting.title,
-      meetingDate: row.meeting.startsAt.toLocaleDateString("en-IN"),
+      meetingDate: row.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       member: row.member.name,
       amount: Number(row.amountPaidInr),
       numberOfMonths: row.numberOfMonths,
       covered: formatMonthsCovered(row.monthsCovered),
-      paymentDate: row.actualPaymentDate.toLocaleDateString("en-IN"),
+      paymentDate: row.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       status: row.status,
       proof: row.proofUrl,
     });

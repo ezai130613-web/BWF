@@ -5,6 +5,7 @@ import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 import { db } from "@/lib/db";
 import { getBooleanSetting } from "@/lib/settings";
 import { ActivateAccountForm } from "@/components/auth/activate-account-form";
+import { hasTemporaryUsername } from "@/lib/auth/member-credentials";
 import { SignOutButton } from "@/components/sign-out-button";
 
 /** First sign-in for an admin login issued with a temporary password (2026-10-03). */
@@ -32,7 +33,7 @@ export default async function AdminActivatePage() {
           sign in with your email or username and your new password.
         </p>
         <div className="mt-6">
-          <ActivateAccountForm requireCode={requireCode} username={user.username} providerId="admin-login" destination="/admin" offerRemember={false} />
+          <ActivateAccountForm requireCode={requireCode} username={user.username} requireNewUsername={hasTemporaryUsername(user.username)} providerId="admin-login" destination="/admin" offerRemember={false} />
         </div>
         <div className="mt-6 border-t border-neutral-100 pt-4 text-right">
           <SignOutButton callbackUrl="/admin/login" />

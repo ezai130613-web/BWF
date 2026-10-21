@@ -17,6 +17,26 @@ import { db } from "@/lib/db";
 export const TEMPORARY_PASSWORD = "1234";
 export const USERNAME_PREFIX = "BWFCC";
 
+/** Still on an auto-issued BWFCC### username — activation makes them choose their own. */
+export function hasTemporaryUsername(username: string | null | undefined): boolean {
+  return Boolean(username?.startsWith(USERNAME_PREFIX));
+}
+
+/**
+ * A username the member chooses at activation: 4–30 letters/digits/./_/-, starting with a
+ * letter. Stored upper-case like every username (loginLookup() upper-cases what's typed, so
+ * sign-in is case-insensitive). No "@" — that would be read as an email at sign-in.
+ */
+export function normalizeChosenUsername(raw: string): { username: string } | { error: string } {
+  const value = raw.trim();
+  if (!/^[A-Za-z][A-Za-z0-9._-]{3,29}$/.test(value)) {
+    return { error: "Username must be 4–30 characters: letters, numbers, . _ or -, starting with a letter." };
+  }
+  const username = value.toUpperCase();
+  if (username.startsWith(USERNAME_PREFIX)) return { error: `Choose your own username — not one starting with "${USERNAME_PREFIX}".` };
+  return { username };
+}
+
 /** "Chapter 01" → 1. Falls back to the chapter's position by creation date. */
 async function chapterNumbers(chapterIds: string[]): Promise<Map<string, number>> {
   const chapters = await db.chapter.findMany({ select: { id: true, name: true }, orderBy: { createdAt: "asc" } });

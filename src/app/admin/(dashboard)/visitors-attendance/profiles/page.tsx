@@ -180,7 +180,7 @@ async function ProfileHistory({
               <tr key={a.id}>
                 <td className="px-4 py-3 font-medium text-neutral-900">{a.meeting.title}</td>
                 <td className="px-4 py-3 text-neutral-600">{a.chapter.name}</td>
-                <td className="px-4 py-3 text-neutral-600">{a.meeting.startsAt.toLocaleDateString("en-IN")}</td>
+                <td className="px-4 py-3 text-neutral-600">{a.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3 text-neutral-600">{a.status === "PRESENT" ? "Present" : "Absent"}</td>
                 <td className="px-4 py-3 text-neutral-600">
                   {a.source === "INVITED_BY_MEMBER" ? a.invitingMember?.name ?? "—" : SOURCE_LABELS[a.source]}

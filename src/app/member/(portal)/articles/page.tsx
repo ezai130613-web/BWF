@@ -60,7 +60,7 @@ export default async function MemberArticlesPage() {
                         <span className="ml-2 text-xs text-neutral-500">{s.reviewNotes}</span>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-neutral-500">{s.createdAt.toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-neutral-500">{s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                   </tr>
                 ))}
               </tbody>

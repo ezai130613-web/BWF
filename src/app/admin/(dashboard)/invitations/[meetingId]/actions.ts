@@ -42,7 +42,7 @@ const valuesSchema = z.object({
   feeNote: text(120),
   isComplimentary: z.boolean(),
   includeQr: z.boolean(),
-  qrTarget: z.enum(["LOCATION", "REGISTRATION"]),
+  qrTarget: z.enum(["LOCATION", "REGISTRATION", "PAYMENT"]),
   backgroundPhotoUrl: text(1000),
 });
 

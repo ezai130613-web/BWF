@@ -106,67 +106,67 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
 
       <ActivitySection title="Referrals given" empty="No referrals given yet.">
         {referralsGiven.map((r) => (
-          <Row key={r.id} left={r.toMember.name} right={r.createdAt.toLocaleDateString()} />
+          <Row key={r.id} left={r.toMember.name} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Referrals received" empty="No referrals received yet.">
         {referralsReceived.map((r) => (
-          <Row key={r.id} left={r.fromMember.name} right={r.createdAt.toLocaleDateString()} />
+          <Row key={r.id} left={r.fromMember.name} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Thank You Slips given" empty="No Thank You Slips given yet.">
         {thankYouSlipsGiven.map((s) => (
-          <Row key={s.id} left={s.toMember.name} right={s.createdAt.toLocaleDateString()} />
+          <Row key={s.id} left={s.toMember.name} right={s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Thank You Slips received" empty="No Thank You Slips received yet.">
         {thankYouSlipsReceived.map((s) => (
-          <Row key={s.id} left={s.fromMember.name} right={s.createdAt.toLocaleDateString()} />
+          <Row key={s.id} left={s.fromMember.name} right={s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="One-to-Ones" empty="No One-to-Ones yet.">
         {oneToOnes.map((o) => (
-          <Row key={o.id} left={o.memberId === memberId ? o.withMember.name : o.member.name} right={o.metAt.toLocaleDateString()} />
+          <Row key={o.id} left={o.memberId === memberId ? o.withMember.name : o.member.name} right={o.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Power Dates hosted" empty="No Power Dates hosted yet.">
         {powerDatesHosted.map((p) => (
-          <Row key={p.id} left={`${p.participantMember.name} → ${p.externalContactName}`} right={p.metAt.toLocaleDateString()} />
+          <Row key={p.id} left={`${p.participantMember.name} → ${p.externalContactName}`} right={p.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Power Dates joined" empty="Not brought along on a Power Date yet.">
         {powerDatesJoined.map((p) => (
-          <Row key={p.id} left={`${p.hostMember.name} → ${p.externalContactName}`} right={p.metAt.toLocaleDateString()} />
+          <Row key={p.id} left={`${p.hostMember.name} → ${p.externalContactName}`} right={p.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Conclaves" empty="No Conclaves yet.">
         {conclavesOrganized.map((c) => (
-          <Row key={c.id} left={c.participants.map((p) => p.member.name).join(", ") || "—"} right={c.metAt.toLocaleDateString()} />
+          <Row key={c.id} left={c.participants.map((p) => p.member.name).join(", ") || "—"} right={c.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Consumers brought" empty="No Consumers recorded yet.">
         {consumers.map((c) => (
-          <Row key={c.id} left={c.company ? `${c.name} · ${c.company}` : c.name} right={c.metAt.toLocaleDateString()} />
+          <Row key={c.id} left={c.company ? `${c.name} · ${c.company}` : c.name} right={c.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Chief Guests invited" empty="No Chief Guests recorded yet.">
         {chiefGuests.map((g) => (
-          <Row key={g.id} left={g.company ? `${g.name} · ${g.company}` : g.name} right={g.metAt.toLocaleDateString()} />
+          <Row key={g.id} left={g.company ? `${g.name} · ${g.company}` : g.name} right={g.metAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Members inducted" empty="No members inducted yet.">
         {inducted.map((m) => (
-          <Row key={m.id} left={m.name} right={m.createdAt.toLocaleDateString()} />
+          <Row key={m.id} left={m.name} right={m.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
     </div>

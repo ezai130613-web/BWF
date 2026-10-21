@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     attendanceSheet.addRow({
       chapter: row.chapter.name,
       meeting: row.meeting.title,
-      meetingDate: row.meeting.startsAt.toLocaleDateString("en-IN"),
+      meetingDate: row.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
       name: row.visitorProfile.name,
       phone: row.visitorProfile.phone,
       company: row.visitorProfile.companyName ?? "",
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
       source: SOURCE_LABELS[row.source] ?? row.source,
       inviter: row.invitingMember?.name ?? "",
       status: row.status,
-      checkedInAt: row.checkedInAt ? row.checkedInAt.toLocaleString("en-IN") : "",
+      checkedInAt: row.checkedInAt ? row.checkedInAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "",
     });
   }
 
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
       phone: profile.phone,
       memberName: profile.convertedMember?.name ?? "",
       chapter: profile.convertedMember?.chapter.name ?? "",
-      joinedAt: profile.convertedMember?.joinedAt.toLocaleDateString("en-IN") ?? "",
+      joinedAt: profile.convertedMember?.joinedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) ?? "",
     });
   }
 

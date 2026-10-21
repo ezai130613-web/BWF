@@ -102,7 +102,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <div>
                   <p className="font-medium text-neutral-900">{visit.visitorProfile.name}</p>
                   <p className="text-xs text-neutral-500">
-                    {visit.chapter.name} · {visit.meeting.title} · {visit.meeting.startsAt.toLocaleDateString("en-IN")}
+                    {visit.chapter.name} · {visit.meeting.title} · {visit.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                   </p>
                 </div>
                 <span

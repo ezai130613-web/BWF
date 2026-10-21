@@ -28,3 +28,14 @@ export function getVisitorCheckinUrl(token: string): string {
 export async function renderQrPng(url: string): Promise<Buffer> {
   return QRCode.toBuffer(url, { type: "png", width: 480, margin: 2 });
 }
+
+/**
+ * The optional check-in window set on the member QR page (admin/qr-codes/[meetingId]).
+ * One window per meeting, applied to both member and visitor QR check-in.
+ */
+export function isWithinCheckinWindow(
+  meeting: { checkInOpensAt: Date | null; checkInClosesAt: Date | null },
+  now = new Date(),
+): boolean {
+  return (!meeting.checkInOpensAt || now >= meeting.checkInOpensAt) && (!meeting.checkInClosesAt || now <= meeting.checkInClosesAt);
+}

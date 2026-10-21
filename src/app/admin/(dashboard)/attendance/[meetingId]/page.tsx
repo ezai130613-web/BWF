@@ -41,7 +41,7 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
               <AdminPageIcon />{meeting.title}</h1>
             <p className="text-sm text-neutral-600">
               {meeting.chapter.name} ·{" "}
-              {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+              {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
             </p>
           </div>
           <CloseAttendanceButton meetingId={meeting.id} />
@@ -80,7 +80,7 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
                     <StatusBadge status={status} corrected={Boolean(attendance?.correctedByUserId)} />
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
-                    {attendance?.checkedInAt ? attendance.checkedInAt.toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                    {attendance?.checkedInAt ? attendance.checkedInAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "short", timeStyle: "short" }) : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <CorrectAttendanceForm meetingId={meeting.id} memberId={member.id} currentStatus={attendance?.status ?? null} />

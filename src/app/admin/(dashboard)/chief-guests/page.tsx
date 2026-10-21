@@ -45,7 +45,7 @@ export default async function ChiefGuestsPage() {
                 <td className="px-4 py-3 text-neutral-900">{g.name}</td>
                 <td className="px-4 py-3 text-neutral-600">{g.company}</td>
                 <td className="px-4 py-3 text-neutral-600">{g.chapter?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-neutral-600">{g.visitedAt ? g.visitedAt.toLocaleDateString() : "—"}</td>
+                <td className="px-4 py-3 text-neutral-600">{g.visitedAt ? g.visitedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}</td>
                 <td className="px-4 py-3 text-neutral-600">{g.displayOrder ?? "—"}</td>
                 <td className="px-4 py-3">
                   <span

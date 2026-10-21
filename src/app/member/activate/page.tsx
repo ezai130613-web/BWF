@@ -4,6 +4,7 @@ import { requireMemberSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getBooleanSetting } from "@/lib/settings";
 import { ActivateAccountForm } from "@/components/auth/activate-account-form";
+import { hasTemporaryUsername } from "@/lib/auth/member-credentials";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function MemberActivatePage() {
@@ -24,12 +25,13 @@ export default async function MemberActivatePage() {
           </div>
         </div>
         <p className="mt-4 text-sm text-neutral-600">
-          Welcome{user.memberAccount ? `, ${user.memberAccount.name}` : ""}. You signed in with a temporary password.
-          Add your email{requireCode ? " (we'll send a code to confirm it)" : ""} and choose your own private password to
-          continue. After this, sign in with your email and new password.
+          Welcome{user.memberAccount ? `, ${user.memberAccount.name}` : ""}. You signed in with a temporary password.{" "}
+          {hasTemporaryUsername(user.username) ? "Choose your own username, add" : "Add"} your email
+          {requireCode ? " (we'll send a code to confirm it)" : ""} and choose your own private password to continue. After
+          this, sign in with your new username or email and your new password.
         </p>
         <div className="mt-6">
-          <ActivateAccountForm requireCode={requireCode} username={user.username} />
+          <ActivateAccountForm requireCode={requireCode} username={user.username} requireNewUsername={hasTemporaryUsername(user.username)} />
         </div>
         <div className="mt-6 border-t border-neutral-100 pt-4 text-right">
           <SignOutButton callbackUrl="/member/login" />

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { Prisma } from "@/generated/prisma/client";
 import { rateLimit, getClientIp, TOO_MANY_REQUESTS_ERROR } from "@/lib/rate-limit";
 import { findOrCreateVisitorProfile } from "@/lib/visitors/manage";
@@ -51,7 +52,7 @@ export async function registerVisitorCheckin(
 ): Promise<VisitorCheckinState> {
   const meeting = await db.meeting.findUnique({ where: { visitorAttendanceQrToken: token } });
   if (!meeting) return { error: "This check-in link is invalid." };
-  if (!meeting.visitorCheckInOpen) return { error: "Visitor check-in for this meeting isn't open right now." };
+  if (!meeting.visitorCheckInOpen || !isWithinCheckinWindow(meeting)) return { error: "Visitor check-in for this meeting isn't open right now." };
 
   const parsed = baseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };

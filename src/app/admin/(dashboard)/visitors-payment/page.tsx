@@ -138,7 +138,7 @@ export default async function VisitorsPaymentPage({
                 </p>
                 <p className="text-xs text-neutral-500">
                   {payment.visitorAttendance.meeting.title} —{" "}
-                  {payment.visitorAttendance.meeting.startsAt.toLocaleDateString("en-IN")}
+                  {payment.visitorAttendance.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
               <StatusBadge status={payment.status} />
@@ -151,11 +151,11 @@ export default async function VisitorsPaymentPage({
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Payment date</dt>
-                <dd className="text-neutral-900">{payment.actualPaymentDate.toLocaleDateString("en-IN")}</dd>
+                <dd className="text-neutral-900">{payment.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</dd>
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Submitted</dt>
-                <dd className="text-neutral-900">{payment.createdAt.toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</dd>
+                <dd className="text-neutral-900">{payment.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "short", timeStyle: "short" })}</dd>
               </div>
             </dl>
 

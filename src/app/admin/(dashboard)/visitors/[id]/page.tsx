@@ -78,7 +78,7 @@ export default async function VisitorDetailPage({ params }: { params: Promise<{ 
               </div>
               <div>
                 <dt className="text-neutral-500">Registered on</dt>
-                <dd className="text-neutral-900">{visitor.createdAt.toLocaleString()}</dd>
+                <dd className="text-neutral-900">{visitor.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</dd>
               </div>
             </dl>
           </div>

@@ -232,7 +232,7 @@ async function MemberHistory({
             {rows.map(({ meeting, attendance }) => (
               <tr key={meeting.id}>
                 <td className="px-4 py-3 font-medium text-neutral-900">{meeting.title}</td>
-                <td className="px-4 py-3 text-neutral-600">{meeting.startsAt.toLocaleDateString("en-IN")}</td>
+                <td className="px-4 py-3 text-neutral-600">{meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -247,7 +247,7 @@ async function MemberHistory({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-neutral-600">
-                  {attendance?.checkedInAt ? attendance.checkedInAt.toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                  {attendance?.checkedInAt ? attendance.checkedInAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "short", timeStyle: "short" }) : "—"}
                 </td>
               </tr>
             ))}

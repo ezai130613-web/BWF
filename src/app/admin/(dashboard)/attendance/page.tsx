@@ -95,7 +95,7 @@ async function MeetingPicker({ chapterId, showChapterPicker }: { chapterId: stri
                 <div>
                   <p className="text-sm font-medium text-neutral-900">{meeting.title}</p>
                   <p className="text-xs text-neutral-500">
-                    {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                    {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

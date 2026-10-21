@@ -17,7 +17,7 @@ import { imageUrlToDataUrl, saveInvitation } from "./actions";
 import type { InvitationFormValues, InvitationSourceData } from "./types";
 
 const DEFAULT_BACKGROUND = "/images/homepage-chapter-meeting.jpg";
-const QR_CAPTION = { LOCATION: "Scan the QR for location", REGISTRATION: "Scan the QR to register" } as const;
+const QR_CAPTION = { LOCATION: "Scan the QR for location", REGISTRATION: "Scan the QR to register", PAYMENT: "Scan the QR to pay" } as const;
 
 /** Poster fonts come from next/font CSS variables set on the page wrapper. */
 function readFonts(el: Element | null): InvitationPosterFonts {
@@ -169,19 +169,25 @@ export function InvitationEditor({
     };
   }, [photoKey, photoImgs]);
 
-  // QR — venue location (reference default) or visitor registration link.
-  const qrUrl = values.qrTarget === "REGISTRATION" ? source.checkinUrl : source.locationUrl;
+  // QR — venue location (reference default), visitor registration link, or
+  // the meeting payment QR. Payment is an uploaded image of the bank's own
+  // UPI QR, so it's drawn as-is rather than generated.
+  const qrUrl =
+    values.qrTarget === "REGISTRATION" ? source.checkinUrl : values.qrTarget === "PAYMENT" ? source.paymentQrImageUrl : source.locationUrl;
+  const qrIsImage = values.qrTarget === "PAYMENT";
   useEffect(() => {
     if (!values.includeQr || !qrUrl) return;
     let cancelled = false;
-    QRCode.toDataURL(qrUrl, { margin: 0, width: 420, errorCorrectionLevel: "M", color: { dark: "#111111", light: "#ffffff" } })
-      .then(loadImage)
+    (qrIsImage
+      ? loadPosterImage(qrUrl)
+      : QRCode.toDataURL(qrUrl, { margin: 0, width: 420, errorCorrectionLevel: "M", color: { dark: "#111111", light: "#ffffff" } }).then(loadImage)
+    )
       .then((img) => !cancelled && setQr({ url: qrUrl, img }))
-      .catch(() => !cancelled && setLoadError("Could not generate the QR code."));
+      .catch(() => !cancelled && setLoadError(qrIsImage ? "Could not load the payment QR image." : "Could not generate the QR code."));
     return () => {
       cancelled = true;
     };
-  }, [values.includeQr, qrUrl]);
+  }, [values.includeQr, qrUrl, qrIsImage]);
   const qrImg = values.includeQr && qrUrl && qr?.url === qrUrl ? qr.img : null;
 
   // Single shared draw call — the preview pixels are exactly what Download exports.
@@ -450,6 +456,19 @@ export function InvitationEditor({
                   />
                   Visitor registration — “Scan the QR to register”
                 </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="qrTarget"
+                    disabled={!source.paymentQrImageUrl}
+                    checked={values.qrTarget === "PAYMENT"}
+                    onChange={() => update("qrTarget", "PAYMENT")}
+                  />
+                  Meeting payment — “Scan the QR to pay”
+                </label>
+                {!source.paymentQrImageUrl ? (
+                  <p className="text-xs text-neutral-500">Payment QR unavailable — upload one under Website Content (payment QR code).</p>
+                ) : null}
               </div>
             ) : null}
           </Section>

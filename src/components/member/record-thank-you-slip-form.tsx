@@ -61,7 +61,7 @@ export function RecordThankYouSlipForm({
             <option value="">None</option>
             {receivedReferrals.map((r) => (
               <option key={r.id} value={r.id}>
-                From {r.fromMemberName} — {r.createdAt.toLocaleDateString("en-IN")}
+                From {r.fromMemberName} — {r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
               </option>
             ))}
           </select>

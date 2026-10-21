@@ -1,6 +1,7 @@
 import type { InvitationGuest } from "@/lib/invitations/poster";
 
-export type QrTarget = "LOCATION" | "REGISTRATION";
+/** PAYMENT (2026-10-21) prints the meeting payment QR image from Website Content (`payment.qrCodeUrl`). */
+export type QrTarget = "LOCATION" | "REGISTRATION" | "PAYMENT";
 
 /** The invitation's own editable fields — never written back to Meeting/ChiefGuest. */
 export interface InvitationFormValues {
@@ -40,4 +41,6 @@ export interface InvitationSourceData {
   guestCatalog: CatalogGuest[];
   checkinUrl: string | null;
   locationUrl: string;
+  /** The meeting payment QR image (same one /visit shows); null when none is set. */
+  paymentQrImageUrl: string | null;
 }

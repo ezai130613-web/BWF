@@ -24,7 +24,7 @@ export default async function MarketingContentDetailPage({ params }: { params: P
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
           <AdminPageIcon />{content.title}</h1>
-        <p className="mt-1 text-sm text-neutral-600">Uploaded {content.createdAt.toLocaleDateString()}</p>
+        <p className="mt-1 text-sm text-neutral-600">Uploaded {content.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">

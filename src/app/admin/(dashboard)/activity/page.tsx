@@ -33,7 +33,7 @@ export default async function ActivityLogPage() {
             {logs.map((log) => (
               <tr key={log.id}>
                 <td className="whitespace-nowrap px-4 py-3 text-neutral-500">
-                  {log.createdAt.toLocaleString()}
+                  {log.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </td>
                 <td className="px-4 py-3 text-neutral-600">{log.user?.name ?? "System"}</td>
                 <td className="px-4 py-3 font-mono text-xs text-neutral-900">{log.action}</td>

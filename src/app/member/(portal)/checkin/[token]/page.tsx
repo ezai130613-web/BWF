@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { CheckinForm } from "@/components/checkin/checkin-form";
 
 /**
@@ -28,9 +29,7 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
     where: { meetingId_memberId: { meetingId: meeting.id, memberId: member.id } },
   });
 
-  const now = new Date();
-  const withinWindow =
-    (!meeting.checkInOpensAt || now >= meeting.checkInOpensAt) && (!meeting.checkInClosesAt || now <= meeting.checkInClosesAt);
+  const withinWindow = isWithinCheckinWindow(meeting);
   const registrationClosed = !meeting.attendanceRegistrationOpen || !withinWindow;
 
   return (
@@ -41,7 +40,7 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
           {meeting.title} — {meeting.chapter.name}
         </p>
         <p className="text-sm text-neutral-500">
-          {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 

@@ -80,7 +80,7 @@ export function MyScriptsSection({
                 </td>
                 <td className="px-4 py-3 text-neutral-600">{s.topic || "—"}</td>
                 <td className="px-4 py-3 text-neutral-600">{CONTENT_FORMAT_LABELS[s.contentType]}</td>
-                <td className="px-4 py-3 text-neutral-600">{s.updatedAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-neutral-600">{s.updatedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SCRIPT_STATUS_BADGE_CLASSES[s.status]}`}>
                     {SCRIPT_STATUS_LABELS[s.status]}

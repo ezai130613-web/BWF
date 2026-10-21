@@ -150,7 +150,7 @@ export default async function PaymentsPage({
                   {payment.member.name} · {payment.member.chapter.name}
                 </p>
                 <p className="text-xs text-neutral-500">
-                  {payment.meeting.title} — {payment.meeting.startsAt.toLocaleDateString("en-IN")}
+                  {payment.meeting.title} — {payment.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
               <StatusBadge status={payment.status} overlap={payment.overlapsApprovedCoverage} />
@@ -171,7 +171,7 @@ export default async function PaymentsPage({
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Payment date</dt>
-                <dd className="text-neutral-900">{payment.actualPaymentDate.toLocaleDateString("en-IN")}</dd>
+                <dd className="text-neutral-900">{payment.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</dd>
               </div>
             </dl>
 

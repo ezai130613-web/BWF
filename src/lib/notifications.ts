@@ -28,7 +28,7 @@ export async function notifyVisitorRegistered(input: {
   startsAt: Date;
   venue: string | null;
 }) {
-  const when = input.startsAt.toLocaleString("en-IN", { dateStyle: "full", timeStyle: "short" });
+  const when = input.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" });
 
   await sendEmail({
     to: input.visitorEmail,

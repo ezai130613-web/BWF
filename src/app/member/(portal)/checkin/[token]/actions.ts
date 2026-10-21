@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { hasApprovedOverlap, type MonthYear } from "@/lib/attendance/manage";
 import { Prisma } from "@/generated/prisma/client";
@@ -18,8 +19,7 @@ export async function checkIn(token: string, _prevState: CheckinState | undefine
   if (!meeting) return { error: "This registration link is invalid." };
 
   const now = new Date();
-  const withinWindow =
-    (!meeting.checkInOpensAt || now >= meeting.checkInOpensAt) && (!meeting.checkInClosesAt || now <= meeting.checkInClosesAt);
+  const withinWindow = isWithinCheckinWindow(meeting, now);
   if (!meeting.attendanceRegistrationOpen || !withinWindow) {
     return { error: "Check-in for this meeting isn't open right now." };
   }

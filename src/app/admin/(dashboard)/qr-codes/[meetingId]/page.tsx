@@ -49,7 +49,7 @@ export default async function QrCodeMeetingPage({ params }: { params: Promise<{ 
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
           <AdminPageIcon />{meeting.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">
-          {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default async function QrCodeMeetingPage({ params }: { params: Promise<{ 
           <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
             <h2 className="text-sm font-semibold text-neutral-900">Check-in window (optional)</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              Leave both blank to control check-in purely with the Open/Close button above.
+              Applies to the visitor QR too. Leave both blank to control check-in purely with the Open/Close button above.
             </p>
             <CheckinWindowForm
               meetingId={meeting.id}

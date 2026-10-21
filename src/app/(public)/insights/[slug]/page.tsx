@@ -98,8 +98,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <Link href={`/authors/${post.author.slug}`} className="text-gold-400 hover:underline">
             {post.author.name}
           </Link>
-          {post.publishedAt ? <span>· {post.publishedAt.toLocaleDateString()}</span> : null}
-          <span>· Updated {post.updatedAt.toLocaleDateString()}</span>
+          {post.publishedAt ? <span>· {post.publishedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</span> : null}
+          <span>· Updated {post.updatedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</span>
         </div>
 
         <PhotoSlot

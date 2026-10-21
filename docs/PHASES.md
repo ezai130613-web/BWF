@@ -4098,3 +4098,36 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   pages return 200 with no client errors across the Website, Performance and Marketing
   workspaces; checked at 1366px and 390px including the mobile menu. Detail pages and forms
   were not click-tested.
+
+### Phase 30 correction 12 (2026-10-21) — IST times, check-in window, own username, admin password change, share banners, payment QR on invitations
+
+- **Times showed in UTC on the live site** (a 7:00 am meeting showed as "1:30 am"/"2:00 am"): server-rendered
+  `toLocaleString`/`toLocaleDateString` calls had no `timeZone` and Vercel runs in UTC. Every one in
+  `src/app`, `src/components` and `src/lib` now passes `timeZone: "Asia/Kolkata"` (pages, Excel
+  exports, notification emails).
+- **Check-in window didn't save correctly**: `setCheckinWindow` parsed the datetime-local value with
+  `new Date(v)` (read as UTC on the server → shifted 5h30m) and the form pre-filled with server-local
+  hours. Both now go through `parseIstDateTimeLocal` / `toIstDateTimeLocal`; the form shows the
+  saved window in IST. The window now applies to **visitor** QR check-in too
+  (`isWithinCheckinWindow()` in `src/lib/attendance/qr.ts`) and can be edited from the Visitors QR page
+  (same meeting fields).
+- **Members choose their own username at activation**: anyone still on a temporary `BWFCC…`
+  username must pick one (4–30 letters/digits/._-, starting with a letter, not `BWFCC…`, unique,
+  case-insensitive at sign-in) together with the existing mandatory email + new password. The
+  temporary username stops working. Admin logins like `centraladmin` aren't forced.
+- **Change password for admins** (incl. Super Admin): `/admin/account`, linked from the sidebar's
+  account block. Needs the current password; signs out other devices (sessionVersion) and signs
+  this one back in. Logged as `user.password_changed`.
+- **Share-on-WhatsApp banners** on the member Thank You Slips page ("A received business worth ₹X
+  from B") and Referrals page ("A passed a business referral to B"), latest 4 shown, the rest under
+  "Show all" (`src/components/member/share-banner.tsx`).
+- **Invitation QR can be the meeting payment QR**: third option "Meeting payment — Scan the QR to
+  pay", drawing the uploaded `payment.qrCodeUrl` image (the visitor registration form records a
+  payment but never showed where to pay). Disabled when no payment QR is uploaded.
+- Verified on a dev server running with `TZ=UTC` (like Vercel), with Chrome via Playwright and
+  temporary accounts/data (deleted afterwards, test meeting's window reset to blank): attendance
+  and QR pages show 7:00 am; a 6:00–10:00 window survives save + reload and shows on Visitors QR;
+  password change (wrong current rejected, new one signs in); activation rejects a `BWFCC…` name,
+  accepts a new one, new username signs in in lowercase and the temporary one no longer does;
+  banners checked at 1366px and 390px; payment QR drawn on the invitation preview. Visitor
+  check-in being blocked outside the window was not click-tested.

@@ -6,6 +6,7 @@ import { generateAttendanceToken, getVisitorCheckinUrl } from "@/lib/attendance/
 import { setVisitorCheckinOpen } from "./actions";
 import { PrintButton } from "@/components/admin/print-button";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { CheckinWindowForm } from "@/components/admin/checkin-window-form";
 
 async function getMeetingWithToken(meetingId: string) {
   const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
@@ -48,7 +49,7 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
           <AdminPageIcon />{meeting.title}</h1>
         <p className="mt-1 text-sm text-neutral-600">
-          {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
@@ -85,7 +86,8 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
               <span className={meeting.visitorCheckInOpen ? "font-medium text-emerald-700" : "font-medium text-neutral-500"}>
                 {meeting.visitorCheckInOpen ? "Open" : "Closed"}
               </span>
-              . Visitors can only register/check in while this is Open.
+              . Visitors can only register/check in while this is Open — and, if set below, within
+              the check-in window.
             </p>
             <div className="mt-4 flex gap-2">
               <form action={setVisitorCheckinOpen.bind(null, meeting.id, true)}>
@@ -107,6 +109,19 @@ export default async function VisitorsQrMeetingPage({ params }: { params: Promis
                 </button>
               </form>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
+            <h2 className="text-sm font-semibold text-neutral-900">Check-in window (optional)</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              Shared with the member QR for this meeting — saving here changes it for both. Leave both blank to
+              control check-in purely with the Open/Close button above.
+            </p>
+            <CheckinWindowForm
+              meetingId={meeting.id}
+              checkInOpensAt={meeting.checkInOpensAt}
+              checkInClosesAt={meeting.checkInClosesAt}
+            />
           </div>
         </div>
       </div>

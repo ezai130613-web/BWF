@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { VisitorCheckinForm } from "@/components/visitor-checkin/visitor-checkin-form";
 
 /**
@@ -30,11 +31,11 @@ export default async function VisitorCheckinPage({ params }: { params: Promise<{
           {meeting.title} — {meeting.chapter.name}
         </p>
         <p className="text-sm text-slate-500">
-          {meeting.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
         </p>
       </div>
 
-      {!meeting.visitorCheckInOpen ? (
+      {!meeting.visitorCheckInOpen || !isWithinCheckinWindow(meeting) ? (
         <div className="rounded-sm border border-gold-500/40 p-6 text-center text-sm text-slate-400">
           Visitor check-in for this meeting isn&rsquo;t open right now. Please check with the BWF team.
         </div>

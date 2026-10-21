@@ -43,7 +43,7 @@ export default async function VisitMeetingPage({ params }: { params: Promise<{ m
         <SectionLabel>Visit a meeting</SectionLabel>
         <h1 className="mt-4 font-display text-4xl text-ivory-100 sm:text-5xl">{meeting.title}</h1>
         <p className="mt-2 text-slate-400">
-          {meeting.chapter.name} · {meeting.startsAt.toLocaleString()}
+          {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
         </p>
         {meeting.venue ? <p className="mt-1 text-sm text-slate-400">{meeting.venue}</p> : null}
 

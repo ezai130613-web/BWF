@@ -11,18 +11,22 @@ const inputClass =
 export function ActivateAccountForm({
   requireCode,
   username,
+  requireNewUsername = false,
   providerId = "member-login",
   destination = "/member",
   offerRemember = true,
 }: {
   requireCode: boolean;
   username: string | null;
+  /** Still on a temporary BWFCC### username — must choose a new one (hasTemporaryUsername). */
+  requireNewUsername?: boolean;
   providerId?: string;
   destination?: string;
   /** "Keep me signed in" is a member-portal option only. */
   offerRemember?: boolean;
 }) {
   const router = useRouter();
+  const [newUsername, setNewUsername] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -34,6 +38,7 @@ export function ActivateAccountForm({
   const [pending, startTransition] = useTransition();
 
   const emailLocked = requireCode && codeSentTo !== null;
+  const step = (n: number) => `${n + (requireNewUsername ? 1 : 0)}.`;
 
   function handleSendCode() {
     setError(null);
@@ -53,7 +58,7 @@ export function ActivateAccountForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await completeActivation({ email, code, password, confirmPassword });
+      const result = await completeActivation({ username: requireNewUsername ? newUsername : undefined, email, code, password, confirmPassword });
       if (result.error) {
         setError(result.error);
         return;
@@ -79,13 +84,37 @@ export function ActivateAccountForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {username ? (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-          Username: <span className="font-mono font-semibold">{username}</span>
+          {requireNewUsername ? "Temporary username" : "Username"}: <span className="font-mono font-semibold">{username}</span>
         </p>
+      ) : null}
+
+      {requireNewUsername ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="activate-username" className="text-sm font-medium text-neutral-800">
+            1. Choose your own username
+          </label>
+          <input
+            id="activate-username"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            minLength={4}
+            maxLength={30}
+            value={newUsername}
+            onChange={(e) => setNewUsername(e.target.value.replace(/\s+/g, ""))}
+            placeholder="e.g. rajkumar.builders"
+            className={inputClass}
+          />
+          <p className="text-xs text-neutral-500">
+            Replaces your temporary username. 4–30 letters, numbers, . _ or -. Not case-sensitive when signing in.
+          </p>
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="activate-email" className="text-sm font-medium text-neutral-800">
-          1. Your email address
+          {step(1)} Your email address
         </label>
         <div className="flex gap-2">
           <input
@@ -127,7 +156,7 @@ export function ActivateAccountForm({
       {requireCode ? (
         <div className="flex flex-col gap-1.5">
           <label htmlFor="activate-code" className="text-sm font-medium text-neutral-800">
-            2. Verification code
+            {step(2)} Verification code
           </label>
           <input
             id="activate-code"
@@ -146,7 +175,7 @@ export function ActivateAccountForm({
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="activate-password" className="text-sm font-medium text-neutral-800">
-          {requireCode ? "3." : "2."} New private password
+          {step(requireCode ? 3 : 2)} New private password
         </label>
         <input
           id="activate-password"

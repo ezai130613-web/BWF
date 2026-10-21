@@ -50,12 +50,12 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ id:
         </div>
       ) : post.submissionStatus === "REJECTED" ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800">
-          Rejected {post.reviewedAt?.toLocaleDateString()}
+          Rejected {post.reviewedAt?.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
           {post.reviewNotes ? ` — ${post.reviewNotes}` : ""}
         </div>
       ) : post.submissionStatus === "APPROVED" ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
-          Submitted by {post.submittedByMember?.name}, approved {post.reviewedAt?.toLocaleDateString()}.
+          Submitted by {post.submittedByMember?.name}, approved {post.reviewedAt?.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}.
         </div>
       ) : null}
 
