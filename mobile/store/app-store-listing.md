@@ -81,13 +81,17 @@ iPhone-only (`supportsTablet: false`).
 | Contact Info | Name | Member name |
 | Contact Info | Email Address | Login email (first sign-in) and profile email |
 | Contact Info | Phone Number | Profile phone / WhatsApp |
+| Contact Info | Physical Address | Business address members can propose in a profile edit |
+| Contact Info | Other User Contact Info | WhatsApp number, website and social links in profile edits |
 | Location | Precise Location | Coordinates sent when "Members near me" is tapped (not stored by BWF, but they pass through server logs, so declared) |
 | User Content | Photos or Videos | Payment proof screenshots |
 | User Content | Other User Content | Activity notes, profile text, account deletion reason |
 | Financial Info | Other Financial Info | Payment amounts and dates submitted for approval |
 | Identifiers | User ID | BWF member/login ID |
 
-Not collected: health, browsing/search history, contacts, purchases, diagnostics, device ID, advertising data.
+Not collected: Coarse Location, Contacts (the phone's address book), Emails or Text Messages, health, browsing/search history, purchases, diagnostics, device ID, advertising data.
+
+That's **10 data types** in total.
 
 ## Age rating
 
