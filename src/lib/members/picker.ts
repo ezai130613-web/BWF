@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { fellowMemberScope } from "@/lib/members/visibility";
 
 /** Minimal member shape for the portal's Chapter → Category → Member
  * picker — deliberately no contact details in the browser payload. */
@@ -12,9 +13,10 @@ export type PickerMember = {
   categoryName: string;
 };
 
-export async function getPickerMembers(excludeMemberId: string): Promise<PickerMember[]> {
+/** Everyone the member can pick (see fellowMemberScope), excluding themselves. */
+export async function getPickerMembers(viewerMemberId: string): Promise<PickerMember[]> {
   const members = await db.member.findMany({
-    where: { status: "ACTIVE", id: { not: excludeMemberId }, chapter: { status: "ACTIVE" } },
+    where: { AND: [{ status: "ACTIVE", id: { not: viewerMemberId } }, await fellowMemberScope(viewerMemberId)] },
     select: {
       id: true,
       name: true,

@@ -74,6 +74,7 @@ function RootNavigator() {
         <Stack.Screen name="profile/edit" options={{ title: 'Request profile edit', presentation: 'modal' }} />
         <Stack.Screen name="scan" options={{ title: 'Scan meeting QR' }} />
         <Stack.Screen name="checkin/[token]" options={{ title: 'Meeting check-in' }} />
+        <Stack.Screen name="account/delete" options={{ title: 'Delete my account' }} />
       </Stack.Protected>
     </Stack>
   );

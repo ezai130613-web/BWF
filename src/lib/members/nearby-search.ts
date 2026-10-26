@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { fellowMemberScope } from "@/lib/members/visibility";
 import { RADIUS_OPTIONS, distanceKm, isValidLatLng } from "@/lib/geo";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -58,12 +59,18 @@ export async function searchNearbyMembers(excludeMemberId: string, input: Nearby
   const hasCoords = input.lat !== undefined && input.lng !== undefined && input.lat !== "" && isValidLatLng(lat, lng);
   const searched = Boolean(q || place || chapterId || categoryId || hasCoords);
 
+  const scope = await fellowMemberScope(excludeMemberId);
   const [chapters, categories] = await Promise.all([
-    db.chapter.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.chapter.findMany({
+      where: scope.chapterId ? { id: scope.chapterId as string } : { status: "ACTIVE" },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
     db.category.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const where: Prisma.MemberWhereInput = {
+    AND: [scope],
     status: "ACTIVE",
     id: { not: excludeMemberId },
     ...(chapterId ? { chapterId } : {}),

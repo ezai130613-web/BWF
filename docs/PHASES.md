@@ -4420,3 +4420,44 @@ portal-only call.
   still a draft, `npm audit` findings — all in `docs/ARCHITECTURE.md` open decisions.
 - Not in app v1: Articles, WhatsApp share banners, photo/brochure/location editing, push
   notifications (meeting reminders are email-only).
+
+### Phase 35 (part 1, 2026-10-26) — App Store readiness: reviewer demo, account deletion, listing
+
+**Apple account confirmed** (user, same day): Organization "BUILDERS WORLD FORUM", Team ID
+`M3DQSV3NCW`, the user is Account Holder, renews 2027-08-13; Apple Account secured; previous
+developer's users/keys removed; Free Apps agreement active; **no existing app** — the new app
+registers fresh as `com.buildersworldforum.app`. Google Play deferred (account handover slow);
+iOS launches first.
+
+**What shipped:**
+- **Member visibility rule** (`src/lib/members/visibility.ts`): members of ACTIVE chapters see /
+  pick only ACTIVE-chapter members (unchanged in practice); members of any other chapter see only
+  their own chapter. Enforced server-side in the picker, Find Members Nearby (web + app) and every
+  activity recorder — so the reviewer demo can't touch real members even with a crafted request.
+- **DRAFT-chapter members hidden from the public site**: their `/members/[slug]` page 404s and
+  they're left out of the sitemap (the `/members` listing already excluded them).
+- **`scripts/create-app-review-demo.ts`**: dry run by default; `--apply` creates a DRAFT chapter
+  "BWF App Review (Demo)", 4 demo members (not roster-eligible), login `APPREVIEW` (random
+  password printed once), a sample referral, one-to-one and meeting (reminders off);
+  `--new-password` rotates it (and signs out its sessions). Idempotent; refuses if the chapter
+  isn't DRAFT.
+- **Account deletion request** (App Store guideline 5.1.1(v)): app More → "Delete my account" →
+  `POST /api/mobile/v1/account/deletion-request` (rate-limited 3/day) → audit row
+  `member.account_deletion_requested` + email to `NOTIFICATION_EMAIL` via `after()`. Deletion
+  itself stays a manual admin decision (payment/attendance records); the app promises 30 days.
+- **Store listing**: `mobile/store/app-store-listing.md` (name/subtitle/keywords within Apple's
+  limits, description, review notes, privacy "nutrition label" answers, age rating) and six
+  1320×2868 screenshots in `mobile/store/screenshots-ios-6.9/` (fictional sample data, rendered
+  from the app's web build; replace with TestFlight screenshots if wanted).
+
+**Verification:** fresh local Postgres (isolated `prisma dev`, deleted afterwards): **21/21
+isolation checks** (demo picker = only demo colleagues; real picker has no demo; demo→real and
+real→demo recording rejected incl. a mixed conclave; demo→demo works; nearby both directions;
+demo dashboard/meeting; deletion request 200 + email logged, 401 signed out; demo profile 404,
+real 200; sitemap and `/members` exclude demo), demo script dry-run / apply / re-run / password
+rotation (old password 401, new 200). Regressions re-run: **API 83/83, website 22/22, app
+26/26** (incl. the delete-account screen). Website `typecheck`, `lint`, `build` clean; app `tsc`
++ `expo lint` clean.
+
+**Not done yet:** creating the demo login on the live database (needs the user's go-ahead), the
+first EAS build / TestFlight, App Store Connect record + submission.

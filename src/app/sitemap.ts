@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // deployment has far more headroom, but there's no reason for this one
   // build-time route to be the thing that pushes local dev over the edge.
   const chapters = await db.chapter.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } });
-  const members = await db.member.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } });
+  const members = await db.member.findMany({ where: { status: "ACTIVE", chapter: { status: { not: "DRAFT" } } }, select: { slug: true, updatedAt: true } });
   const posts = await db.blog.findMany({ where: publiclyVisibleBlogWhere, select: { slug: true, updatedAt: true } });
   const authors = await db.author.findMany({ select: { slug: true, updatedAt: true } });
   const landingPages = await listProgrammaticLandingPages();

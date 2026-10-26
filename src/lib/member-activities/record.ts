@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
+import { fellowMemberScope } from "@/lib/members/visibility";
 
 /**
  * Recording the member's self-reported BWF App activities (Phase 18/20) —
@@ -22,9 +23,15 @@ function firstIssue(error: z.ZodError) {
   return error.issues[0]?.message ?? "Invalid input.";
 }
 
-/** The other member(s) must be real, active members — a stale or forged id otherwise surfaces as a foreign-key 500. */
-async function allActiveMembers(ids: string[]) {
-  const count = await db.member.count({ where: { id: { in: ids }, status: "ACTIVE" } });
+/**
+ * The other member(s) must be real, active members the actor is allowed to
+ * pick (fellowMemberScope) — a stale or forged id otherwise surfaces as a
+ * foreign-key 500, or lets a demo account touch real members.
+ */
+async function allPickableMembers(actor: Actor, ids: string[]) {
+  const count = await db.member.count({
+    where: { AND: [{ id: { in: ids }, status: "ACTIVE" }, await fellowMemberScope(actor.memberId)] },
+  });
   return count === new Set(ids).size;
 }
 const UNKNOWN_MEMBER = "That member couldn't be found. Refresh the list and pick again.";
@@ -39,7 +46,7 @@ export async function recordReferral(actor: Actor, input: unknown): Promise<Reco
   const parsed = referralSchema.safeParse(input);
   if (!parsed.success) return fail(firstIssue(parsed.error));
   if (parsed.data.toMemberId === actor.memberId) return fail("You can't record a referral to yourself.");
-  if (!(await allActiveMembers([parsed.data.toMemberId]))) return fail(UNKNOWN_MEMBER);
+  if (!(await allPickableMembers(actor, [parsed.data.toMemberId]))) return fail(UNKNOWN_MEMBER);
 
   const referral = await db.referral.create({ data: { ...parsed.data, fromMemberId: actor.memberId } });
   await logActivity({
@@ -63,7 +70,7 @@ export async function recordThankYouSlip(actor: Actor, input: unknown): Promise<
   const parsed = thankYouSlipSchema.safeParse(input);
   if (!parsed.success) return fail(firstIssue(parsed.error));
   if (parsed.data.toMemberId === actor.memberId) return fail("You can't record a Thank You Slip to yourself.");
-  if (!(await allActiveMembers([parsed.data.toMemberId]))) return fail(UNKNOWN_MEMBER);
+  if (!(await allPickableMembers(actor, [parsed.data.toMemberId]))) return fail(UNKNOWN_MEMBER);
 
   // A linked referral, if any, must actually be one this member received —
   // otherwise they'd be thanking someone for a referral that isn't theirs.
@@ -92,7 +99,7 @@ export async function recordOneToOne(actor: Actor, input: unknown): Promise<Reco
   const parsed = oneToOneSchema.safeParse(input);
   if (!parsed.success) return fail(firstIssue(parsed.error));
   if (parsed.data.withMemberId === actor.memberId) return fail("You can't record a One-to-One with yourself.");
-  if (!(await allActiveMembers([parsed.data.withMemberId]))) return fail(UNKNOWN_MEMBER);
+  if (!(await allPickableMembers(actor, [parsed.data.withMemberId]))) return fail(UNKNOWN_MEMBER);
 
   const oneToOne = await db.oneToOne.create({ data: { ...parsed.data, memberId: actor.memberId } });
   await logActivity({
@@ -118,7 +125,7 @@ export async function recordPowerDate(actor: Actor, input: unknown): Promise<Rec
   if (parsed.data.participantMemberId === actor.memberId) {
     return fail("You can't record a Power Date with yourself as the fellow member.");
   }
-  if (!(await allActiveMembers([parsed.data.participantMemberId]))) return fail(UNKNOWN_MEMBER);
+  if (!(await allPickableMembers(actor, [parsed.data.participantMemberId]))) return fail(UNKNOWN_MEMBER);
 
   const powerDate = await db.powerDate.create({ data: { ...parsed.data, hostMemberId: actor.memberId } });
   await logActivity({
@@ -146,7 +153,7 @@ export async function recordConclave(actor: Actor, input: unknown): Promise<Reco
   if (participantIds.length < 2) {
     return fail("Select at least 2 fellow members — a Conclave is 3 or more members together.");
   }
-  if (!(await allActiveMembers(participantIds))) return fail(UNKNOWN_MEMBER);
+  if (!(await allPickableMembers(actor, participantIds))) return fail(UNKNOWN_MEMBER);
 
   const conclave = await db.conclave.create({
     data: {

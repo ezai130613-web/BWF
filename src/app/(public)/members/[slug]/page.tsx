@@ -15,7 +15,8 @@ export const revalidate = 3600; // Phase 14 — brief §60 caching, see homepage
 
 async function getMember(slug: string) {
   return db.member.findFirst({
-    where: { slug, status: "ACTIVE" },
+    // DRAFT chapters aren't public (incl. the App Review demo chapter).
+    where: { slug, status: "ACTIVE", chapter: { status: { not: "DRAFT" } } },
     include: {
       company: true,
       chapter: true,

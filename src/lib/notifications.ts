@@ -209,6 +209,27 @@ Review it at /admin/blogs/${input.blogId}.`,
   });
 }
 
+/**
+ * A member asked (from the mobile app) for their BWF login and data to be
+ * deleted. Deletion itself stays a manual admin decision — memberships carry
+ * payment and attendance records BWF may need to keep — so this only alerts
+ * BWF, who contact the member and act within 30 days (stated in the app).
+ */
+export async function notifyAccountDeletionRequested(input: { memberName: string; memberId: string; chapter: string; reason?: string }) {
+  const notifyAddress = adminNotificationAddress();
+  if (!notifyAddress) return;
+
+  await sendEmail({
+    to: notifyAddress,
+    subject: `Account deletion request — ${input.memberName}`,
+    text: `${input.memberName} (${input.chapter}) asked for their BWF account to be deleted, from the mobile app.
+${input.reason ? `\nReason given: ${input.reason}\n` : ""}
+Member record: ${SITE_URL}/admin/members/${input.memberId}
+
+The app told them BWF will contact them and complete the request within 30 days.`,
+  });
+}
+
 export async function notifyArticleReviewed(input: {
   memberName: string;
   memberEmail: string;

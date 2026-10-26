@@ -75,6 +75,10 @@ export default function MoreScreen() {
         />
       </Card>
 
+      <Card>
+        <ListRow icon="trash-outline" title="Delete my account" subtitle="Ask BWF to delete your login and data" onPress={() => router.push('/account/delete')} />
+      </Card>
+
       <SectionTitle>Help</SectionTitle>
       <Card>
         <ListRow icon="globe-outline" title="Open the BWF website" onPress={() => Linking.openURL(SITE_URL)} />
