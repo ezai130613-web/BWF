@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
 import { formatAnnualMembershipFee } from "@/lib/format";
-import { getChapterAvailability } from "@/lib/applications/availability";
+import { getChapterAvailabilityMatrix } from "@/lib/applications/availability";
 import { Container } from "@/components/ui/container";
 import { SectionLabel } from "@/components/ui/section-label";
 import { ApplyWizard } from "@/components/marketing/apply-wizard";
@@ -24,9 +24,7 @@ export default async function ApplyPage() {
     orderBy: { name: "asc" },
   });
 
-  const availabilityByCategory = Object.fromEntries(
-    await Promise.all(categories.map(async (c) => [c.id, await getChapterAvailability(c.id)] as const)),
-  );
+  const availabilityByCategory = await getChapterAvailabilityMatrix(categories.map((c) => c.id));
 
   const content = await getContent([
     "apply.intro",
