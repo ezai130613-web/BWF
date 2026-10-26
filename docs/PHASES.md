@@ -4313,4 +4313,6 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   with identical output checked against the old function. The emails now go out in `after()`. Submit is now ~6s.
 - **Remaining latency is region, not code**: Vercel functions run in `iad1` (Washington, DC) while
   Neon is in `ap-southeast-1` (Singapore), so every query crosses the globe. This affects the whole site,
-  admin included. Setting the Vercel function region to `sin1` would fix it. That decision is with the client.
+  admin included. **Done (client approved, same day)**: `vercel.json` now sets
+  `"regions": ["sin1"]`. Responses now show `bom1::sin1`, and `/members` went from ~1.7s to ~0.4s
+  (warm). All main pages return 200 after the switch.
