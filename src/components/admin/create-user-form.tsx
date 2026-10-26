@@ -34,7 +34,7 @@ export function CreateUserForm({ chapters }: { chapters: { id: string; name: str
           name="password"
           type="text"
           required
-          minLength={12}
+          minLength={4}
           className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
         />
       </label>

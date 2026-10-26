@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/ui/password-input";
 
 /**
  * Two-step (request code, then set new password) reset UI shared by both
@@ -109,8 +110,7 @@ export function ResetPasswordForm({
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           New password
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={password}
@@ -120,8 +120,7 @@ export function ResetPasswordForm({
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Confirm new password
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={confirmPassword}

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { completeActivation, sendActivationCode } from "@/app/member/activate/actions";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const inputClass =
   "w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20";
@@ -177,26 +178,24 @@ export function ActivateAccountForm({
         <label htmlFor="activate-password" className="text-sm font-medium text-neutral-800">
           {step(requireCode ? 3 : 2)} New private password
         </label>
-        <input
+        <PasswordInput
           id="activate-password"
-          type="password"
           autoComplete="new-password"
-          minLength={12}
+          minLength={4}
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
-        <p className="text-xs text-neutral-500">At least 12 characters. Don&rsquo;t reuse the temporary password.</p>
+        <p className="text-xs text-neutral-500">At least 4 characters. Don&rsquo;t reuse the temporary password.</p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="activate-confirm" className="text-sm font-medium text-neutral-800">
           Confirm new password
         </label>
-        <input
+        <PasswordInput
           id="activate-confirm"
-          type="password"
           autoComplete="new-password"
           required
           value={confirmPassword}

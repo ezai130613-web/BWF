@@ -4623,3 +4623,12 @@ grid, pre-fill, 6-month breakdown, edit hint, membership pre-fill, check-in with
   Types — birthday**, linked, no tracking, App Functionality) are in `mobile/store/app-store-listing.md`.
 - Apple allows one version in review at a time: 1.1.0 is uploaded to App Store Connect/TestFlight now
   and is submitted for review once 1.0 has been approved.
+
+### Phase 42 — Shorter passwords + show/hide password (2026-10-26)
+- Client request: password minimum lowered from 12 to **4** characters (`PASSWORD_MIN_LENGTH` in
+  `src/lib/auth/password.ts`, plus form `minLength`/hints on web and app). No maximum.
+- Every password field now has a show/hide (eye) toggle: web via `src/components/ui/password-input.tsx`
+  (login, activate, reset, change password, admin re-auth); app via `Field` in
+  `mobile/src/components/ui.tsx` whenever `secureTextEntry` is set.
+- App changes need a new store build; held back from App Store Connect until the client's corrections
+  are all in (user's instruction).

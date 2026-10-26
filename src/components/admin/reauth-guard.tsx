@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSession } from "next-auth/react";
 import { confirmRecentAuth } from "@/lib/auth/reauth-actions";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const RECENT_AUTH_WINDOW_MS = 15 * 60 * 1000;
 
@@ -84,8 +85,7 @@ export function ReauthGuard({ children }: { children: React.ReactNode }) {
       <form onSubmit={handleSubmit} className="mt-3 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
           Password
-          <input
-            type="password"
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

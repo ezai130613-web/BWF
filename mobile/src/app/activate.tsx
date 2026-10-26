@@ -85,7 +85,7 @@ export default function ActivateScreen() {
             <Field label="6-digit code" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} />
           </>
         ) : null}
-        <Field label="New password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" hint="At least 12 characters — not your temporary password." />
+        <Field label="New password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" hint="At least 4 characters — not your temporary password." />
         <Field label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
         <Button label="Activate my account" onPress={complete} loading={saving} disabled={!email.trim() || !password || (needsCode && !code.trim())} />
       </Card>

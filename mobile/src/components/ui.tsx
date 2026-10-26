@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -116,15 +116,32 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
 }
 
 export function Field({ label, hint, error, ...input }: TextInputProps & { label: string; hint?: string; error?: string | null }) {
+  // Password fields get a show/hide eye so people can check what they're typing.
+  const [revealed, setRevealed] = useState(false);
+  const secret = !!input.secureTextEntry;
   return (
     <View style={{ marginBottom: space.lg }}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        placeholderTextColor={colors.textFaint}
-        accessibilityLabel={label}
-        {...input}
-        style={[styles.input, input.multiline && { minHeight: 96, textAlignVertical: 'top' }, error ? { borderColor: colors.danger } : null]}
-      />
+      <View>
+        <TextInput
+          placeholderTextColor={colors.textFaint}
+          accessibilityLabel={label}
+          {...input}
+          secureTextEntry={secret && !revealed}
+          style={[styles.input, input.multiline && { minHeight: 96, textAlignVertical: 'top' }, secret && { paddingRight: 48 }, error ? { borderColor: colors.danger } : null]}
+        />
+        {secret ? (
+          <Pressable
+            onPress={() => setRevealed((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            hitSlop={8}
+            style={styles.revealButton}
+          >
+            <Ionicons name={revealed ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
@@ -298,6 +315,7 @@ export const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.surface,
   },
+  revealButton: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 48, alignItems: 'center', justifyContent: 'center' },
   segmented: { flexDirection: 'row', backgroundColor: '#ececea', borderRadius: radius.md, padding: 3, marginBottom: space.lg },
   segment: { flex: 1, paddingVertical: space.sm + 2, borderRadius: radius.sm, alignItems: 'center' },
   segmentLabel: { fontSize: 13, fontWeight: '600', color: colors.textMuted },

@@ -64,7 +64,7 @@ export default function ForgotPasswordScreen() {
         <Card>
           <Notice tone="info" message={`If ${email.trim()} has a BWF login, a code is on its way. It expires in 10 minutes.`} />
           <Field label="6-digit code" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} />
-          <Field label="New password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" hint="At least 12 characters." />
+          <Field label="New password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" hint="At least 4 characters." />
           <Field label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
           <Button label="Set new password" onPress={reset} loading={busy} disabled={!code.trim() || !password} />
         </Card>

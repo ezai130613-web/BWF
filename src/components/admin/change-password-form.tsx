@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { changeOwnPassword } from "@/app/admin/(dashboard)/account/actions";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const inputClass =
   "w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20";
@@ -48,9 +49,8 @@ export function ChangePasswordForm() {
         <label htmlFor="current-password" className="text-sm font-medium text-neutral-800">
           Current password
         </label>
-        <input
+        <PasswordInput
           id="current-password"
-          type="password"
           autoComplete="current-password"
           required
           value={currentPassword}
@@ -62,25 +62,23 @@ export function ChangePasswordForm() {
         <label htmlFor="new-password" className="text-sm font-medium text-neutral-800">
           New password
         </label>
-        <input
+        <PasswordInput
           id="new-password"
-          type="password"
           autoComplete="new-password"
-          minLength={12}
+          minLength={4}
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
-        <p className="text-xs text-neutral-500">At least 12 characters.</p>
+        <p className="text-xs text-neutral-500">At least 4 characters.</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="confirm-password" className="text-sm font-medium text-neutral-800">
           Confirm new password
         </label>
-        <input
+        <PasswordInput
           id="confirm-password"
-          type="password"
           autoComplete="new-password"
           required
           value={confirmPassword}

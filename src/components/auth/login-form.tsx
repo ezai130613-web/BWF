@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { PasswordInput } from "@/components/ui/password-input";
 
 /**
  * Single-step (email + password) login UI shared by both /admin/login and
@@ -92,8 +93,7 @@ export function LoginForm({
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Password
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="current-password"
           required
           value={password}
