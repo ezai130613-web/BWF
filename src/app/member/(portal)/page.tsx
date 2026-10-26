@@ -18,11 +18,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
-import { db } from "@/lib/db";
-import { computeMemberScore } from "@/lib/points/score";
-import { getActivityStats } from "@/lib/points/activity-stats";
+import { getMemberDashboard } from "@/lib/members/dashboard";
 import { formatInr } from "@/lib/format";
-import { formatIst, istParts, istToUtc } from "@/lib/ist";
+import { formatIst } from "@/lib/ist";
 import { Card, StatTile } from "@/components/member/ui";
 import { SignOutEverywhereButton } from "@/components/member/sign-out-everywhere-button";
 
@@ -40,25 +38,7 @@ const QUICK_ACTIONS: { href: string; label: string; hint: string; icon: LucideIc
 export default async function MemberDashboardPage() {
   const { member } = await requireMemberProfile();
 
-  const now = new Date();
-  const { year, month } = istParts(now);
-  const monthStart = istToUtc(year, month, 1);
-
-  const [chapter, category, company, pendingRevision, nextMeeting] = await Promise.all([
-    db.chapter.findUniqueOrThrow({ where: { id: member.chapterId } }),
-    db.category.findUniqueOrThrow({ where: { id: member.categoryId } }),
-    db.company.findUniqueOrThrow({ where: { id: member.companyId } }),
-    db.memberProfileRevision.findFirst({ where: { memberId: member.id, status: "PENDING" } }),
-    db.meeting.findFirst({
-      where: { chapterId: member.chapterId, status: "SCHEDULED", startsAt: { gte: now } },
-      include: { chiefGuest: { select: { name: true, company: true } } },
-      orderBy: { startsAt: "asc" },
-    }),
-  ]);
-  // Sequential on purpose: each of these fans out ~10 queries, and the app's
-  // connection pool is small.
-  const score = await computeMemberScore(member.id);
-  const thisMonth = await getActivityStats(member.id, monthStart);
+  const { now, chapter, category, company, pendingRevision, nextMeeting, score, thisMonth } = await getMemberDashboard(member);
 
   const firstName = member.name.split(" ")[0];
 

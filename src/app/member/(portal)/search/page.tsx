@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { MapPin, Phone, MessageCircle, ExternalLink, Navigation } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
-import { db } from "@/lib/db";
-import { RADIUS_OPTIONS, distanceKm, formatDistance, isValidLatLng } from "@/lib/geo";
+import { formatDistance } from "@/lib/geo";
+import { memberLocality, searchNearbyMembers } from "@/lib/members/nearby-search";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/maps/loader";
-import type { Prisma } from "@/generated/prisma/client";
 import { Card, EmptyState, PageHeader } from "@/components/member/ui";
 import { NearbySearchForm } from "@/components/member/nearby-search-form";
 import { MembersMap } from "@/components/member/members-map";
 
 const PAGE_SIZE = 24;
-const DEFAULT_RADIUS_KM = 5;
 
 type SearchParams = {
   q?: string;
@@ -25,103 +23,21 @@ type SearchParams = {
   location?: string;
 };
 
-const memberSelect = {
-  id: true,
-  slug: true,
-  name: true,
-  photoUrl: true,
-  phone: true,
-  whatsapp: true,
-  address: true,
-  areasServed: true,
-  locationLabel: true,
-  latitude: true,
-  longitude: true,
-  company: { select: { name: true } },
-  chapter: { select: { name: true } },
-  category: { select: { name: true } },
-} satisfies Prisma.MemberSelect;
-
-type ResultMember = Prisma.MemberGetPayload<{ select: typeof memberSelect }> & { distance: number | null };
-
-/** "Arumbakkam, Chennai, Tamil Nadu, India" → "Arumbakkam, Chennai" */
-function locality(m: ResultMember) {
-  const source = m.locationLabel ?? m.address ?? "";
-  return source.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 2).join(", ");
-}
+const locality = memberLocality;
 
 export default async function MemberSearchPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { member: me } = await requireMemberProfile();
   const params = await searchParams;
-  const q = params.q?.trim() ?? "";
-  const place = (params.place ?? params.location ?? "").trim();
-  const chapterId = params.chapter ?? "";
-  const categoryId = params.category ?? "";
-  const radius = RADIUS_OPTIONS.includes(Number(params.radius)) ? Number(params.radius) : DEFAULT_RADIUS_KM;
-  const lat = Number(params.lat);
-  const lng = Number(params.lng);
-  const hasCoords = params.lat !== undefined && params.lng !== undefined && params.lat !== "" && isValidLatLng(lat, lng);
-  const searched = Boolean(q || place || chapterId || categoryId || hasCoords);
-
-  const [chapters, categories] = await Promise.all([
-    db.chapter.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    db.category.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  ]);
-
-  const where: Prisma.MemberWhereInput = {
-    status: "ACTIVE",
-    id: { not: me.id },
-    ...(chapterId ? { chapterId } : {}),
-    ...(categoryId ? { categoryId } : {}),
-    ...(q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { company: { name: { contains: q, mode: "insensitive" } } },
-          ],
-        }
-      : {}),
-  };
-
-  let results: ResultMember[] = [];
-  let withoutLocation = 0;
-  let mode: "radius" | "text" | "all" = "all";
-
-  if (hasCoords) {
-    // Real distance from the selected place's coordinates — never locality
-    // name matching. ~140 members total, so filtering in JS is cheap.
-    mode = "radius";
-    const [located, unlocated] = await Promise.all([
-      db.member.findMany({ where: { ...where, latitude: { not: null }, longitude: { not: null } }, select: memberSelect }),
-      db.member.count({ where: { ...where, OR: [{ latitude: null }, { longitude: null }] } }),
-    ]);
-    withoutLocation = unlocated;
-    results = located
-      .map((m) => ({ ...m, distance: distanceKm({ lat, lng }, { lat: m.latitude!, lng: m.longitude! }) }))
-      .filter((m) => m.distance <= radius)
-      .sort((a, b) => a.distance - b.distance);
-  } else {
-    // No coordinates (no Google key, or text typed without picking a
-    // suggestion): fall back to the old text match on address/area.
-    if (place) mode = "text";
-    const textWhere: Prisma.MemberWhereInput = place
-      ? {
-          AND: [
-            where,
-            {
-              OR: [
-                { address: { contains: place, mode: "insensitive" } },
-                { areasServed: { contains: place, mode: "insensitive" } },
-                { locationLabel: { contains: place, mode: "insensitive" } },
-              ],
-            },
-          ],
-        }
-      : where;
-    results = searched
-      ? (await db.member.findMany({ where: textWhere, select: memberSelect, orderBy: { name: "asc" } })).map((m) => ({ ...m, distance: null }))
-      : [];
-  }
+  const { q, place, chapterId, categoryId, radius, lat, lng, hasCoords, searched, mode, results, withoutLocation, chapters, categories } =
+    await searchNearbyMembers(me.id, {
+      q: params.q,
+      place: params.place ?? params.location,
+      chapterId: params.chapter,
+      categoryId: params.category,
+      radius: params.radius,
+      lat: params.lat,
+      lng: params.lng,
+    });
 
   const total = results.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

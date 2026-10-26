@@ -1,41 +1,15 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireMemberProfile } from "@/lib/auth/rbac";
-import { logActivity } from "@/lib/audit";
+import { recordPowerDate as record } from "@/lib/member-activities/record";
 
-const optionalText = () => z.string().optional().transform((v) => v || undefined);
-
-const recordSchema = z.object({
-  participantMemberId: z.string().min(1, "Select a fellow member"),
-  externalContactName: z.string().min(1, "Enter who you introduced them to"),
-  externalContactCompany: optionalText(),
-  notes: optionalText(),
-});
-
+/** Validation and the write live in src/lib/member-activities/record.ts, shared with the mobile app's API. */
 export async function recordPowerDate(_prevState: { error?: string; success?: boolean } | undefined, formData: FormData) {
   const { session, member } = await requireMemberProfile();
 
-  const parsed = recordSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
-
-  if (parsed.data.participantMemberId === member.id) {
-    return { error: "You can't record a Power Date with yourself as the fellow member.", success: false };
-  }
-
-  const powerDate = await db.powerDate.create({
-    data: { ...parsed.data, hostMemberId: member.id },
-  });
-
-  await logActivity({
-    userId: session.user.id,
-    action: "power_date.recorded",
-    entity: "PowerDate",
-    entityId: powerDate.id,
-    metadata: { hostMemberId: member.id, participantMemberId: parsed.data.participantMemberId },
-  });
+  const result = await record({ userId: session.user.id, memberId: member.id }, Object.fromEntries(formData));
+  if (!result.ok) return { error: result.error, success: false };
 
   revalidatePath("/member/power-dates");
   return { error: undefined, success: true };

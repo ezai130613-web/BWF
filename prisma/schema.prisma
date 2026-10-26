@@ -72,6 +72,7 @@ model User {
   reviewedRevisions MemberProfileRevision[]
   reviewedArticles  Blog[]
   adminRemarks      AdminRemark[]
+  mobileSessions    MobileSession[]
 
   @@map("users")
 }
@@ -131,6 +132,37 @@ model UserRole {
 
   @@id([userId, roleId])
   @@map("user_roles")
+}
+
+/// Native mobile app sign-in (Phase 31, 2026-10-26). One row per signed-in
+/// phone. The app holds a random bearer token in the OS keychain; only its
+/// SHA-256 hash is stored here, so a database leak can't be replayed as a
+/// login. Revocation follows the web session rules: every request also
+/// re-checks User.status and User.sessionVersion (suspension, password reset,
+/// activation, "Sign out of all devices"), and `revokedAt` ends just this
+/// device (the app's own Sign out). `expiresAt` slides forward on use, so a
+/// phone that is never opened for 30 days has to sign in again.
+model MobileSession {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash      String  @unique
+  /// User.sessionVersion at sign-in; a mismatch means the session was revoked.
+  sessionVersion Int
+  platform       String?
+  deviceName     String?
+  appVersion     String?
+
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("mobile_sessions")
 }
 
 model OtpChallenge {

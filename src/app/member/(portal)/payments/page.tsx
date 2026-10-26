@@ -3,9 +3,9 @@ import { BadgeCheck, CalendarDays, Clock, IndianRupee, Wallet } from "lucide-rea
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
-import { istParts } from "@/lib/ist";
+import { summarizeMemberPayments } from "@/lib/payments/overview";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
-import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
+import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
 import { Card, DataTable, PageHeader, StatTile, formatShortDate, tdClass } from "@/components/member/ui";
 import { MemberPaymentForm } from "@/components/member/member-payment-form";
 import { cn } from "@/lib/utils";
@@ -20,9 +20,6 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   CLARIFICATION_REQUESTED: { label: "Clarification requested", className: "bg-sky-50 text-sky-700" },
 };
 
-function nextMonth({ month, year }: MonthYear): MonthYear {
-  return month === 12 ? { month: 1, year: year + 1 } : { month: month + 1, year };
-}
 
 /**
  * Member Payments (2026-10-21) — pay the monthly meeting fee or the annual
@@ -60,37 +57,8 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
     ]),
   ]);
 
-  // Meeting-fee coverage by month (approved beats pending; rejected never counts).
-  const approved = new Set<string>();
-  const pending = new Set<string>();
-  for (const p of payments) {
-    if (p.type !== "MEETING") continue;
-    for (const m of parseMonthsCovered(p.monthsCovered)) {
-      const key = `${m.year}-${m.month}`;
-      if (p.status === "APPROVED") approved.add(key);
-      else if (p.status === "PENDING_APPROVAL" || p.status === "CLARIFICATION_REQUESTED") pending.add(key);
-    }
-  }
-  const keyOf = (m: MonthYear) => `${m.year}-${m.month}`;
-  const today = istParts(new Date());
-  const thisMonth: MonthYear = { month: today.month + 1, year: today.year };
-
-  const thisMonthStatus = approved.has(keyOf(thisMonth)) ? "APPROVED" : pending.has(keyOf(thisMonth)) ? "PENDING" : null;
-  let paidThrough: MonthYear | null = null;
-  for (let m = thisMonth; approved.has(keyOf(m)); m = nextMonth(m)) paidThrough = m;
-  // Pre-fill the form from the first month not already paid or awaiting approval.
-  let startMonth = thisMonth;
-  for (let i = 0; i < 36 && (approved.has(keyOf(startMonth)) || pending.has(keyOf(startMonth))); i++) startMonth = nextMonth(startMonth);
-
-  const membershipFor = (year: number) =>
-    payments.some((p) => p.type === "MEMBERSHIP" && p.membershipYear === year && p.status === "APPROVED")
-      ? "APPROVED"
-      : payments.some((p) => p.type === "MEMBERSHIP" && p.membershipYear === year && (p.status === "PENDING_APPROVAL" || p.status === "CLARIFICATION_REQUESTED"))
-        ? "PENDING"
-        : null;
-  const membershipThisYear = membershipFor(today.year);
-  const membershipYears = [today.year - 1, today.year, today.year + 1];
-  const defaultMembershipYear = membershipThisYear === null ? today.year : today.year + 1;
+  const { today, thisMonth, thisMonthStatus, paidThrough, startMonth, membershipThisYear, membershipYears, defaultMembershipYear } =
+    summarizeMemberPayments(payments);
 
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
   const monthlyFee = formatInr(content["fees.monthlyMeeting"]);

@@ -1,39 +1,15 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireMemberProfile } from "@/lib/auth/rbac";
-import { logActivity } from "@/lib/audit";
+import { recordOneToOne as record } from "@/lib/member-activities/record";
 
-const optionalText = () => z.string().optional().transform((v) => v || undefined);
-
-const recordSchema = z.object({
-  withMemberId: z.string().min(1, "Select a member"),
-  notes: optionalText(),
-});
-
+/** Validation and the write live in src/lib/member-activities/record.ts, shared with the mobile app's API. */
 export async function recordOneToOne(_prevState: { error?: string; success?: boolean } | undefined, formData: FormData) {
   const { session, member } = await requireMemberProfile();
 
-  const parsed = recordSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
-
-  if (parsed.data.withMemberId === member.id) {
-    return { error: "You can't record a One-to-One with yourself.", success: false };
-  }
-
-  const oneToOne = await db.oneToOne.create({
-    data: { ...parsed.data, memberId: member.id },
-  });
-
-  await logActivity({
-    userId: session.user.id,
-    action: "one_to_one.recorded",
-    entity: "OneToOne",
-    entityId: oneToOne.id,
-    metadata: { memberId: member.id, withMemberId: parsed.data.withMemberId },
-  });
+  const result = await record({ userId: session.user.id, memberId: member.id }, Object.fromEntries(formData));
+  if (!result.ok) return { error: result.error, success: false };
 
   revalidatePath("/member/one-to-ones");
   return { error: undefined, success: true };

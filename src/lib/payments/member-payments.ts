@@ -12,7 +12,21 @@ export type MeetingPaymentFields = ProofFields & { numberOfMonths: number; month
 
 type Parsed<T> = { data: T; error?: undefined } | { data?: undefined; error: string };
 
-export function parseProofFields(formData: FormData): Parsed<ProofFields> {
+/** FormData on the web; fieldsFromJson() wraps the mobile app's JSON body in the same shape. */
+export type PaymentFieldSource = { get(name: string): FormDataEntryValue | null };
+
+/** Adapts a JSON object to PaymentFieldSource: strings and numbers pass through as strings, anything else is "missing". */
+export function fieldsFromJson(body: unknown): PaymentFieldSource {
+  const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  return {
+    get(name) {
+      const value = obj[name];
+      return typeof value === "string" ? value : typeof value === "number" ? String(value) : null;
+    },
+  };
+}
+
+export function parseProofFields(formData: PaymentFieldSource): Parsed<ProofFields> {
   const amountPaidInr = formData.get("amountPaidInr");
   const actualPaymentDateRaw = formData.get("actualPaymentDate");
   const proofUrl = formData.get("proofUrl");
@@ -30,7 +44,7 @@ export function parseProofFields(formData: FormData): Parsed<ProofFields> {
 }
 
 /** numberOfMonths + month_i/year_i pairs + the proof fields. */
-export function parseMeetingPaymentFields(formData: FormData): Parsed<MeetingPaymentFields> {
+export function parseMeetingPaymentFields(formData: PaymentFieldSource): Parsed<MeetingPaymentFields> {
   const numberOfMonths = Number(formData.get("numberOfMonths"));
   if (!Number.isInteger(numberOfMonths) || numberOfMonths < 1 || numberOfMonths > 24) {
     return { error: "Select the number of months." };
