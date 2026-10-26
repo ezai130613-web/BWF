@@ -4447,7 +4447,8 @@ iOS launches first.
   itself stays a manual admin decision (payment/attendance records); the app promises 30 days.
 - **Store listing**: `mobile/store/app-store-listing.md` (name/subtitle/keywords within Apple's
   limits, description, review notes, privacy "nutrition label" answers, age rating) and six
-  1320×2868 screenshots in `mobile/store/screenshots-ios-6.9/` (fictional sample data, rendered
+  screenshots, now 1206×2622 in `mobile/store/screenshots-iphone-1206x2622/` (App Store Connect
+  rejected 1320×2868 for its "iPhone with Dynamic Island (medium display)" slot) (fictional sample data, rendered
   from the app's web build; replace with TestFlight screenshots if wanted).
 
 **Verification:** fresh local Postgres (isolated `prisma dev`, deleted afterwards): **21/21

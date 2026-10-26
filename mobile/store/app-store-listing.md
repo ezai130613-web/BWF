@@ -48,9 +48,11 @@ Everything below is ready to paste. Character limits are Apple's.
 
 ## Screenshots
 
-iPhone 6.9" display — upload all six from `mobile/store/screenshots-ios-6.9/` (1320 × 2868), in order.
-They show fictional sample members. Real-device screenshots from TestFlight can replace them later.
-No iPad screenshots are needed (the app is iPhone-only).
+**iPhone with Dynamic Island (medium display)** — upload all six from
+`mobile/store/screenshots-iphone-1206x2622/` (1206 × 2622), in order. (Apple's accepted sizes for
+that slot: 1206 × 2622 or 1179 × 2556, portrait.) They show fictional sample members; real-device
+screenshots from TestFlight can replace them later. No iPad screenshots are needed — the app is
+iPhone-only (`supportsTablet: false`).
 
 ## App Review information
 
