@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { getChapterAvailability } from "@/lib/applications/availability";
 import { notifyApplicationSubmitted } from "@/lib/notifications";
@@ -131,20 +132,23 @@ export async function submitApplication(
 
   // Backlog #35 — the application above is already committed; a failed
   // confirmation/admin-alert email must not turn a successful submission
-  // into a 500 for the applicant.
-  try {
-    const category = await db.category.findUnique({ where: { id: rest.categoryId }, select: { name: true } });
-    await notifyApplicationSubmitted({
-      applicantName: rest.name,
-      applicantEmail: rest.email,
-      companyName: rest.companyName,
-      categoryName: category?.name ?? "your category",
-      waitlisted: status === "WAITLISTED",
-      termsAcceptedAt: application.termsAcceptedAt ?? new Date(),
-    });
-  } catch (error) {
-    console.error("notifyApplicationSubmitted failed (application still submitted):", error);
-  }
+  // into a 500 for the applicant. Sent in after() (2026-10-26) so the
+  // applicant sees "Thank you" without waiting on two email round-trips.
+  after(async () => {
+    try {
+      const category = await db.category.findUnique({ where: { id: rest.categoryId }, select: { name: true } });
+      await notifyApplicationSubmitted({
+        applicantName: rest.name,
+        applicantEmail: rest.email,
+        companyName: rest.companyName,
+        categoryName: category?.name ?? "your category",
+        waitlisted: status === "WAITLISTED",
+        termsAcceptedAt: application.termsAcceptedAt ?? new Date(),
+      });
+    } catch (error) {
+      console.error("notifyApplicationSubmitted failed (application still submitted):", error);
+    }
+  });
 
   revalidatePath("/admin/applications");
   return { error: undefined, success: true };
