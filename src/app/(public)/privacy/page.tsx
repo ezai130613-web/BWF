@@ -59,6 +59,19 @@ export default async function PrivacyPage() {
           and to BWF administrators.
         </li>
         <li>
+          <strong>Attendance:</strong> whether you checked in at each chapter meeting. If you
+          don&apos;t check in, you&apos;re recorded as absent once the meeting is over. Two absences
+          in a row send you an automatic reminder; three are referred to BWF administrators, who
+          may extend courtesy (for example on medical grounds — any note they record stays
+          internal) or end the membership.
+        </li>
+        <li>
+          <strong>Birthday:</strong> if you or a BWF administrator add it, your birthday (day and
+          month, and optionally the year). Other members see only the day and month, on the
+          members-only Socials page; the year is visible only to you and BWF administrators. You can
+          change or remove it any time from My Profile.
+        </li>
+        <li>
           <strong>Payment submissions:</strong> when you tell us you&apos;ve paid a meeting or
           membership fee, the amount, payment date, months or year it covers, and the screenshot or
           PDF receipt you upload as proof. BWF&apos;s accounts team reviews these.
@@ -119,6 +132,10 @@ export default async function PrivacyPage() {
           payment proof, and uploads just that file.
         </li>
         <li>
+          <strong>Birthday:</strong> you can add, change or remove your birthday in the app; see
+          &ldquo;Birthday&rdquo; above for who can see it.
+        </li>
+        <li>
           The app contains no advertising, no third-party analytics and no tracking, and we
           don&apos;t share app data with data brokers.
         </li>
@@ -141,12 +158,17 @@ export default async function PrivacyPage() {
           reports and BWF Scores.
         </li>
         <li>To review payment submissions and keep accounts records.</li>
+        <li>To show members&apos; birthdays to fellow members, so they can wish each other.</li>
         <li>To show members other BWF members near them, when they ask the app to.</li>
         <li>To respond to feedback and testimonials.</li>
         <li>
           To send transactional emails — application status updates, sign-in confirmations,
-          password resets, meeting confirmations — and, for internal recipients, scheduled admin
-          reports.
+          password resets, meeting confirmations and reminders, attendance reminders — and, for
+          internal recipients, scheduled admin reports.
+        </li>
+        <li>
+          Where enabled, to send the same meeting and attendance reminders to members on WhatsApp,
+          using the WhatsApp number (or phone number) on their member profile.
         </li>
         <li>To understand site usage and improve the website, using aggregated analytics.</li>
         <li>To detect and prevent abuse of forms and other platform features.</li>
@@ -175,8 +197,9 @@ export default async function PrivacyPage() {
         <li>
           <strong>Service providers</strong> who process data on our behalf and only for the
           purpose we specify: Neon (database hosting), Vercel (application hosting), Resend
-          (transactional email delivery), Google (Analytics), and Cloudflare R2 (photo/brochure/
-          video storage).
+          (transactional email delivery), Google (Analytics), Cloudflare R2 (photo/brochure/
+          video storage), and — where enabled — Meta&apos;s WhatsApp Business Platform (delivering
+          meeting and attendance reminders to members&apos; WhatsApp numbers).
         </li>
         <li>
           <strong>Other site visitors,</strong> if you&apos;re listed in the public member

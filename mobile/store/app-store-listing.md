@@ -19,6 +19,12 @@ Everything below is ready to paste. Character limits are Apple's.
 | Marketing URL | `https://www.buildersworldforum.com` |
 | Privacy Policy URL | `https://www.buildersworldforum.com/privacy` |
 
+## What's New — version 1.1.0 (4000)
+
+> • Socials: see fellow members' birthdays — today and the next 30 days — and wish them on WhatsApp. Add your own birthday from Socials or My Profile.
+> • Payments, month by month: every month you've paid gets a tick once BWF approves it. Pick how many months you're paying for and the amount is worked out for you.
+> • Simpler check-in: scanning the meeting QR now just marks you present and tells you if this month's fee is due — payments are made from the Payments screen.
+
 ## Promotional text (170)
 
 > Record referrals, thank-you slips and one-to-ones in seconds, see your BWF Score, and find fellow members near you.
@@ -88,10 +94,11 @@ iPhone-only (`supportsTablet: false`).
 | User Content | Other User Content | Activity notes, profile text, account deletion reason |
 | Financial Info | Other Financial Info | Payment amounts and dates submitted for approval |
 | Identifiers | User ID | BWF member/login ID |
+| Other Data | Other Data Types | Birthday (day + month, optional year) for the Socials tab — added in 1.1.0 |
 
 Not collected: Coarse Location, Contacts (the phone's address book), Emails or Text Messages, health, browsing/search history, purchases, diagnostics, device ID, advertising data.
 
-That's **10 data types** in total.
+That's **11 data types** in total (10 in 1.0.0; **Other Data Types — birthday** added for 1.1.0: in App Store Connect → App Privacy → Edit → tick *Other Data Types*, Linked: Yes, Tracking: No, Purpose: App Functionality, then Publish).
 
 ## Age rating
 

@@ -4488,8 +4488,14 @@ first EAS build / TestFlight, App Store Connect record + submission.
 
 ## Phases 36–39 — Admin downloads, birthdays/Socials, WhatsApp, absence tracking (2026-10-26)
 
-**Status:** Built and verified on a private local database; **not committed or deployed yet**, and the
-three new migrations are not on the live database (four with Phase 40 below). Client request (four items), one phase each.
+**Status:** **Live since 2026-10-26 (~16:02 UTC).** Commit `8cab335`; the four migrations
+(`20261027120000`–`20261027150000`) were applied to Neon by the user with `prisma migrate deploy`
+(Claude's attempt was blocked by the session's production-change safety check), then pushed; Vercel
+deployed it. `migrate status` "up to date". Read-only production smoke test: public pages,
+logins and sitemap 200; new protected pages and every export redirect a signed-out visitor to login (no
+file); new app endpoints answer 401 + `Cache-Control: no-store`; both cron routes refuse requests
+without the secret. Absence tracking counts from the migration run. WhatsApp off (no Meta account).
+Not yet checked signed-in on production. Client request (four items), one phase each.
 Decisions asked first: WhatsApp → build ready, off until BWF's Meta account exists; "remove" →
 deactivate fully (records kept); absences counted in a row; birthdays set by admins and members.
 Design notes: `docs/ARCHITECTURE.md` → "Admin downloads, birthdays, WhatsApp & absence tracking".
@@ -4606,3 +4612,14 @@ path called directly: attendance + payment + expected ₹9,440 saved. **App 12/1
 grid, pre-fill, 6-month breakdown, edit hint, membership pre-fill, check-in without payment, Pay now
 → Payments, no console errors. Typecheck, lint, build clean; iOS + Android bundles export.
 **Not verified:** real R2 upload, real device.
+
+### Phase 41 — Privacy policy update + app 1.1.0 (2026-10-26)
+- `/privacy` now covers birthdays (who sees what; editable/removable), attendance and the automatic
+  absence reminders / admin review, attendance reminders by email, and WhatsApp reminders through
+  Meta's WhatsApp Business Platform "where enabled" (also listed under service providers).
+- App **1.1.0** (`mobile/app.json`; build number auto-increments on EAS): Socials tab + birthday
+  editor (Phase 37), month-by-month payments with pre-filled amount (Phase 40), attendance-only
+  check-in with "Pay now" (Phase 40). Release notes and the App Privacy change (add **Other Data
+  Types — birthday**, linked, no tracking, App Functionality) are in `mobile/store/app-store-listing.md`.
+- Apple allows one version in review at a time: 1.1.0 is uploaded to App Store Connect/TestFlight now
+  and is submitted for review once 1.0 has been approved.
