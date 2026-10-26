@@ -4479,3 +4479,9 @@ first EAS build / TestFlight, App Store Connect record + submission.
   tracking), member activity records, payment submissions, in-app deletion requests, and §2.3 no
   longer claims payments happen entirely offline. Live and verified. Matches the App Privacy
   answers in `mobile/store/app-store-listing.md`.
+- **Submitted for App Store review (2026-10-26)**: version 1.0 / build 1.0.0 (1) of "BWF – Builders
+  World Forum" (app 6827144695), after TestFlight testing on the user's iPhone passed. Reviewer
+  login `APPREVIEW` created on the live DB with `scripts/create-app-review-demo.ts --apply`
+  (run by the user; password kept out of the repo/chat). App Privacy published with 10 data
+  types (App Functionality, linked, no tracking); age rating 4+; free; India. Awaiting Apple's
+  decision (up to 48 h). Google Play still pending account handover.
