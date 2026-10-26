@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   REGISTERED: "bg-blue-50 text-blue-700",
@@ -25,13 +26,16 @@ export default async function VisitorsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Visitors</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Everyone who registered to visit a chapter meeting online (brief §23-25) — track
-          follow-up here, then send the strong ones to Apply for Membership.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Visitors</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Everyone who registered to visit a chapter meeting online (brief §23-25) — track
+            follow-up here, then send the strong ones to Apply for Membership.
+          </p>
+        </div>
+        <ExportButton dataset="visitors" />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { getMemberDashboard } from "@/lib/members/dashboard";
+import { getVisibleBirthdays } from "@/lib/members/birthdays";
 import { formatInr } from "@/lib/format";
 import { formatIst } from "@/lib/ist";
 import { Card, StatTile } from "@/components/member/ui";
@@ -38,7 +39,11 @@ const QUICK_ACTIONS: { href: string; label: string; hint: string; icon: LucideIc
 export default async function MemberDashboardPage() {
   const { member } = await requireMemberProfile();
 
-  const { now, chapter, category, company, pendingRevision, nextMeeting, score, thisMonth } = await getMemberDashboard(member);
+  const [{ now, chapter, category, company, pendingRevision, nextMeeting, score, thisMonth }, birthdays] = await Promise.all([
+    getMemberDashboard(member),
+    getVisibleBirthdays(member.id),
+  ]);
+  const birthdaysToday = birthdays.filter((b) => b.daysAway === 0);
 
   const firstName = member.name.split(" ")[0];
 
@@ -75,6 +80,19 @@ export default async function MemberDashboardPage() {
           </Link>
         </div>
       </section>
+
+      {birthdaysToday.length > 0 ? (
+        <Link
+          href="/member/socials"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-950 shadow-sm hover:bg-amber-100"
+        >
+          <span>
+            🎂 <strong>Birthday{birthdaysToday.length > 1 ? "s" : ""} today:</strong>{" "}
+            {birthdaysToday.map((b) => (b.isMe ? "you! Happy birthday" : b.name)).join(", ")}
+          </span>
+          <span className="flex-shrink-0 font-semibold">Socials →</span>
+        </Link>
+      ) : null}
 
       {/* Quick actions */}
       <section aria-labelledby="quick-actions">

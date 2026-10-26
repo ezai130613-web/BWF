@@ -74,6 +74,9 @@ model User {
   adminRemarks      AdminRemark[]
   mobileSessions    MobileSession[]
 
+  // Phase 39
+  absenceReviewsDecided AbsenceReview[]
+
   @@map("users")
 }
 
@@ -447,6 +450,15 @@ model Member {
   referredBy         Member?  @relation("MemberInductions", fields: [referredByMemberId], references: [id], onDelete: SetNull)
   inducted           Member[] @relation("MemberInductions")
 
+  /// Phase 37 (2026-10-26) — birthday for the members' Socials page (app +
+  /// portal). Day and month are all other members ever see; the year is
+  /// optional and only shown to the member themselves and admins. Set by an
+  /// admin or by the member directly (not public profile content, so it
+  /// skips the profile-edit approval queue). All three null = not given.
+  birthDay   Int?
+  birthMonth Int?
+  birthYear  Int?
+
   joinedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -494,12 +506,17 @@ model Member {
   // 2026-10-26 — admin-only remarks (approval, renewal, general).
   adminRemarks AdminRemark[]
 
+  // Phase 39 — consecutive-absence warnings and admin reviews.
+  absenceWarnings AbsenceWarning[]
+  absenceReviews  AbsenceReview[]
+
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
   // metrics, exports, chapter-availability computation).
   @@index([chapterId])
   @@index([categoryId])
   @@index([companyId])
+  @@index([birthMonth, birthDay])
   @@map("members")
 }
 
@@ -998,6 +1015,11 @@ model Meeting {
   reminderStatus      MeetingReminderStatus?
   reminderProcessedAt DateTime?
 
+  /// Phase 39 — when attendance was closed (members without a check-in
+  /// marked ABSENT), by an admin or automatically after the meeting. Only
+  /// closed meetings count towards absence warnings.
+  attendanceClosedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1009,6 +1031,7 @@ model Meeting {
   invitation         MeetingInvitation?
   feedback           Feedback[]
   reminderLogs       MeetingReminderLog[]
+  absenceWarnings    AbsenceWarning[]
 
   @@index([chapterId, startsAt])
   @@map("meetings")
@@ -1030,7 +1053,13 @@ enum ReminderDeliveryStatus {
   FAILED
 }
 
-/// One row per recipient per reminder send — the admin's delivery log.
+/// Phase 38 — which channel a member notification went out on.
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+/// One row per recipient per channel per reminder send — the admin's delivery log.
 model MeetingReminderLog {
   id String @id @default(cuid())
 
@@ -1040,9 +1069,13 @@ model MeetingReminderLog {
   memberId String?
   member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
 
-  email  String
-  status ReminderDeliveryStatus
-  error  String?
+  /// Phase 38 — EMAIL rows carry `email`, WHATSAPP rows carry `phone`
+  /// (digits, international form). Rows from before Phase 38 are all EMAIL.
+  channel NotificationChannel    @default(EMAIL)
+  email   String?
+  phone   String?
+  status  ReminderDeliveryStatus
+  error   String?
 
   createdAt DateTime @default(now())
 
@@ -1294,6 +1327,11 @@ model Payment {
   /// tradeoff as Blog.faq/AuditLog.metadata. Months need not be consecutive.
   monthsCovered     Json
   amountPaidInr     Decimal  @db.Decimal(10, 2)
+  /// Phase 40 — what this payment should have come to when submitted
+  /// (months × monthly fee + 18% GST, or the annual fee + GST). The member
+  /// can type a different amount; admins see the difference when reviewing.
+  /// Null when the fee wasn't set, and on payments from before Phase 40.
+  expectedAmountInr Decimal? @db.Decimal(10, 2)
   actualPaymentDate DateTime
 
   /// R2 URL — screenshot, receipt image, or PDF (see MEDIA_KINDS.paymentProof
@@ -2357,4 +2395,81 @@ model AdminRemark {
   @@index([memberId])
   @@index([applicationId])
   @@map("admin_remarks")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 39 (2026-10-26) — consecutive absences (client request). After a
+// meeting's attendance is closed, members who didn't check in are ABSENT.
+// 2 in a row → an automatic warning by email + WhatsApp (AbsenceWarning, one
+// per member per triggering meeting, so it's never sent twice). 3 in a row →
+// an AbsenceReview for an admin, who either extends courtesy (e.g. medical
+// approval — absences up to `excusedUntil` stop counting) or removes the
+// member (deactivated everywhere; records kept). See
+// src/lib/attendance/absences.ts.
+// ---------------------------------------------------------------------------
+
+enum AbsenceReviewStatus {
+  OPEN
+  /// Admin extended courtesy (e.g. medical approval).
+  COURTESY_GRANTED
+  /// Admin removed (deactivated) the member.
+  MEMBER_REMOVED
+  /// Closed automatically: the member no longer has 3 absences in a row
+  /// (an attendance correction), or was deactivated some other way.
+  DISMISSED
+}
+
+model AbsenceWarning {
+  id String @id @default(cuid())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// The meeting whose absence made it 2 in a row.
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  streak Int
+
+  /// SENT / FAILED / SKIPPED (no address, or WhatsApp not configured).
+  emailStatus    String
+  emailError     String?
+  whatsappStatus String
+  whatsappError  String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([memberId, meetingId])
+  @@index([createdAt])
+  @@map("absence_warnings")
+}
+
+model AbsenceReview {
+  id String @id @default(cuid())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  status AbsenceReviewStatus @default(OPEN)
+
+  /// Consecutive absences — kept current while OPEN.
+  streak              Int
+  /// Meeting ids in the streak, newest first.
+  absentMeetingIds    Json
+  lastAbsentMeetingAt DateTime
+
+  decidedAt       DateTime?
+  decidedByUserId String?
+  decidedBy       User?     @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decisionNote    String?
+  /// COURTESY_GRANTED only: absences at meetings up to this moment no
+  /// longer count (can be in the future, e.g. ongoing medical leave).
+  excusedUntil    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([memberId])
+  @@map("absence_reviews")
 }

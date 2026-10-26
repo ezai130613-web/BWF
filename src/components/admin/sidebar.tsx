@@ -5,23 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
-import { ArrowLeftRight, KeyRound, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeftRight, Download, KeyRound, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_GROUPS, WORKSPACE_LABELS, activeNavHref, type AdminNavItem, type Workspace } from "./nav-config";
-
-// Chapter Admin holds no global permissions but does get scoped access
-// to Members/Meetings/Visitors within their own chapter (see
-// requireChapterAccess) — show those links for them.
-const CHAPTER_SCOPED_PERMISSIONS = [
-  "members:manage",
-  "meetings:manage",
-  "visitors:manage",
-  "app_activity:view",
-  "roster:manage",
-  "attendance:manage",
-  "invitations:manage",
-  "contact_requests:view",
-];
+import { ADMIN_NAV_GROUPS, CHAPTER_SCOPED_PERMISSIONS, WORKSPACE_LABELS, activeNavHref, type AdminNavItem, type Workspace } from "./nav-config";
 
 type SidebarProps = {
   userName: string;
@@ -106,6 +92,10 @@ function AccountBlock({ userName, isChapterAdmin, workspace, canSwitchWorkspace 
             <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Switch workspace
           </Link>
         ) : null}
+        {/* Phase 36 — one workbook of everything this admin can see (scoped server-side). */}
+        <a href="/api/admin/exports/all" download className="inline-flex items-center gap-2 text-xs font-medium text-ivory-200/80 hover:text-gold-300">
+          <Download className="h-3.5 w-3.5" aria-hidden /> Download all data
+        </a>
         <Link href="/admin/account" className="inline-flex items-center gap-2 text-xs font-medium text-ivory-200/80 hover:text-gold-300">
           <KeyRound className="h-3.5 w-3.5" aria-hidden /> Change password
         </Link>

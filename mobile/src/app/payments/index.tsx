@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import type { PayeeDetails, PaymentRow, PaymentsResponse } from '@contract';
 import { Badge, Body, Button, Card, Divider, EmptyState, ListRow, Screen, SectionTitle, Segmented, StatGrid, StatTile } from '@/components/ui';
+import { PaymentMonthGrid } from '@/components/payment-month-grid';
 import { formatDate, formatInr } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
 import { colors, space } from '@/theme';
@@ -32,6 +33,15 @@ export default function PaymentsScreen() {
             <StatTile label="Meeting fee paid through" value={data.paidThrough ?? '—'} icon="time-outline" />
             <StatTile label={`Membership · ${data.membership.year}`} value={standing(data.membership.status)} icon="ribbon-outline" />
           </StatGrid>
+
+          {data.monthGrid ? (
+            <Card title="Meeting fee — month by month" icon="calendar-outline">
+              <PaymentMonthGrid tiles={data.monthGrid} />
+              <Body muted style={{ marginTop: space.md, fontSize: 13 }}>
+                A month gets its tick once BWF approves the payment covering it. “No record” means nothing was submitted in the app or website for that month — payments made before the website aren’t shown.
+              </Body>
+            </Card>
+          ) : null}
 
           <Segmented
             options={[

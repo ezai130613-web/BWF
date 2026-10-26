@@ -3,6 +3,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Attendance Management — member-wise view (spec: "Search member and show
@@ -63,9 +64,19 @@ export default async function AttendanceMembersPage({
             Search a member to see their full attendance history and percentage.
           </p>
         </div>
-        <Link href="/admin/attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-          ← Meeting-wise view
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <ExportButton
+            dataset="attendance"
+            params={
+              params.memberId
+                ? { memberId: params.memberId, meetingId: params.meetingId, from: params.from, to: params.to, status: params.status }
+                : { chapterId: requestedChapterId, q: params.q }
+            }
+          />
+          <Link href="/admin/attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
+            ← Meeting-wise view
+          </Link>
+        </div>
       </div>
 
       {!selectedMember ? (

@@ -7,6 +7,7 @@ import { ChangeUserRoleForm } from "@/components/admin/change-user-role-form";
 import { ReauthGuard } from "@/components/admin/reauth-guard";
 import { toggleUserStatus } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function UsersPage() {
   const session = await requirePermission("users:manage");
@@ -30,12 +31,15 @@ export default async function UsersPage() {
             Admin accounts only — member portal logins are managed from each member&apos;s profile.
           </p>
         </div>
-        <Link
-          href="/api/admin/exports/admin-users"
-          className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:border-emerald-800 hover:text-emerald-800"
-        >
-          Download list (PDF)
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButton dataset="users" />
+          <Link
+            href="/api/admin/exports/admin-users"
+            className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:border-emerald-800 hover:text-emerald-800"
+          >
+            Download list (PDF)
+          </Link>
+        </div>
       </div>
 
       <ReauthGuard>

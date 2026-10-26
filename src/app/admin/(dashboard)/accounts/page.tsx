@@ -7,6 +7,8 @@ import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
 import { getRemarksForMembers } from "@/lib/remarks";
+import { ExportButton } from "@/components/admin/export-button";
+import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const PAGE_LIMIT = 200;
@@ -47,10 +49,6 @@ export default async function AccountsPage({
   };
   const totalSubmitted = Object.values(summary).reduce((t, s) => t + s.amountInr, 0);
 
-  const exportQuery = new URLSearchParams(
-    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-  ).toString();
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -62,12 +60,7 @@ export default async function AccountsPage({
             meeting fees in one list. Pending submissions are never counted as received.
           </p>
         </div>
-        <Link
-          href={`/api/admin/exports/accounts${exportQuery ? `?${exportQuery}` : ""}`}
-          className="text-sm text-neutral-600 underline hover:text-emerald-800"
-        >
-          Export Excel
-        </Link>
+        <ExportButton dataset="accounts" params={filters} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -158,7 +151,10 @@ export default async function AccountsPage({
                       : "Paid from member portal"}
                   </p>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-neutral-900">{money.format(row.amountInr)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-neutral-900">
+                  {money.format(row.amountInr)}
+                  <ExpectedAmountNote paid={row.amountInr} expected={row.expectedAmountInr ?? null} />
+                </td>
                 <td className="min-w-56 px-4 py-3">
                   <StatusBadge status={row.status} />
                   {row.reviewedBy ? (

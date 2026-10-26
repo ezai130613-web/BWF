@@ -15,6 +15,8 @@ import Link from "next/link";
  * Attendance model for why this replaces the spec's literal "searchable
  * dropdown" step) — this page never asks the member to type their name or
  * pick their category.
+ *
+ * Phase 40 — attendance only; payment happens on /member/payments.
  */
 export default async function CheckinPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -72,42 +74,32 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
 
       {coverage === "APPROVED" ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Your meeting payment for <span className="font-medium">{monthLabel}</span> is already paid and approved — no payment
-          needed for this meeting.
+          ✓ Your meeting fee for <span className="font-medium">{monthLabel}</span> is paid.
         </div>
       ) : coverage === "PENDING" ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          A payment covering <span className="font-medium">{monthLabel}</span> is awaiting BWF approval. No need to submit it
-          again — answer &ldquo;No&rdquo; below unless this is a new payment.
+          Your payment covering <span className="font-medium">{monthLabel}</span> is awaiting BWF approval.
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          Your meeting fee for <span className="font-medium">{monthLabel}</span> isn&rsquo;t paid yet.{" "}
+          <Link href="/member/payments" className="font-semibold underline">
+            Pay now on the Payments page
+          </Link>
+          .
+        </div>
+      )}
 
       {registrationClosed ? (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
           Check-in for this meeting isn&rsquo;t open right now. Please check with your chapter admin.
         </div>
-      ) : existingAttendance?.status === "PRESENT" && coverage === "APPROVED" ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
-          <p>You&rsquo;re already checked in as Present for this meeting.</p>
-          <p className="mt-1 text-emerald-700">
-            Paying for other months or your annual membership?{" "}
-            <Link href="/member/payments" className="font-medium underline">
-              Go to Payments
-            </Link>
-          </p>
-        </div>
       ) : existingAttendance?.status === "PRESENT" ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
-          <p>You&rsquo;re already checked in as Present for this meeting.</p>
-          <p className="mt-1 text-emerald-700">
-            Made a payment since? You can still submit it below — it won&rsquo;t create a duplicate check-in.
-          </p>
-          <div className="mt-4">
-            <CheckinForm token={token} alreadyPresent startMonth={month} />
-          </div>
+          ✓ You&rsquo;re checked in as Present for this meeting.
         </div>
       ) : (
-        <CheckinForm token={token} alreadyPresent={false} paymentCovered={coverage === "APPROVED"} startMonth={month} />
+        <CheckinForm token={token} monthPaid={coverage !== null} monthLabel={monthLabel} />
       )}
     </div>
   );

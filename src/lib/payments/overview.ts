@@ -58,3 +58,57 @@ export function summarizeMemberPayments(payments: PaymentForSummary[], now = new
 
   return { today, thisMonth, thisMonthStatus, paidThrough, startMonth, membershipThisYear, membershipYears, defaultMembershipYear };
 }
+
+export type MonthTileStatus = "PAID" | "PENDING" | "DUE" | "NO_RECORD" | "UPCOMING";
+export type MonthTile = { month: number; year: number; label: string; status: MonthTileStatus; current: boolean };
+
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Phase 40 — the member's month-by-month meeting-fee dashboard: every month
+ * of the current year (from the month they joined, if that's later), plus
+ * any later months already paid for or awaiting approval. PAID = covered by
+ * an APPROVED payment (the tick); PENDING = submitted, awaiting BWF;
+ * DUE = the current month with nothing submitted; NO_RECORD = an earlier
+ * month with nothing on record (older payments were made outside this
+ * system and never imported — same "don't infer nonpayment" rule as the
+ * admin member-wise grid); UPCOMING = future. A rejected payment never counts.
+ */
+export function buildMonthGrid(payments: PaymentForSummary[], joinedAt: Date, now = new Date()): MonthTile[] {
+  const approved = new Set<string>();
+  const pending = new Set<string>();
+  let lastCovered = 0;
+  for (const p of payments) {
+    if (p.type !== "MEETING") continue;
+    for (const m of parseMonthsCovered(p.monthsCovered)) {
+      const key = `${m.year}-${m.month}`;
+      if (p.status === "APPROVED") approved.add(key);
+      else if (p.status === "PENDING_APPROVAL" || p.status === "CLARIFICATION_REQUESTED") pending.add(key);
+      else continue;
+      lastCovered = Math.max(lastCovered, m.year * 12 + m.month - 1);
+    }
+  }
+  const today = istParts(now);
+  const joined = istParts(joinedAt);
+  const currentIndex = today.year * 12 + today.month;
+  const startIndex = Math.max(today.year * 12, joined.year * 12 + joined.month);
+  const endIndex = Math.max(today.year * 12 + 11, lastCovered);
+
+  const tiles: MonthTile[] = [];
+  for (let i = startIndex; i <= endIndex; i++) {
+    const month = (i % 12) + 1;
+    const year = Math.floor(i / 12);
+    const key = `${year}-${month}`;
+    const status: MonthTileStatus = approved.has(key)
+      ? "PAID"
+      : pending.has(key)
+        ? "PENDING"
+        : i === currentIndex
+          ? "DUE"
+          : i < currentIndex
+            ? "NO_RECORD"
+            : "UPCOMING";
+    tiles.push({ month, year, label: `${SHORT_MONTHS[month - 1]} ${year}`, status, current: i === currentIndex });
+  }
+  return tiles;
+}

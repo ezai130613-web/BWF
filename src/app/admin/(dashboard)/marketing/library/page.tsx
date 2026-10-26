@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function MarketingLibraryPage() {
   await requirePermission("marketing:manage");
@@ -14,12 +15,15 @@ export default async function MarketingLibraryPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-            <AdminPageIcon />Content Library</h1>
-          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Every video uploaded once here can be scheduled to any combination of platforms — reused, not re-uploaded.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+              <AdminPageIcon />Content Library</h1>
+            <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+              Every video uploaded once here can be scheduled to any combination of platforms — reused, not re-uploaded.
+            </p>
+          </div>
+          <ExportButton dataset="marketing" />
         </div>
         <Link
           href="/admin/marketing/create"

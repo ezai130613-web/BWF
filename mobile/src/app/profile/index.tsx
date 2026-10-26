@@ -37,6 +37,10 @@ export default function ProfileScreen() {
             <Button label="Request a change" icon="create-outline" onPress={() => router.push('/profile/edit')} style={{ marginBottom: space.lg }} />
           )}
 
+          <Card>
+            <ListRow icon="gift-outline" title="My birthday" subtitle="Shown to fellow members on Socials (day and month only)" onPress={() => router.push('/profile/birthday')} />
+          </Card>
+
           <Card title="Profile details" icon="person-outline">
             {(Object.keys(data.fields) as ProfileFieldKey[])
               .filter((k) => data.fields[k])

@@ -2,6 +2,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const PAGE_LIMIT = 200;
 
@@ -60,13 +61,16 @@ export default async function ContactRequestsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Vendor Contact Requests</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          People who asked to see a member&rsquo;s phone, WhatsApp and email from their public
-          profile. {total} request{total === 1 ? "" : "s"} match these filters.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Vendor Contact Requests</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            People who asked to see a member&rsquo;s phone, WhatsApp and email from their public
+            profile. {total} request{total === 1 ? "" : "s"} match these filters.
+          </p>
+        </div>
+        <ExportButton dataset="contact-requests" params={{ chapterId, q, from, to }} />
       </div>
 
       <form action="/admin/contact-requests" method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4">

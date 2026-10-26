@@ -25,6 +25,7 @@ import {
   X,
   LogOut,
   Wallet,
+  PartyPopper,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: "/member/reports", label: "My Activity", icon: BarChart3 },
       { href: "/member/detailed-reports", label: "Detailed Reports", icon: FileBarChart },
       { href: "/member/search", label: "Find Members Nearby", icon: MapPin },
+      { href: "/member/socials", label: "Socials", icon: PartyPopper },
     ],
   },
   {

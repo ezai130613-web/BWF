@@ -4485,3 +4485,124 @@ first EAS build / TestFlight, App Store Connect record + submission.
   (run by the user; password kept out of the repo/chat). App Privacy published with 10 data
   types (App Functionality, linked, no tracking); age rating 4+; free; India. Awaiting Apple's
   decision (up to 48 h). Google Play still pending account handover.
+
+## Phases 36–39 — Admin downloads, birthdays/Socials, WhatsApp, absence tracking (2026-10-26)
+
+**Status:** Built and verified on a private local database; **not committed or deployed yet**, and the
+three new migrations are not on the live database (four with Phase 40 below). Client request (four items), one phase each.
+Decisions asked first: WhatsApp → build ready, off until BWF's Meta account exists; "remove" →
+deactivate fully (records kept); absences counted in a row; birthdays set by admins and members.
+Design notes: `docs/ARCHITECTURE.md` → "Admin downloads, birthdays, WhatsApp & absence tracking".
+
+### Phase 36 — Download Excel on every admin data page
+- One engine (`src/lib/exports/`) + one route `/api/admin/exports/[dataset]`; 26 datasets: members
+  (full profile, birthday, login, remarks), applications, chapters, categories, companies, member
+  logins (no passwords), meetings, attendance (per-meeting file includes "Not checked in"), roster,
+  invitations, member payments, visitor payments, all-payments ledger, visitor registrations, visitor
+  attendance (+ invitations-by-member, sources, conversions), visitor profiles, contact requests,
+  app activity (leaderboard + 8 activity sheets), chief guests, testimonials, FAQs, blogs, feedback,
+  admin users, activity log, marketing. Plus **Download all data** (sidebar) — one workbook of
+  everything the signed-in admin may see.
+- Payment proofs are clickable "Open proof" links + the raw URL (for screenshot verification).
+- Buttons on 31 admin pages, carrying the page's filters. Config pages have none.
+- **Security fix:** the old payments / visitor-payments / attendance export routes could return other
+  chapters' rows to a Chapter Admin via `q`/`meetingId` (filter objects overwrote the chapter
+  restriction). Fixed; regression-tested.
+- Every download audit-logged (`export.downloaded`).
+
+### Phase 37 — Birthdays & "Socials"
+- Migration `20261027120000_member_birthdays` (additive: 3 nullable columns + index).
+- Admin: Birthday card on the member page; members export has a Birthday column.
+- Member portal: **Socials** page (today / next 30 days / by month, Wish on WhatsApp), birthday card
+  on My Profile (saved directly, no review), "birthdays today" strip on the dashboard.
+- App: **Socials** tab, birthday editor (`/profile/birthday`), Home "birthdays today" card, My
+  Profile row. API: `GET /socials`, `POST /profile/birthday`, `dashboard.birthdaysToday` (optional
+  field — the v1.0 app in review ignores it). Needs a new app build to reach phones.
+
+### Phase 38 — Meeting reminders on WhatsApp
+- `src/lib/whatsapp.ts` (Meta WhatsApp Cloud API); migration `20261027130000_whatsapp_reminder_channel`
+  (`MeetingReminderLog.channel` + `phone`, `email` nullable — additive/relaxing only).
+- Reminders go out on email + WhatsApp under the same exactly-once claim; meeting page shows both
+  recipient counts and a per-channel delivery log; Settings shows WhatsApp status and the two
+  template texts to submit to Meta.
+- **Off in production until configured** (`WHATSAPP_PROVIDER=meta`, `WHATSAPP_ACCESS_TOKEN`,
+  `WHATSAPP_PHONE_NUMBER_ID`) — email-only behaviour is unchanged until then.
+
+### Phase 39 — Automatic absences, warnings and admin review
+- Migration `20261027140000_absence_tracking` (`Meeting.attendanceClosedAt`, `AbsenceWarning`,
+  `AbsenceReview`, and the AppSetting that starts counting from the moment it runs).
+- Hourly `/api/cron/attendance` (added to `vercel.json`): auto-closes finished meetings (members
+  without a QR check-in → Absent; meetings with zero check-ins are left for an admin), 2 in a row →
+  email + WhatsApp warning, 3+ → **Attendance → Absence Reviews** + alert email to
+  `NOTIFICATION_EMAIL` and the chapter's admins. Decisions: extend courtesy (note + "excuse up to"
+  date, e.g. medical) or remove member (deactivate, suspend login, sign out of web + app; records
+  kept, restorable). Corrections re-evaluate immediately; an OPEN review that no longer applies is
+  dismissed automatically. Settings → switch tracking off/on.
+- `closeMeetingAttendance()` now skips members who joined after the meeting.
+
+**Verification performed** (private `prisma dev` database — verified empty, all 54 migrations
+applied, `migrate diff` against the schema empty, deleted afterwards; `EMAIL_PROVIDER=console`,
+`WHATSAPP_PROVIDER=console`):
+- **Downloads 93/93**: all 26 datasets + all-data open as valid workbooks; proof hyperlinks; filters
+  honoured; Chapter Admin can't widen scope (spoofed chapterId, the old q/chapter leak, forbidden
+  datasets, all-data contents); signed-out and member sessions get no file; buttons on 31 pages
+  carry filters; audit rows written.
+- **Birthdays 41/41**: portal Socials (today/tomorrow/10 days/29 Feb, no year, wish links, demo
+  chapter sealed off both ways), profile form validation (31 Feb, 29 Feb 2001) keeps typed values,
+  admin form, chapter-admin isolation, export column, app API (validation, clear, 401s, no-store).
+- **WhatsApp 44/44 unit** (number normalisation, request shape against a stubbed Graph API, error
+  surfacing, configurable version/language, template placeholder counts, birthday date maths incl.
+  IST and leap years) + **20/20 end-to-end** (both channels, skipped numbers, no double send,
+  crash-resume per channel, meeting page, settings) + email-only when WhatsApp is off.
+- **Absences 55/55**: staged meetings — auto-close, joined-after rule, warnings (email + WhatsApp,
+  skipped without a number), no duplicates, pre-tracking absences ignored, zero-check-in meeting
+  left open, review + admin alerts, courtesy through the UI (end of day IST), excused absences,
+  correction dismisses / re-opens, removal through the UI (login, web session and app token all
+  dead, hidden from public site and Socials, records kept), other chapter's review hidden,
+  tracking off/on.
+- **Regression 25/25** (manual close, profile-edit request beside the new form, portal pages,
+  existing app endpoints, public pages). **App** in a 390×844 browser (Expo web): Home card,
+  Socials tab, add/validate/save/prefill/remove birthday, My Profile row — all working (the only
+  console error was the deliberate 400 from the invalid-date test).
+- Website `typecheck`, `lint`, `next build` clean; app `tsc` clean; iOS + Android bundles export.
+
+**Not verified / follow-ups:**
+- Real WhatsApp delivery (no Meta account yet) — only the request format against a stub.
+- Real email delivery of warnings/alerts (console provider in tests; same `sendEmail` as everything else).
+- App on a real device/simulator; `expo lint` has never actually linted `mobile/` (no ESLint config
+  there and the root config ignores the folder) — pre-existing, not changed.
+- HawkScan not run (no `hawk` runtime / `HAWK_API_KEY`).
+- Deploy order: run the three migrations on Neon (additive), then deploy the website; WhatsApp
+  stays off until the env vars are set. The app's Socials tab needs a new store build (1.0 is in review).
+
+### Phase 40 — Payments dashboard month by month; pay only on the Payments page (2026-10-26)
+Client request: members pay only through the Payments page (portal + app); months they've paid show a
+tick once BWF approves; e.g. 6 months ≈ 12 meetings. Decisions asked first: remove payment from QR
+check-in; amount calculated but **editable**; meeting fee carries **18% GST**.
+- **Month-by-month dashboard** (`buildMonthGrid()` in `src/lib/payments/overview.ts`; portal card +
+  app card, API `PaymentsResponse.monthGrid`): every month of the current year (from the member's
+  join month) plus any later months paid/pending — ✓ Paid (approved), ⏳ Awaiting approval, Not paid
+  (current month only), **No record** (earlier months with nothing on record — older payments weren't
+  imported, so per the existing "don't infer nonpayment" rule they're never shown as unpaid), Upcoming.
+- **Amount pre-filled** = months × monthly fee (Website Content → Fees) + 18% GST, with the
+  breakdown shown (`src/lib/payments/fees.ts`; app mirror `mobile/src/lib/fees.ts`); follows the month
+  count until the member types their own amount, then a "differs from the calculated ₹X" note.
+  Membership pre-fills the annual fee + GST.
+- `Payment.expectedAmountInr` (migration `20261027150000_payment_expected_amount`, additive) stores the
+  calculated amount at submission; admin Payments, Member-wise and All Payments show "✓ Matches the fee"
+  or "Expected ₹X (₹Y less/more)"; the payments export has an Expected column.
+- **QR check-in = attendance only** (web + app): shows the month's status and a "Pay now" link. The
+  server still accepts a payment sent with a check-in so members on the 1.0 app (in App Store review,
+  still has the old form) never lose one; it's stored with its expected amount like any other.
+- Wording updated on the admin Payments / Payment Links pages.
+
+**Verification** (fresh private `prisma dev`, all 55 migrations, fees ₹4,000/month and ₹20,000/year,
+uploads intercepted so nothing reached R2): **31/31** end to end — grid states, quote ₹28,320 for 6
+months, pre-fill/follow/edit/difference note, months start after pending ones, saved with expected
+amount, admin "Matches the fee" + approve → 6 ticks (into next year), membership ₹23,600, API
+`monthGrid`/`feeQuote` + unchanged fields, mismatch note, export column, ledger note, web check-in
+with no payment fields + Pay now + one-tap check-in, real month status. Old-app check-in-with-payment
+path called directly: attendance + payment + expected ₹9,440 saved. **App 12/12** (Expo web 390×844):
+grid, pre-fill, 6-month breakdown, edit hint, membership pre-fill, check-in without payment, Pay now
+→ Payments, no console errors. Typecheck, lint, build clean; iOS + Android bundles export.
+**Not verified:** real R2 upload, real device.

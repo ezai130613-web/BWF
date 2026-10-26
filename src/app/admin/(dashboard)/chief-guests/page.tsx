@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateChiefGuestForm } from "@/components/admin/create-chief-guest-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function ChiefGuestsPage() {
   await requirePermission("chief_guests:manage");
@@ -17,13 +18,16 @@ export default async function ChiefGuestsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Chief Guests</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Business leaders and decision-makers who&rsquo;ve visited BWF meetings — shown as social
-          proof in the homepage carousel. No fixed limit on how many can be added.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Chief Guests</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Business leaders and decision-makers who&rsquo;ve visited BWF meetings — shown as social
+            proof in the homepage carousel. No fixed limit on how many can be added.
+          </p>
+        </div>
+        <ExportButton dataset="chief-guests" />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Roster Sheet interactive management (2026-09-16 correction) — steps 1–2
@@ -26,18 +27,21 @@ export default async function RosterPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Roster Sheets</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Manage a chapter meeting&rsquo;s full roster on this page — members, scores and
-          automatic ranking, open categories, and the Notes column — then save and download the
-          printable PDF. Coordinators are managed on each chapter&rsquo;s own page, at{" "}
-          <Link href="/admin/chapters" className="text-neutral-900 underline">
-            Chapters
-          </Link>
-          .
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Roster Sheets</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Manage a chapter meeting&rsquo;s full roster on this page — members, scores and
+            automatic ranking, open categories, and the Notes column — then save and download the
+            printable PDF. Coordinators are managed on each chapter&rsquo;s own page, at{" "}
+            <Link href="/admin/chapters" className="text-neutral-900 underline">
+              Chapters
+            </Link>
+            .
+          </p>
+        </div>
+        <ExportButton dataset="roster" params={{ chapterId }} />
       </div>
 
       {scope === "ALL" && !chapterId ? (

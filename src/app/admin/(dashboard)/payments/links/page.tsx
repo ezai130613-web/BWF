@@ -25,7 +25,7 @@ export default async function PaymentLinksPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             <AdminPageIcon />Payment Links</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Send members a direct link to pay — no meeting check-in needed. The link opens the Payments
+            Send members a direct link to pay. Members pay only here (website or app) — meeting check-in no longer takes payments. The link opens the Payments
             page in their member login; submissions arrive in Payments as Pending Approval like any other.
           </p>
         </div>
@@ -37,7 +37,7 @@ export default async function PaymentLinksPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <PaymentLinkCard
           title="Meeting payment (monthly)"
-          description={`Monthly meeting fee${monthly ? ` — ${withGst(monthly)} per month` : ""}. Members can pay for one or several months at once; approved months aren't asked for again at check-in.`}
+          description={`Monthly meeting fee${monthly ? ` — ${withGst(monthly)} per month` : ""}. Members pick one or several months — the amount is worked out for them (months × fee + 18% GST) — and each approved month gets a tick on their Payments page.`}
           url={`${SITE_URL}/member/payments?type=meeting`}
           defaultMessage="Dear BWF member, please pay your monthly meeting fee using the link below. Sign in to your member account, pay via the QR/bank details shown, and upload your payment screenshot."
           qrFilename="BWF_Meeting_Payment_QR.png"

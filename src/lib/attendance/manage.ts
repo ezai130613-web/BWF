@@ -61,11 +61,12 @@ export async function hasApprovedOverlap(memberId: string, monthsCovered: MonthY
  * getExpectedMemberIds itself never including anyone outside their current
  * chapter — see its own comment for the one known gap this leaves.
  */
-export async function closeMeetingAttendance(meetingId: string, closedByUserId: string) {
+export async function closeMeetingAttendance(meetingId: string, closedByUserId: string | null) {
   const meeting = await db.meeting.findUniqueOrThrow({ where: { id: meetingId } });
 
   const [expectedMembers, existing] = await Promise.all([
-    db.member.findMany({ where: { chapterId: meeting.chapterId, status: "ACTIVE" }, select: { id: true } }),
+    // Phase 39 — members who joined after the meeting weren't expected at it.
+    db.member.findMany({ where: { chapterId: meeting.chapterId, status: "ACTIVE", joinedAt: { lte: meeting.startsAt } }, select: { id: true } }),
     db.attendance.findMany({ where: { meetingId }, select: { memberId: true } }),
   ]);
 
@@ -83,13 +84,19 @@ export async function closeMeetingAttendance(meetingId: string, closedByUserId: 
   // separately admin-editable field on /admin/meetings/[id], and load-
   // bearing for visitor-registration closure) — this only stops new
   // check-ins and backfills Absent rows, it doesn't declare the meeting over.
-  await db.meeting.update({ where: { id: meetingId }, data: { attendanceRegistrationOpen: false } });
+  // Phase 39 — attendanceClosedAt marks the meeting as counting towards
+  // absence warnings (src/lib/attendance/absences.ts). Re-closing keeps the
+  // first close time.
+  await db.meeting.update({
+    where: { id: meetingId },
+    data: { attendanceRegistrationOpen: false, attendanceClosedAt: meeting.attendanceClosedAt ?? new Date() },
+  });
 
   await logActivity({
     userId: closedByUserId,
     action: "attendance.meeting_closed",
     entity: "Meeting",
     entityId: meetingId,
-    metadata: { markedAbsent: absentMemberIds.length },
+    metadata: { markedAbsent: absentMemberIds.length, automatic: closedByUserId === null },
   });
 }

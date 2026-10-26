@@ -72,6 +72,8 @@ export type DashboardResponse = {
   thisMonth: ActivityStats;
   nextMeeting: MeetingSummary | null;
   pendingProfileEdit: { submittedAt: string } | null;
+  /** Phase 37 — fellow members (or you) with a birthday today. Optional: servers before Phase 37 don't send it. */
+  birthdaysToday?: { id: string; name: string; isMe: boolean }[];
 };
 
 // --- Activities (Phase 33) ---
@@ -254,6 +256,20 @@ export type PaymentsResponse = {
   meetingPayee: PayeeDetails;
   membershipPayee: PayeeDetails;
   uploadsEnabled: boolean;
+  /** Phase 40 — month-by-month meeting-fee status (tick = approved). Optional: older servers don't send it. */
+  monthGrid?: PaymentMonthTile[];
+  /** Phase 40 — numbers for pre-filling the amount: monthly fee before GST, GST %, annual membership total incl. GST. */
+  feeQuote?: { monthlyMeetingInr: number | null; gstPercent: number; membershipTotalInr: number | null };
+};
+
+export type PaymentMonthTile = {
+  month: number;
+  year: number;
+  /** "Oct 2026" */
+  label: string;
+  /** NO_RECORD = an earlier month with nothing on record (not necessarily unpaid — older payments weren't imported). */
+  status: "PAID" | "PENDING" | "DUE" | "NO_RECORD" | "UPCOMING";
+  current: boolean;
 };
 
 export type UploadTicket = { uploadUrl: string; publicUrl: string; maxBytes: number };
@@ -267,3 +283,38 @@ export type CheckinPreviewResponse = {
   monthCoverage: "APPROVED" | "PENDING" | null;
   monthLabel: string;
 };
+
+// --- Socials / birthdays (Phase 37) ---
+
+export type BirthdayRow = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  company: string;
+  category: string;
+  chapter: string;
+  day: number;
+  month: number;
+  /** "14 March" — never the year. */
+  label: string;
+  /** 0 = today. */
+  daysAway: number;
+  isMe: boolean;
+  /** wa.me link with a ready-typed wish; null for yourself or with no usable number. */
+  wishUrl: string | null;
+};
+
+export type BirthdayValue = { day: number; month: number; year: number | null };
+
+export type SocialsResponse = {
+  today: BirthdayRow[];
+  /** The next `upcomingDays` days, soonest first. */
+  upcoming: BirthdayRow[];
+  upcomingDays: number;
+  byMonth: { month: number; name: string; people: BirthdayRow[] }[];
+  myBirthday: BirthdayValue | null;
+};
+
+/** POST /profile/birthday — all three null clears it. */
+export type BirthdayUpdateRequest = { day: number | null; month: number | null; year: number | null };
+export type BirthdayUpdateResponse = { ok: true; myBirthday: BirthdayValue | null };

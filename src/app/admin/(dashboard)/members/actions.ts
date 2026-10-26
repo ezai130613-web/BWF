@@ -14,6 +14,7 @@ import { normalizeCompanyName } from "@/lib/companies/normalize";
 import { GST_FORMAT_ERROR, isValidGstNumber, normalizeGstNumber } from "@/lib/companies/gst";
 import { notifyProfileRevisionReviewed } from "@/lib/notifications";
 import { addAdminRemark } from "@/lib/remarks";
+import { birthdayFields, birthdayInputSchema, submittedBirthday, type SubmittedBirthday } from "@/lib/members/birthdays";
 import type { $Enums } from "@/generated/prisma/client";
 
 async function generateUniqueMemberSlug(name: string) {
@@ -277,6 +278,27 @@ export async function updateMemberInduction(_prevState: { error?: string } | und
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/app-activity");
   return { error: undefined };
+}
+
+/** Phase 37 — admin sets (or clears) a member's birthday for the Socials page. */
+export async function updateMemberBirthday(
+  _prevState: { error?: string; saved?: boolean; values?: SubmittedBirthday } | undefined,
+  formData: FormData,
+) {
+  const memberId = String(formData.get("memberId") ?? "");
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+
+  const values = submittedBirthday(formData);
+  const parsed = birthdayInputSchema.safeParse(values);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid birthday.", values };
+
+  await db.member.update({ where: { id: memberId }, data: birthdayFields(parsed.data) });
+  await logActivity({ action: "member.birthday_updated", entity: "Member", entityId: memberId });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/member/socials");
+  return { saved: true };
 }
 
 // ---------------------------------------------------------------------------

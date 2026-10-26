@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /** Attendance Management — meeting-wise view, step 1/2 (Select Chapter, Select Meeting). Same picker pattern as /admin/qr-codes and /admin/roster. */
 export default async function AttendancePage({
@@ -14,6 +15,7 @@ export default async function AttendancePage({
 
   const chapters = scope === "ALL" ? await db.chapter.findMany({ orderBy: { name: "asc" } }) : [];
   const chapterId = scope === "ALL" ? requestedChapterId : scope;
+  const openReviews = await db.absenceReview.count({ where: { status: "OPEN", ...(scope === "ALL" ? {} : { member: { chapterId: scope } }) } });
 
   return (
     <div className="flex flex-col gap-8">
@@ -26,14 +28,25 @@ export default async function AttendancePage({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/api/admin/exports/attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-            Export Excel
-          </Link>
+          <ExportButton dataset="attendance" params={{ chapterId }} />
           <Link href="/admin/attendance/members" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Member-wise view →
           </Link>
         </div>
       </div>
+
+      {openReviews > 0 ? (
+        <Link
+          href="/admin/attendance/reviews"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-900 shadow-sm hover:bg-red-100"
+        >
+          <span>
+            <strong>{openReviews}</strong> member{openReviews === 1 ? " has" : "s have"} missed 3 or more meetings in a row and{" "}
+            {openReviews === 1 ? "needs" : "need"} a decision.
+          </span>
+          <span className="flex-shrink-0 font-semibold">Absence reviews →</span>
+        </Link>
+      ) : null}
 
       {scope === "ALL" && !chapterId ? (
         <form action="/admin/attendance" method="GET" className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 sm:max-w-sm">

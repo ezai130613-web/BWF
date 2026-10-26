@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { EditMeetingForm } from "@/components/admin/edit-meeting-form";
 import { ReminderBadge } from "@/components/admin/reminder-badge";
 import { formatIstDateTime } from "@/lib/ist";
-import { getReminderRecipients, reminderScheduledFor } from "@/lib/meetings/reminders";
+import { getReminderRecipients, getWhatsAppReminderRecipients, reminderScheduledFor } from "@/lib/meetings/reminders";
+import { isWhatsAppEnabled } from "@/lib/whatsapp";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 
 export default async function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +20,8 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   const permissions = await getUserPermissionKeys(session.user.id);
   const canManageChiefGuests = permissions.has("chief_guests:manage");
 
-  const [visitors, chiefGuests, reminderLogs, recipients, activeMemberCount] = await Promise.all([
+  const whatsAppOn = isWhatsAppEnabled();
+  const [visitors, chiefGuests, reminderLogs, recipients, whatsAppRecipients, activeMemberCount] = await Promise.all([
     db.visitor.findMany({
       where: { meetingId: id },
       include: { category: true },
@@ -36,6 +38,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
       orderBy: { createdAt: "desc" },
     }),
     getReminderRecipients(meeting.chapterId),
+    whatsAppOn ? getWhatsAppReminderRecipients(meeting.chapterId) : Promise.resolve([]),
     db.member.count({ where: { chapterId: meeting.chapterId, status: "ACTIVE" } }),
   ]);
   const now = new Date();
@@ -53,7 +56,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
 
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-neutral-900">Member reminder email</h2>
+          <h2 className="text-sm font-semibold text-neutral-900">Member reminder (email{whatsAppOn ? " + WhatsApp" : ""})</h2>
           <ReminderBadge
             enabled={meeting.reminderEnabled}
             status={meeting.reminderStatus}
@@ -74,8 +77,15 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
           <div>
             <dt className="text-xs text-neutral-500">Recipients (right now)</dt>
             <dd className="text-neutral-900">
-              {recipients.length} of {activeMemberCount} active members
+              Email: {recipients.length} of {activeMemberCount} active members
               {activeMemberCount > recipients.length ? ` · ${activeMemberCount - recipients.length} skipped (no valid email)` : ""}
+            </dd>
+            <dd className="text-neutral-900">
+              {whatsAppOn
+                ? `WhatsApp: ${whatsAppRecipients.length} of ${activeMemberCount} active members${
+                    activeMemberCount > whatsAppRecipients.length ? ` · ${activeMemberCount - whatsAppRecipients.length} skipped (no valid number)` : ""
+                  }`
+                : "WhatsApp: not configured yet — email only"}
             </dd>
           </div>
         </dl>
@@ -97,7 +107,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                 <thead className="sticky top-0 bg-neutral-50 uppercase tracking-wide text-neutral-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">Member</th>
-                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Sent to</th>
                     <th className="px-3 py-2 font-medium">Result</th>
                     <th className="px-3 py-2 font-medium">When</th>
                   </tr>
@@ -106,7 +116,9 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
                   {reminderLogs.map((l) => (
                     <tr key={l.id}>
                       <td className="px-3 py-1.5 text-neutral-900">{l.member?.name ?? "—"}</td>
-                      <td className="px-3 py-1.5 text-neutral-600">{l.email}</td>
+                      <td className="px-3 py-1.5 text-neutral-600">
+                        {l.channel === "WHATSAPP" ? `WhatsApp +${l.phone}` : l.email}
+                      </td>
                       <td className={`px-3 py-1.5 ${l.status === "SENT" ? "text-emerald-700" : "text-red-700"}`} title={l.error ?? undefined}>
                         {l.status === "SENT" ? "Sent" : `Failed${l.error ? ` — ${l.error.slice(0, 80)}` : ""}`}
                       </td>

@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { getPaymentsScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -72,9 +72,10 @@ export default async function VisitorsPaymentPage({
             Payments. Pending submissions are never counted as verified receipts.
           </p>
         </div>
-        <Link href="/api/admin/exports/visitor-payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-          Export Excel
-        </Link>
+        <ExportButton
+          dataset="visitor-payments"
+          params={{ chapterId: effectiveChapterId, meetingId: params.meetingId, status: params.status, q: params.q }}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

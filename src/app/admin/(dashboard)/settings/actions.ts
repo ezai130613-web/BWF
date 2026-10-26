@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/rbac";
 import { setBooleanSetting, type SettingKey } from "@/lib/settings";
 import { logActivity } from "@/lib/audit";
+import { setAbsenceTrackingFrom } from "@/lib/attendance/absences";
 
 /** Admin → Settings (2026-10-03). Super Admin only (`users:manage`). */
 
@@ -54,4 +55,16 @@ export async function removeFeedbackRecipient(id: string) {
   const recipient = await db.feedbackEmailRecipient.delete({ where: { id } });
   await logActivity({ userId: session.user.id, action: "settings.feedback_recipient_removed", metadata: { email: recipient.email } });
   revalidatePath("/admin/settings");
+}
+
+/**
+ * Phase 39 — automatic absence tracking on/off. Turning it on (re)starts the
+ * count from now, so absences from before never trigger warnings.
+ */
+export async function setAbsenceTracking(on: boolean) {
+  const session = await requirePermission("users:manage");
+  await setAbsenceTrackingFrom(on ? new Date() : null);
+  await logActivity({ userId: session.user.id, action: "settings.updated", metadata: { key: "attendance.absenceTrackingFrom", value: on ? "now" : "off" } });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/attendance/reviews");
 }

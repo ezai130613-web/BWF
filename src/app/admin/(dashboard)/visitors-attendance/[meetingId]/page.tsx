@@ -4,6 +4,7 @@ import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CorrectVisitorAttendanceForm } from "@/components/admin/correct-visitor-attendance-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const SOURCE_LABELS: Record<string, string> = {
   INVITED_BY_MEMBER: "Invited by member",
@@ -61,9 +62,12 @@ export default async function VisitorsAttendanceMeetingPage({
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
           <AdminPageIcon />{meeting.title}</h1>
-        <p className="text-sm text-neutral-600">
-          {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-neutral-600">
+            {meeting.chapter.name} · {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
+          </p>
+          <ExportButton dataset="visitor-attendance" params={{ meetingId: meeting.id }} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">

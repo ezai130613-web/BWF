@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Meeting Invitation Generator (client spec, 2026-09-18) — step 1/2 (Select
@@ -22,14 +23,17 @@ export default async function InvitationsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Meeting Invitation Generator</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Pick an existing chapter meeting to auto-fill a shareable invitation poster — chapter,
-          date, venue, chief guest, and visitor registration QR all come straight from that
-          meeting&rsquo;s own record.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Meeting Invitation Generator</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Pick an existing chapter meeting to auto-fill a shareable invitation poster — chapter,
+            date, venue, chief guest, and visitor registration QR all come straight from that
+            meeting&rsquo;s own record.
+          </p>
+        </div>
+        <ExportButton dataset="invitations" params={{ chapterId }} />
       </div>
 
       {scope === "ALL" && !chapterId ? (

@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function ActivityLogPage() {
   await requirePermission("audit_log:view");
@@ -13,10 +14,13 @@ export default async function ActivityLogPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Activity Log</h1>
-        <p className="mt-1 text-sm text-neutral-600">Most recent 100 entries.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Activity Log</h1>
+          <p className="mt-1 text-sm text-neutral-600">Most recent 100 entries.</p>
+        </div>
+        <ExportButton dataset="activity-log" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

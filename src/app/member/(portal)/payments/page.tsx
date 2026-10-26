@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { BadgeCheck, CalendarDays, Clock, IndianRupee, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarCheck, CalendarDays, Clock, IndianRupee, Wallet } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
-import { summarizeMemberPayments } from "@/lib/payments/overview";
+import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
+import { parseFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { PaymentMonthGrid } from "@/components/member/payment-month-grid";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
 import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
 import { Card, DataTable, PageHeader, StatTile, formatShortDate, tdClass } from "@/components/member/ui";
@@ -23,7 +25,9 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 
 /**
  * Member Payments (2026-10-21) — pay the monthly meeting fee or the annual
- * BWF membership from the portal, without checking in at a meeting. Admins
+ * BWF membership from the portal. Since Phase 40 this (and the app's
+ * Payments screen) is the only place members pay — QR check-in only marks
+ * attendance — and it opens with a month-by-month tick dashboard. Admins
  * share /member/payments?type=meeting|membership links (Admin → Payment
  * Links); a signed-out member goes through login and lands back here.
  */
@@ -60,6 +64,8 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
   const { today, thisMonth, thisMonthStatus, paidThrough, startMonth, membershipThisYear, membershipYears, defaultMembershipYear } =
     summarizeMemberPayments(payments);
 
+  const monthGrid = buildMonthGrid(payments, member.joinedAt);
+  const monthlyFeeValue = parseFee(content["fees.monthlyMeeting"]);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
   const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
 
@@ -101,7 +107,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
       <PageHeader
         icon={Wallet}
         title="Payments"
-        description="Pay your monthly meeting fee or your annual BWF membership. Once BWF approves a payment, the months it covers won't be asked for again at meeting check-in."
+        description="Pay your monthly meeting fee or your annual BWF membership here. Upload the screenshot — once BWF approves it, every month it covers gets a tick below."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -124,6 +130,10 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
           hint={membershipThisYear === "PENDING" ? "Awaiting BWF approval" : membershipThisYear === null ? "No approved payment recorded" : undefined}
         />
       </div>
+
+      <Card title="Meeting fee — month by month" icon={CalendarCheck}>
+        <PaymentMonthGrid tiles={monthGrid} />
+      </Card>
 
       <div className="flex gap-2" role="tablist" aria-label="Payment type">
         {(
@@ -174,6 +184,8 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
             key={type}
             type={type}
             startMonth={startMonth}
+            monthlyFee={monthlyFeeValue}
+            membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
             membershipYears={membershipYears}
             defaultMembershipYear={defaultMembershipYear}
           />

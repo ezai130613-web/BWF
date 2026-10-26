@@ -5,6 +5,7 @@ import { CreateMemberForm } from "@/components/admin/create-member-form";
 import { updateMemberStatus } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { getRemarksForMembers } from "@/lib/remarks";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -60,14 +61,17 @@ export default async function MembersPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Members</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Only one ACTIVE member may hold a given category within a chapter (brief §15) — this
-          is enforced by a database constraint, not just this form, so it can&rsquo;t be
-          bypassed even by a direct API call.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Members</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Only one ACTIVE member may hold a given category within a chapter (brief §15) — this
+            is enforced by a database constraint, not just this form, so it can&rsquo;t be
+            bypassed even by a direct API call.
+          </p>
+        </div>
+        <ExportButton dataset="members" params={{ chapterId, categoryId }} />
       </div>
 
       <form className="flex flex-wrap items-end gap-4 rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4" method="GET">

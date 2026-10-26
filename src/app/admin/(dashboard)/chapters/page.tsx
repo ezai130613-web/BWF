@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { CreateChapterForm } from "@/components/admin/create-chapter-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -20,13 +21,16 @@ export default async function ChaptersPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Chapters</h1>
-        <p className="mt-1 max-w-xl text-sm text-neutral-600">
-          Draft chapters exist internally without appearing on the public site (brief §16) —
-          publish by setting status to Active on the chapter&rsquo;s own page.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Chapters</h1>
+          <p className="mt-1 max-w-xl text-sm text-neutral-600">
+            Draft chapters exist internally without appearing on the public site (brief §16) —
+            publish by setting status to Active on the chapter&rsquo;s own page.
+          </p>
+        </div>
+        <ExportButton dataset="chapters" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

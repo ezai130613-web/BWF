@@ -10,6 +10,7 @@ import {
   ClipboardList,
   QrCode,
   ClipboardCheck,
+  UserX,
   Send,
   UserPlus,
   ScanLine,
@@ -89,6 +90,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/roster", label: "Roster Sheets", icon: ClipboardList, permission: "roster:manage", workspace: "performance" },
       { href: "/admin/qr-codes", label: "QR Codes", icon: QrCode, permission: "attendance:manage", workspace: "performance" },
       { href: "/admin/attendance", label: "Attendance", icon: ClipboardCheck, permission: "attendance:manage", workspace: "performance" },
+      { href: "/admin/attendance/reviews", label: "Absence Reviews", icon: UserX, permission: "attendance:manage", workspace: "performance" },
       { href: "/admin/invitations", label: "Meeting Invitations", icon: Send, permission: "invitations:manage", workspace: "performance" },
     ],
   },
@@ -151,6 +153,21 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/activity", label: "Activity Log", icon: History, permission: "audit_log:view", workspace: "website" },
     ],
   },
+];
+
+// Chapter Admin holds no global permissions but does get scoped access
+// to Members/Meetings/Visitors within their own chapter (see
+// requireChapterAccess) — show those links for them. Also decides which
+// chapter-scoped Excel downloads a Chapter Admin gets (src/lib/exports).
+export const CHAPTER_SCOPED_PERMISSIONS = [
+  "members:manage",
+  "meetings:manage",
+  "visitors:manage",
+  "app_activity:view",
+  "roster:manage",
+  "attendance:manage",
+  "invitations:manage",
+  "contact_requests:view",
 ];
 
 export const WORKSPACE_LABELS: Record<Workspace, string> = {

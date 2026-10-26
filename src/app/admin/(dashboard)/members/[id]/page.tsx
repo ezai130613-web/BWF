@@ -7,6 +7,7 @@ import { MemberPortalAccess } from "@/components/admin/member-portal-access";
 import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-revision-form";
 import { MemberTestimonials } from "@/components/admin/member-testimonials";
 import { MemberInductionForm } from "@/components/admin/member-induction-form";
+import { MemberBirthdayForm } from "@/components/admin/member-birthday-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { AdminRemarksList } from "@/components/admin/admin-remarks";
 import { AddRemarkForm } from "@/components/admin/add-remark-form";
@@ -114,6 +115,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         currentReferredByMemberId={member.referredByMemberId}
         candidates={inductionCandidates}
       />
+
+      <MemberBirthdayForm memberId={member.id} birthDay={member.birthDay} birthMonth={member.birthMonth} birthYear={member.birthYear} />
 
       <MemberTestimonials memberId={member.id} testimonials={testimonials} />
 

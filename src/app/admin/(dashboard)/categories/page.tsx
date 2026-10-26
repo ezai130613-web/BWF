@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { CreateCategoryForm } from "@/components/admin/create-category-form";
 import { toggleCategoryActive, toggleShowInOpenCategories, toggleShowOnApplyForm } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function CategoriesPage() {
   await requirePermission("categories:manage");
@@ -14,29 +15,32 @@ export default async function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Categories</h1>
-        <p className="mt-1 max-w-xl text-sm text-neutral-600">
-          The business-category taxonomy used for the category-exclusivity rule (brief §15) —
-          seeded with a starter list, edit freely. Deactivating a category hides it everywhere
-          new members are added without affecting existing members.
-        </p>
-        <p className="mt-2 max-w-xl text-sm text-neutral-600">
-          &ldquo;Apply Form&rdquo; controls whether the public Apply for Membership page offers the
-          category to new applicants. New categories are shown by default; the roster-specific
-          labels copied from existing members&rsquo; sheets are hidden so applicants see the clean
-          official list.
-        </p>
-        <p className="mt-2 max-w-xl text-sm text-neutral-600">
-          &ldquo;Show in Open Categories&rdquo; is separate — it only controls whether a category
-          can appear in a generated Roster Sheet&rsquo;s Open Categories section. The taxonomy
-          accumulated a lot of near-duplicate entries over time (e.g. &ldquo;Civil Contractors
-          2&rdquo; alongside &ldquo;Civil Contractor - 2&rdquo;); this was turned off for ~57
-          likely-duplicate rows on 2026-09-15 by cross-referencing real member data and the
-          reference roster PDFs — review and adjust as needed, this is a best-effort starting
-          point, not a final judgment.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Categories</h1>
+          <p className="mt-1 max-w-xl text-sm text-neutral-600">
+            The business-category taxonomy used for the category-exclusivity rule (brief §15) —
+            seeded with a starter list, edit freely. Deactivating a category hides it everywhere
+            new members are added without affecting existing members.
+          </p>
+          <p className="mt-2 max-w-xl text-sm text-neutral-600">
+            &ldquo;Apply Form&rdquo; controls whether the public Apply for Membership page offers the
+            category to new applicants. New categories are shown by default; the roster-specific
+            labels copied from existing members&rsquo; sheets are hidden so applicants see the clean
+            official list.
+          </p>
+          <p className="mt-2 max-w-xl text-sm text-neutral-600">
+            &ldquo;Show in Open Categories&rdquo; is separate — it only controls whether a category
+            can appear in a generated Roster Sheet&rsquo;s Open Categories section. The taxonomy
+            accumulated a lot of near-duplicate entries over time (e.g. &ldquo;Civil Contractors
+            2&rdquo; alongside &ldquo;Civil Contractor - 2&rdquo;); this was turned off for ~57
+            likely-duplicate rows on 2026-09-15 by cross-referencing real member data and the
+            reference roster PDFs — review and adjust as needed, this is a best-effort starting
+            point, not a final judgment.
+          </p>
+        </div>
+        <ExportButton dataset="categories" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

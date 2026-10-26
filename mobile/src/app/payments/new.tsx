@@ -9,7 +9,8 @@ import { Button, Field, Notice, Screen, Segmented, styles as ui } from '@/compon
 import { api, errorMessage } from '@/lib/api';
 import { goBack } from '@/lib/navigation';
 import { addMonths, monthLabel, type MonthYear } from '@/lib/months';
-import { todayIst } from '@/lib/format';
+import { formatInr, todayIst } from '@/lib/format';
+import { quoteMeetingFee } from '@/lib/fees';
 import { useApi } from '@/lib/use-api';
 import { colors, space } from '@/theme';
 
@@ -24,7 +25,8 @@ export default function NewPaymentScreen() {
   const [months, setMonths] = useState(1);
   const [startOffset, setStartOffset] = useState(0);
   const [year, setYear] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
+  // null = follow the calculated total; a string = what the member typed (it stays editable).
+  const [typedAmount, setTypedAmount] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(todayIst());
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,9 @@ export default function NewPaymentScreen() {
     return Array.from({ length: months }, (_, i) => addMonths(start, i));
   }, [data, months, startOffset]);
   const membershipYear = year ?? String(data?.defaultMembershipYear ?? '');
+  const quote = type === 'MEETING' ? quoteMeetingFee(data?.feeQuote?.monthlyMeetingInr, months, data?.feeQuote?.gstPercent ?? 18) : null;
+  const expected = type === 'MEETING' ? (quote?.total ?? null) : (data?.feeQuote?.membershipTotalInr ?? null);
+  const amount = typedAmount ?? (expected ? String(expected) : '');
 
   async function submit() {
     if (!proofUrl) {
@@ -90,7 +95,23 @@ export default function NewPaymentScreen() {
         </>
       )}
 
-      <Field label="Amount paid (₹)" value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9.]/g, ''))} keyboardType="decimal-pad" />
+      {quote ? (
+        <Notice
+          tone="success"
+          message={`Amount to pay: ${formatInr(quote.total)}\n${quote.months} month${quote.months === 1 ? '' : 's'} × ${formatInr(quote.perMonth)} = ${formatInr(quote.subtotal)} + ${quote.gstPercent}% GST ${formatInr(quote.gst)}`}
+        />
+      ) : null}
+      <Field
+        label="Amount paid (₹)"
+        value={amount}
+        onChangeText={(v) => setTypedAmount(v.replace(/[^0-9.]/g, ''))}
+        keyboardType="decimal-pad"
+        hint={
+          expected && typedAmount !== null && Number(typedAmount) !== expected
+            ? `This differs from the calculated ${formatInr(expected)} — BWF will check it when approving.`
+            : undefined
+        }
+      />
       <Field label="Date paid (YYYY-MM-DD)" value={paidOn} onChangeText={setPaidOn} autoCapitalize="none" keyboardType="numbers-and-punctuation" />
       <ProofPicker value={proofUrl} onUploaded={setProofUrl} />
       <Button label="Submit for approval" onPress={submit} loading={saving} disabled={!amount || !proofUrl} />

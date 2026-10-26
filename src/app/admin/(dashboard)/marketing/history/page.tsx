@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { ScheduledPostCard } from "@/components/admin/scheduled-post-card";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /** Brief §10 — publishing history: platforms published to, date/time, status, and published URL where available. */
 export default async function MarketingHistoryPage() {
@@ -16,10 +17,13 @@ export default async function MarketingHistoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Publishing History</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">Published and failed posts across every platform.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Publishing History</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">Published and failed posts across every platform.</p>
+        </div>
+        <ExportButton dataset="marketing" />
       </div>
 
       <div className="flex flex-col gap-4">

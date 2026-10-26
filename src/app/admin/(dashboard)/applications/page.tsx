@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   NEW: "bg-blue-50 text-blue-700",
@@ -25,13 +26,16 @@ export default async function ApplicationsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Membership Applications</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Approval alone never creates a public member (brief §17) — convert an application from
-          its own page once payment is confirmed.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Membership Applications</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Approval alone never creates a public member (brief §17) — convert an application from
+            its own page once payment is confirmed.
+          </p>
+        </div>
+        <ExportButton dataset="applications" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

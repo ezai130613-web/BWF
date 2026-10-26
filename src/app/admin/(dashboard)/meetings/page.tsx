@@ -6,6 +6,7 @@ import { ReminderBadge } from "@/components/admin/reminder-badge";
 import { formatIstDateTime } from "@/lib/ist";
 import { reminderScheduledFor } from "@/lib/meetings/reminders";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: "bg-emerald-50 text-emerald-700",
@@ -54,12 +55,15 @@ export default async function MeetingsPage({
             Chapter meetings that visitors can register to attend online (brief §21/§23). Times are IST.
           </p>
         </div>
-        <Link
-          href="/admin/meetings/generate"
-          className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
-        >
-          Create Next Month&rsquo;s Meetings
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButton dataset="meetings" />
+          <Link
+            href="/admin/meetings/generate"
+            className="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+          >
+            Create Next Month&rsquo;s Meetings
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

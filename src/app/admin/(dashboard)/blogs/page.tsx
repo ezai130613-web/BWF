@@ -5,6 +5,7 @@ import { CreateBlogForm } from "@/components/admin/create-blog-form";
 import { CreateBlogCategoryForm } from "@/components/admin/create-blog-category-form";
 import { CreateAuthorForm } from "@/components/admin/create-author-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-500",
@@ -38,13 +39,16 @@ export default async function BlogsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Blog</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Start a draft here, then fill in content/SEO/FAQ on the post&rsquo;s own page. Posts
-          members submit for review (brief §31) show up here too, marked Pending.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Blog</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Start a draft here, then fill in content/SEO/FAQ on the post&rsquo;s own page. Posts
+            members submit for review (brief §31) show up here too, marked Pending.
+          </p>
+        </div>
+        <ExportButton dataset="blogs" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">

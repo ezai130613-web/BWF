@@ -6,6 +6,7 @@ import { formatInr } from "@/lib/format";
 import { getLeaderboard } from "@/lib/points/score";
 import { jumpToMember } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Chapter-wide admin visibility into the BWF App's member-recorded activity
@@ -327,13 +328,16 @@ export default async function AppActivityPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />BWF App Activity</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Chapter-wide visibility into what members are logging in the BWF App — read-only, since
-          these are private records between members, not content that needs admin approval.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />BWF App Activity</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Chapter-wide visibility into what members are logging in the BWF App — read-only, since
+            these are private records between members, not content that needs admin approval.
+          </p>
+        </div>
+        <ExportButton dataset="app-activity" />
       </div>
 
       <form action={jumpToMember} className="flex items-end gap-3">

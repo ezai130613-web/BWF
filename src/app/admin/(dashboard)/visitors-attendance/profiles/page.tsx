@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { LinkVisitorToMemberForm } from "@/components/admin/link-visitor-to-member-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const SOURCE_LABELS: Record<string, string> = {
   INVITED_BY_MEMBER: "Invited by member",
@@ -45,13 +46,16 @@ export default async function VisitorProfilesPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-            <AdminPageIcon />Visitors Attendance — Visitor-wise View</h1>
-          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Search a visitor by name or phone to see their full history across chapters and
-            meetings.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+              <AdminPageIcon />Visitors Attendance — Visitor-wise View</h1>
+            <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+              Search a visitor by name or phone to see their full history across chapters and
+              meetings.
+            </p>
+          </div>
+          <ExportButton dataset="visitor-profiles" />
         </div>
         <Link href="/admin/visitors-attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
           ← Meeting-wise view

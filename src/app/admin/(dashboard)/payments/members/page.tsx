@@ -6,6 +6,8 @@ import { AdminPageIcon } from "@/components/admin/page-icon";
 import { istParts } from "@/lib/ist";
 import { AdminRemarksList } from "@/components/admin/admin-remarks";
 import { getMemberRemarks } from "@/lib/remarks";
+import { ExportButton } from "@/components/admin/export-button";
+import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
 
 /** Month-by-month grid window around the current month. */
 const GRID_MONTHS_BEFORE = 3;
@@ -51,9 +53,12 @@ export default async function PaymentMembersPage({
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             <AdminPageIcon />Payments — Member-wise View</h1>
-          <Link href="/admin/payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-            ← Payment list
-          </Link>
+          <div className="flex flex-wrap items-center gap-4">
+            <ExportButton dataset="payments" params={{ chapterId: requestedChapterId }} label="Download all payments" />
+            <Link href="/admin/payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
+              ← Payment list
+            </Link>
+          </div>
         </div>
         <form action="/admin/payments/members" method="GET" className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
@@ -206,7 +211,10 @@ export default async function PaymentMembersPage({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-neutral-900">Submissions</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-neutral-900">Submissions</h3>
+          <ExportButton dataset="payments" params={{ memberId: member.id }} label="Download payment history" />
+        </div>
         {payments.map((p) => (
           <div key={p.id} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -220,6 +228,7 @@ export default async function PaymentMembersPage({
               {money.format(Number(p.amountPaidInr))}
               {p.type === "MEETING" ? ` · ${formatMonthsCovered(p.monthsCovered)}` : ""} · paid{" "}
               {p.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+              <ExpectedAmountNote paid={Number(p.amountPaidInr)} expected={p.expectedAmountInr === null ? null : Number(p.expectedAmountInr)} />
             </p>
             <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-neutral-500 underline">
               View proof

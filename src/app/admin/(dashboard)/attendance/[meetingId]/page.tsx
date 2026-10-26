@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { CorrectAttendanceForm } from "@/components/admin/correct-attendance-form";
 import { CloseAttendanceButton } from "@/components/admin/close-attendance-button";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function AttendanceMeetingPage({ params }: { params: Promise<{ meetingId: string }> }) {
   const { meetingId } = await params;
@@ -44,7 +45,10 @@ export default async function AttendanceMeetingPage({ params }: { params: Promis
               {meeting.startsAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}
             </p>
           </div>
-          <CloseAttendanceButton meetingId={meeting.id} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButton dataset="attendance" params={{ meetingId: meeting.id }} />
+            <CloseAttendanceButton meetingId={meeting.id} />
+          </div>
         </div>
       </div>
 

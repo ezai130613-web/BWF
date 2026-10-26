@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PaymentProofField } from "@/components/checkin/payment-proof-field";
+import { describeQuote, formatRupees, quoteMeetingFee } from "@/lib/payments/fees";
 
 export const MONTH_LABELS = [
   "January", "February", "March", "April", "May", "June",
@@ -24,12 +25,25 @@ function addMonths(start: { month: number; year: number }, n: number) {
  * months from `startMonth`, still editable since months need not be
  * consecutive), amount, payment date and proof upload. Field names match
  * parseMeetingPaymentFields() in src/lib/payments/member-payments.ts.
+ *
+ * Phase 40 — with the monthly fee known, the amount is pre-filled with
+ * months × fee + 18% GST and follows the month count until the member types
+ * their own amount (it stays editable).
  */
-export function MeetingPaymentFields({ startMonth }: { startMonth: { month: number; year: number } }) {
+export function MeetingPaymentFields({
+  startMonth,
+  monthlyFee = null,
+}: {
+  startMonth: { month: number; year: number };
+  monthlyFee?: number | null;
+}) {
   const [monthsChoice, setMonthsChoice] = useState<string>("1");
   const [customMonths, setCustomMonths] = useState("");
+  const [typedAmount, setTypedAmount] = useState<string | null>(null);
 
   const numberOfMonths = monthsChoice === "other" ? Math.min(Number(customMonths) || 0, 24) : Number(monthsChoice);
+  const quote = quoteMeetingFee(monthlyFee, numberOfMonths);
+  const amount = typedAmount ?? (quote ? String(quote.total) : "");
 
   return (
     <>
@@ -84,18 +98,61 @@ export function MeetingPaymentFields({ startMonth }: { startMonth: { month: numb
         </div>
       ) : null}
 
-      <ProofFields />
+      {quote ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-900">
+          <p className="font-semibold">Amount to pay: {formatRupees(quote.total)}</p>
+          <p className="mt-0.5 text-xs text-emerald-800">{describeQuote(quote)}</p>
+        </div>
+      ) : null}
+
+      <ProofFields
+        amount={amount}
+        onAmountChange={setTypedAmount}
+        amountNote={
+          quote && typedAmount !== null && Number(typedAmount) !== quote.total
+            ? `This differs from the calculated ${formatRupees(quote.total)} — BWF will check it when approving.`
+            : null
+        }
+      />
     </>
   );
 }
 
-/** Amount, payment date and proof upload — shared by the meeting and annual membership forms. */
-export function ProofFields() {
+/**
+ * Amount, payment date and proof upload — shared by the meeting and annual
+ * membership forms. Pass `amount` + `onAmountChange` for a pre-filled
+ * (still editable) amount, or `defaultAmount` for a one-off pre-fill.
+ */
+export function ProofFields({
+  amount,
+  onAmountChange,
+  defaultAmount,
+  amountNote,
+}: {
+  amount?: string;
+  onAmountChange?: (value: string) => void;
+  defaultAmount?: number | null;
+  amountNote?: string | null;
+} = {}) {
   return (
     <>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
         Amount paid (INR, total for this payment)
-        <input type="number" name="amountPaidInr" required min={1} step="0.01" className={inputClass} />
+        {onAmountChange ? (
+          <input
+            type="number"
+            name="amountPaidInr"
+            required
+            min={1}
+            step="0.01"
+            value={amount ?? ""}
+            onChange={(e) => onAmountChange(e.target.value)}
+            className={inputClass}
+          />
+        ) : (
+          <input type="number" name="amountPaidInr" required min={1} step="0.01" defaultValue={defaultAmount ?? undefined} className={inputClass} />
+        )}
+        {amountNote ? <span className="text-xs font-normal text-amber-700">{amountNote}</span> : null}
       </label>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">

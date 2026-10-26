@@ -10,11 +10,16 @@ const initialState: MemberPaymentState = {};
 export function MemberPaymentForm({
   type,
   startMonth,
+  monthlyFee,
+  membershipTotal,
   membershipYears,
   defaultMembershipYear,
 }: {
   type: "MEETING" | "MEMBERSHIP";
   startMonth: { month: number; year: number };
+  /** Phase 40 — the monthly fee (before GST) and annual total (incl. GST), for pre-filling the amount. */
+  monthlyFee: number | null;
+  membershipTotal: number | null;
   membershipYears: number[];
   defaultMembershipYear: number;
 }) {
@@ -27,8 +32,8 @@ export function MemberPaymentForm({
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
         <p className="text-sm font-semibold text-emerald-900">Payment submitted for review.</p>
         <p className="mt-1 text-sm text-emerald-700">
-          It shows as Pending below until BWF verifies it. Once approved, you won&rsquo;t be asked to pay for these
-          {type === "MEETING" ? " months at meeting check-in." : " again this year."}
+          It shows as awaiting approval until BWF verifies it.{" "}
+          {type === "MEETING" ? "Once approved, each month it covers gets a tick." : "Once approved, your membership shows as paid."}
         </p>
       </div>
     );
@@ -38,7 +43,7 @@ export function MemberPaymentForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {type === "MEETING" ? (
-        <MeetingPaymentFields startMonth={startMonth} />
+        <MeetingPaymentFields startMonth={startMonth} monthlyFee={monthlyFee} />
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -51,7 +56,7 @@ export function MemberPaymentForm({
               ))}
             </select>
           </label>
-          <ProofFields />
+          <ProofFields defaultAmount={membershipTotal} />
         </>
       )}
       <FormStatus error={state?.error} />

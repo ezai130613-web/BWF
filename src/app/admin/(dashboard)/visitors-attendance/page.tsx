@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Visitors Attendance — meeting-wise view, step 1/2 (Select Chapter, Select
@@ -32,9 +33,7 @@ export default async function VisitorsAttendancePage({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/api/admin/exports/visitor-attendance" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-            Export Excel
-          </Link>
+          <ExportButton dataset="visitor-attendance" params={{ chapterId }} />
           <Link href="/admin/visitors-attendance/profiles" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Visitor-wise view →
           </Link>

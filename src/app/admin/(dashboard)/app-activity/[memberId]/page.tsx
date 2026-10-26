@@ -4,6 +4,7 @@ import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { computeMemberScore } from "@/lib/points/score";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 /**
  * Phase 20 Batch 5 — per-member drill-down, reached from the Leaderboard
@@ -71,6 +72,7 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
             Edit member
           </Link>
         </p>
+        <ExportButton dataset="app-activity" params={{ memberId: member.id }} className="mt-3" />
       </div>
 
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-8 text-center">

@@ -32,6 +32,8 @@ export type LedgerRow = {
   meetingDate: Date | null;
   purpose: string;
   amountInr: number;
+  /** Phase 40 — member meeting/membership payments only; null for visitors and older payments. */
+  expectedAmountInr?: number | null;
   paymentDate: Date;
   submittedAt: Date;
   status: PaymentApprovalStatus;
@@ -151,6 +153,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
           ? `Annual membership — ${p.membershipYear}`
           : `Meeting fee — ${formatMonthsCovered(p.monthsCovered) || `${p.numberOfMonths} month(s)`}`,
       amountInr: Number(p.amountPaidInr),
+      expectedAmountInr: p.expectedAmountInr === null ? null : Number(p.expectedAmountInr),
       paymentDate: p.actualPaymentDate,
       submittedAt: p.createdAt,
       status: p.status,

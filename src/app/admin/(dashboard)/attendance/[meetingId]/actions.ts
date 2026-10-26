@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
 import { closeMeetingAttendance } from "@/lib/attendance/manage";
+import { evaluateChapterAbsences } from "@/lib/attendance/absences";
 import type { AttendanceStatus } from "@/generated/prisma/client";
 
 async function getMeetingOrThrow(meetingId: string) {
@@ -55,6 +57,8 @@ export async function correctAttendance(
     metadata: { from: existing?.status ?? "NOT_CHECKED_IN", to: status, reason: reason.trim() },
   });
 
+  // Phase 39 — a correction can end (or extend) an absence streak.
+  after(() => evaluateChapterAbsences(meeting.chapterId));
   revalidatePath(`/admin/attendance/${meetingId}`);
   return { error: undefined, success: true };
 }
@@ -66,5 +70,7 @@ export async function closeAttendance(meetingId: string) {
   await requireChapterAccess(meeting.chapterId, "attendance:manage");
 
   await closeMeetingAttendance(meetingId, session.user.id);
+  // Phase 39 — absence warnings/reviews right away rather than at the next hourly run.
+  after(() => evaluateChapterAbsences(meeting.chapterId));
   revalidatePath(`/admin/attendance/${meetingId}`);
 }

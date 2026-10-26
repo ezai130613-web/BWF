@@ -72,6 +72,7 @@ function RootNavigator() {
         <Stack.Screen name="payments/new" options={{ title: 'Submit payment', presentation: 'modal' }} />
         <Stack.Screen name="profile/index" options={{ title: 'My Profile' }} />
         <Stack.Screen name="profile/edit" options={{ title: 'Request profile edit', presentation: 'modal' }} />
+        <Stack.Screen name="profile/birthday" options={{ title: 'My birthday', presentation: 'modal' }} />
         <Stack.Screen name="scan" options={{ title: 'Scan meeting QR' }} />
         <Stack.Screen name="checkin/[token]" options={{ title: 'Meeting check-in' }} />
         <Stack.Screen name="account/delete" options={{ title: 'Delete my account' }} />

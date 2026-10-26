@@ -59,6 +59,16 @@ export default function HomeScreen() {
 
         {data ? (
           <>
+            {data.birthdaysToday && data.birthdaysToday.length > 0 ? (
+              <Pressable onPress={() => router.push('/socials')} accessibilityRole="button" style={({ pressed }) => [styles.birthdays, pressed && { opacity: 0.8 }]}>
+                <Text style={styles.birthdaysText}>
+                  🎂 <Text style={{ fontWeight: '700' }}>Birthday{data.birthdaysToday.length > 1 ? 's' : ''} today: </Text>
+                  {data.birthdaysToday.map((b) => (b.isMe ? 'you! Happy birthday' : b.name)).join(', ')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.warning} />
+              </Pressable>
+            ) : null}
+
             {data.pendingProfileEdit ? (
               <Notice tone="warning" message={`Your profile edit request (sent ${formatDate(data.pendingProfileEdit.submittedAt)}) is awaiting BWF review.`} />
             ) : null}
@@ -111,4 +121,16 @@ const styles = StyleSheet.create({
   },
   actionIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { fontSize: 12, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  birthdays: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: colors.warningSoft,
+    borderColor: colors.gold,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: space.md,
+    marginBottom: space.lg,
+  },
+  birthdaysText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
 });

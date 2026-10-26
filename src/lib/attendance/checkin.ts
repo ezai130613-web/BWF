@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { hasApprovedOverlap } from "@/lib/attendance/manage";
 import { parseMeetingPaymentFields, type MeetingPaymentFields, type PaymentFieldSource } from "@/lib/payments/member-payments";
+import { expectedAmountFor } from "@/lib/payments/submit";
 import { Prisma } from "@/generated/prisma/client";
 
 export type CheckinState = { error?: string; success?: boolean };
@@ -31,6 +32,9 @@ export async function checkInMember(memberId: string, token: string, formData: P
   const idempotencyKey = formData.get("idempotencyKey");
   if (typeof idempotencyKey !== "string" || !idempotencyKey || idempotencyKey.length > 100) return { error: "Invalid submission — please reload and try again." };
 
+  // Phase 40 — payments now happen only on the Payments page; the website
+  // and current app no longer send one with a check-in. Still accepted here
+  // so a member on the older app version (1.0) never loses a payment.
   const madePayment = formData.get("madePayment") === "yes";
 
   let paymentInput: MeetingPaymentFields | null = null;
@@ -41,6 +45,7 @@ export async function checkInMember(memberId: string, token: string, formData: P
   }
 
   const overlapsApprovedCoverage = paymentInput ? await hasApprovedOverlap(memberId, paymentInput.monthsCovered) : false;
+  const expectedAmountInr = paymentInput ? await expectedAmountFor("MEETING", paymentInput.numberOfMonths) : null;
 
   await db.$transaction(async (tx) => {
     const existing = await tx.attendance.findUnique({
@@ -78,6 +83,7 @@ export async function checkInMember(memberId: string, token: string, formData: P
             numberOfMonths: paymentInput.numberOfMonths,
             monthsCovered: paymentInput.monthsCovered,
             amountPaidInr: new Prisma.Decimal(paymentInput.amountPaidInr),
+            expectedAmountInr,
             actualPaymentDate: paymentInput.actualPaymentDate,
             proofUrl: paymentInput.proofUrl,
             overlapsApprovedCoverage,

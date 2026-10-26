@@ -1706,6 +1706,97 @@ for a real app on the App Store and Play Store. Decided with the user 2026-10-26
    for any app with accounts), a dedicated reviewer demo login that can't pollute real
    reports/rankings, TestFlight + Play internal testing, then submission.
 
+### Admin downloads, birthdays, WhatsApp & absence tracking (2026-10-26 client request, Phases 36–39)
+
+Four client requests, built as four phases. Decisions asked up front (2026-10-26): WhatsApp has no
+account yet → build it ready but switched off; "remove" a member = deactivate fully, never delete;
+absences count **in a row**; birthdays are set by admins **and** members.
+
+**Downloads (Phase 36) — one Excel engine, one route.** Every admin download is a dataset in
+`src/lib/exports/datasets/*` (`key`, `title`, `scope(access)`, `load(scope, params)`), served by
+`/api/admin/exports/[dataset]` and written by `src/lib/exports/workbook.ts` (bold frozen header,
+filter arrows, IST dates as text — Excel has no time zone — and real hyperlinks). The five
+pre-existing routes (`accounts`, `attendance`, `payments`, `visitor-attendance`,
+`visitor-payments`) moved into the registry with their URLs unchanged; `admin-users` (PDF) stays a
+static route, which Next prefers over the dynamic one. `/api/admin/exports/all` is one workbook of
+every dataset the admin may see (sidebar → "Download all data"), loaded one dataset at a time to
+spare the connection pool; the Accounts ledger is left out of it (its rows are already in the
+member + visitor payment sheets).
+- **Scope is re-derived per dataset, never trusted from the query string.** `src/lib/exports/access.ts`
+  holds non-throwing twins of `getChapterScope`/`getPaymentsScope`/`requirePermission`, so the
+  all-data workbook can ask about every dataset in one request. Chapter Admins get chapter-scoped
+  datasets only for the areas their sidebar shows (`CHAPTER_SCOPED_PERMISSIONS`, moved to
+  `nav-config.ts` for this). Filters are combined with `AND` — the old payments and visitor-payments
+  routes spread two `member`/`visitorAttendance` keys, so a `q`/`meetingId` filter silently replaced
+  the chapter restriction (a Chapter Admin granted `payments:view` could read other chapters). Fixed
+  by the move; covered by a test.
+- **Payment proofs are links, never embedded files** (spec §5's rule): an "Open proof" hyperlink plus
+  the raw URL, on member payments, visitor payments, the ledger, applications and visitor
+  registrations. Login lists never include passwords. Every download is audit-logged
+  (`export.downloaded`, with filters and row counts) since the files carry member contact details.
+- Pages pass their current filters to `<ExportButton>` so the file matches the screen. Config-only
+  pages (settings, roles, points config, content, QR codes, payment links) have no download.
+
+**Birthdays & Socials (Phase 37).** `Member.birthDay/birthMonth/birthYear` (year optional). Other
+members only ever see day + month; the year shows to the member and admins (and in the members
+export). Set by admins (member page) or by the member directly — portal My Profile or the app —
+**without** the profile-edit approval queue, because it isn't public profile content.
+`getVisibleBirthdays()` uses the same `fellowMemberScope()` as the picker/nearby search (so the App
+Store demo chapter stays sealed off) and ACTIVE members only. "Today" is the IST calendar day; a 29
+February birthday is celebrated on 28 February in non-leap years. Socials = portal `/member/socials`
++ app tab: today, next 30 days, the year by month, and a "Wish on WhatsApp" `wa.me` link (members
+already see each other's numbers in Find Members Nearby). `birthday-format.ts` is the client-safe
+half (the form's month names) — `birthdays.ts` imports the database. Birthday `<select>`s are
+uncontrolled, and React applies a select's `defaultValue` only on mount, so the forms re-key the
+fields when an error echoes back the submitted values (otherwise a failed save snapped back).
+
+**WhatsApp (Phase 38) — Meta WhatsApp Cloud API, plain `fetch`, off until configured.**
+`src/lib/whatsapp.ts`; `WHATSAPP_PROVIDER` = `meta` (needs `WHATSAPP_ACCESS_TOKEN` +
+`WHATSAPP_PHONE_NUMBER_ID`) / `console` (dev log) / unset (off — callers skip the channel, no log
+rows, email unaffected). Chose Meta's official API over a reseller (AiSensy/Interakt/Wati/Twilio):
+no per-message markup, no extra vendor, same "direct official API" call the marketing module made.
+Business-initiated messages must use pre-approved templates, so the templates live in code with the
+exact text to submit (category Utility, language English):
+
+| Template | Body (`{{n}}` filled in order) |
+|---|---|
+| `bwf_meeting_reminder` | Hello {{1}}, this is a reminder that your Builders World Forum {{2}} meeting is in 2 days. Meeting: {{3}}. Date: {{4}}. Time: {{5}}. Venue: {{6}}. Please bring your referrals, thank you slips and one-to-one updates. - Builders World Forum |
+| `bwf_absence_warning` | Hello {{1}}, our records show you were absent from the last {{2}} {{3}} meetings ({{4}}). Regular attendance is part of BWF membership. If you miss the next meeting, your membership will be referred to the BWF admin team for review. If there is a reason, such as a medical issue, please let your chapter know. - Builders World Forum |
+
+Numbers: the member's WhatsApp field, else phone; bare 10-digit Indian mobiles get +91, anything
+that can't be a mobile is skipped (and counted as "skipped" on the meeting page). Parameters are
+stripped of newlines/tabs/4+ spaces (Meta rejects them). The meeting reminder sends both channels
+under the existing exactly-once claim; `MeetingReminderLog` gained `channel` + `phone` (`email` now
+nullable) and the crash-resume skips per channel+address. "Sent" means Meta accepted it — no
+delivery/read webhook yet.
+
+**Absences (Phase 39).** `src/lib/attendance/absences.ts`, hourly `/api/cron/attendance` (`:30`).
+- *Auto-absent* = the existing `closeMeetingAttendance()` (now stamps `Meeting.attendanceClosedAt`,
+  accepts `null` = automatic, and skips members who joined after the meeting), run at the meeting's
+  check-in close time or 6 h after it starts. **A meeting with zero check-ins is never auto-closed**
+  (the QR may not have been used — closing would mark the whole chapter absent and warn everyone);
+  it's listed on Absence Reviews for a manual close.
+- *Streak* = consecutive ABSENT rows over the member's own chapter's closed, non-cancelled meetings,
+  newest first, stopping at PRESENT, the member's `joinedAt`, the tracking start, or the latest
+  courtesy `excusedUntil`; meetings with no row for the member are skipped. Recomputed from
+  attendance every run, so corrections just work: an OPEN review whose streak drops below 3 is
+  auto-dismissed. Manual close and attendance corrections re-evaluate immediately via `after()`.
+- *2 in a row* → email + WhatsApp warning, once (`AbsenceWarning` unique on member + the meeting
+  that made it 2; the row is written before sending). *3+* → `AbsenceReview` OPEN + email to
+  `NOTIFICATION_EMAIL` and the chapter's Chapter Admins; nothing further goes to the member
+  automatically.
+- *Decisions* (`/admin/attendance/reviews`): **courtesy** (attendance:manage; note required;
+  "excuse absences up to" date, clamped to at least the last absent meeting so it can't reopen) or
+  **remove** (members:manage; reason required) → `deactivateMember()`: INACTIVE + slot freed, login
+  SUSPENDED, `sessionVersion` bumped, mobile sessions revoked. Records stay (Referral etc. are
+  `onDelete: Restrict` anyway); restore = Members → status ACTIVE + portal access.
+- *Tracking start* is the AppSetting `attendance.absenceTrackingFrom`, set by the migration to the
+  moment it runs, so pre-release attendance can never trigger warnings. Settings → switch off
+  (`false`) / back on (restarts the count from then).
+- Known gap: the cron and an admin's close/correction evaluating the same chapter at the same second
+  could open two OPEN reviews for one member (no partial unique index in Prisma). Harmless — both
+  show; deciding one leaves the other to be dismissed or decided.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1725,7 +1816,7 @@ they aren't lost, with the phase they'd first block:
 | ~~Real photography for Homepage + Chapters~~ | ~~Phase 1~~ | **Resolved 2026-09-04**: see Design System above — all 13 shots (Homepage's 5 brand images + 2 per chapter) sourced and wired in via `public/images/`. |
 | ~~Real founder/Super Admin credentials~~ | ~~Phase 2~~ | **Resolved 2026-09-06**: real Super Admin (`abiramanathank1@gmail.com`) and two Central Admin accounts created; old placeholder (`admin@bwf.local`) suspended, not deleted. See `docs/PHASES.md`'s Phase 2 follow-ups. |
 | ~~Real Neon (or other managed Postgres) connection string~~ | ~~Phase 2~~ | **Resolved 2026-09-04**: real Neon project provisioned (`dev`/`staging`/`main` branches, AWS Singapore region) — see Phase 2 entry in `docs/PHASES.md` for the migration-ordering bug this surfaced and fixed along the way. |
-| WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
+| WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. **WhatsApp half built 2026-10-26 (Phase 38), switched off:** needs a verified Meta Business account, a phone number registered on the WhatsApp Business Platform, the two templates above approved, then `WHATSAPP_PROVIDER=meta` + token + phone number ID in Vercel. Ownership stays with BWF. |
 | Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
 | ~~Second reference invitation poster (Phase 30 item 4)~~ | ~~Phase 30~~ | **Resolved 2026-10-03** — poster rebuilt to the client's reference; see Phase 30 section. |
 | Google Maps API keys (browser + server) | Phase 30 | Needed for Places autocomplete, the results map and the geocoding backfill; text-match fallback until then. Mobile Phase 34 needs iOS/Android-restricted keys too. |

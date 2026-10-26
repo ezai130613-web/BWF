@@ -24,6 +24,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false, tabBarIcon: icon('home-outline') }} />
       <Tabs.Screen name="activity" options={{ title: 'Activity', tabBarIcon: icon('add-circle-outline') }} />
       <Tabs.Screen name="meetings" options={{ title: 'Meetings', tabBarIcon: icon('calendar-outline') }} />
+      <Tabs.Screen name="socials" options={{ title: 'Socials', headerTitle: 'Socials · Birthdays', tabBarIcon: icon('gift-outline') }} />
       <Tabs.Screen name="nearby" options={{ title: 'Nearby', headerTitle: 'Find Members Nearby', tabBarIcon: icon('location-outline') }} />
       <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: icon('menu-outline') }} />
     </Tabs>

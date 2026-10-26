@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sendEmailBatch } from "@/lib/email";
 import { formatIst } from "@/lib/ist";
 import { SITE_URL } from "@/lib/site";
+import { isWhatsAppEnabled, normalizeWhatsAppNumber, sendWhatsAppTemplates } from "@/lib/whatsapp";
 import type { MeetingReminderStatus } from "@/generated/prisma/client";
 
 /**
@@ -18,6 +19,11 @@ import type { MeetingReminderStatus } from "@/generated/prisma/client";
  * send it. A run that dies mid-send leaves SENDING behind; after
  * STALE_CLAIM_MS another run picks it up and sends only to recipients with
  * no SENT log row yet.
+ *
+ * Phase 38 — the same reminder also goes out on WhatsApp (template
+ * `bwf_meeting_reminder`, src/lib/whatsapp.ts) to every member with a
+ * usable WhatsApp/phone number, whenever WhatsApp is configured. The status
+ * and the resume-after-crash rule cover both channels together.
  */
 
 export const REMINDER_LEAD_MS = 48 * 60 * 60 * 1000;
@@ -30,6 +36,7 @@ export function reminderScheduledFor(startsAt: Date): Date {
 const emailSchema = z.email();
 
 export type ReminderRecipient = { memberId: string; name: string; email: string };
+export type WhatsAppReminderRecipient = { memberId: string; name: string; phone: string };
 
 /** The chapter's ACTIVE members with a usable address — the portal login's
  * email first (verified at activation), else the member's contact email.
@@ -48,6 +55,24 @@ export async function getReminderRecipients(chapterId: string): Promise<Reminder
     if (!candidate || !emailSchema.safeParse(candidate).success || seen.has(candidate)) continue;
     seen.add(candidate);
     recipients.push({ memberId: m.id, name: m.name, email: candidate });
+  }
+  return recipients;
+}
+
+/** Phase 38 — the chapter's ACTIVE members with a usable WhatsApp number (WhatsApp field first, else phone), one message per number. */
+export async function getWhatsAppReminderRecipients(chapterId: string): Promise<WhatsAppReminderRecipient[]> {
+  const members = await db.member.findMany({
+    where: { chapterId, status: "ACTIVE" },
+    select: { id: true, name: true, whatsapp: true, phone: true },
+    orderBy: { name: "asc" },
+  });
+  const seen = new Set<string>();
+  const recipients: WhatsAppReminderRecipient[] = [];
+  for (const m of members) {
+    const phone = normalizeWhatsAppNumber(m.whatsapp) ?? normalizeWhatsAppNumber(m.phone);
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    recipients.push({ memberId: m.id, name: m.name, phone });
   }
   return recipients;
 }
@@ -98,6 +123,18 @@ export function buildReminderEmail(meeting: MeetingForEmail, recipientName: stri
   };
 }
 
+/** The 6 values for the `bwf_meeting_reminder` WhatsApp template, in order. */
+export function buildReminderWhatsAppParams(meeting: MeetingForEmail, recipientName: string): string[] {
+  return [
+    recipientName,
+    meeting.chapter.name,
+    meeting.title,
+    formatIst(meeting.startsAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+    formatIst(meeting.startsAt, { hour: "numeric", minute: "2-digit" }),
+    [meeting.venue ?? "To be confirmed", meeting.address].filter(Boolean).join(", "),
+  ];
+}
+
 /** Sends one meeting's reminder. Assumes the caller already claimed it (status SENDING). */
 async function sendMeetingReminder(meetingId: string): Promise<MeetingReminderStatus> {
   const meeting = await db.meeting.findUniqueOrThrow({
@@ -105,39 +142,57 @@ async function sendMeetingReminder(meetingId: string): Promise<MeetingReminderSt
     include: { chapter: true, chiefGuest: true },
   });
 
-  const alreadySent = new Set(
-    (await db.meetingReminderLog.findMany({ where: { meetingId, status: "SENT" }, select: { email: true } })).map((l) => l.email),
-  );
-  const allRecipients = await getReminderRecipients(meeting.chapterId);
-  const recipients = allRecipients.filter((r) => !alreadySent.has(r.email));
+  const sentLogs = await db.meetingReminderLog.findMany({
+    where: { meetingId, status: "SENT" },
+    select: { channel: true, email: true, phone: true },
+  });
+  const alreadyEmailed = new Set(sentLogs.filter((l) => l.channel === "EMAIL").map((l) => l.email));
+  const alreadyWhatsApped = new Set(sentLogs.filter((l) => l.channel === "WHATSAPP").map((l) => l.phone));
 
-  if (allRecipients.length === 0) {
+  const allEmailRecipients = await getReminderRecipients(meeting.chapterId);
+  const allWhatsAppRecipients = isWhatsAppEnabled() ? await getWhatsAppReminderRecipients(meeting.chapterId) : [];
+  const emailRecipients = allEmailRecipients.filter((r) => !alreadyEmailed.has(r.email));
+  const whatsAppRecipients = allWhatsAppRecipients.filter((r) => !alreadyWhatsApped.has(r.phone));
+
+  if (allEmailRecipients.length === 0 && allWhatsAppRecipients.length === 0) {
     await db.meeting.update({ where: { id: meetingId }, data: { reminderStatus: "NO_RECIPIENTS", reminderProcessedAt: new Date() } });
     return "NO_RECIPIENTS";
   }
 
-  const results = await sendEmailBatch(
-    recipients.map((r) => ({ to: r.email, ...buildReminderEmail(meeting, r.name) })),
-  );
+  const [emailResults, whatsAppResults] = await Promise.all([
+    sendEmailBatch(emailRecipients.map((r) => ({ to: r.email, ...buildReminderEmail(meeting, r.name) }))),
+    sendWhatsAppTemplates(
+      whatsAppRecipients.map((r) => ({ to: r.phone, template: "meetingReminder" as const, params: buildReminderWhatsAppParams(meeting, r.name) })),
+    ),
+  ]);
 
-  if (recipients.length > 0) {
-    await db.meetingReminderLog.createMany({
-      data: recipients.map((r, i) => {
-        const result = results[i];
-        return {
-          meetingId,
-          memberId: r.memberId,
-          email: r.email,
-          status: result.ok ? ("SENT" as const) : ("FAILED" as const),
-          error: result.ok ? null : result.error,
-        };
-      }),
-    });
-  }
+  const logRows = [
+    ...emailRecipients.map((r, i) => ({
+      meetingId,
+      memberId: r.memberId,
+      channel: "EMAIL" as const,
+      email: r.email,
+      status: emailResults[i].ok ? ("SENT" as const) : ("FAILED" as const),
+      error: emailResults[i].ok ? null : (emailResults[i] as { error: string }).error,
+    })),
+    ...whatsAppRecipients.map((r, i) => {
+      const result = whatsAppResults[i];
+      return {
+        meetingId,
+        memberId: r.memberId,
+        channel: "WHATSAPP" as const,
+        phone: r.phone,
+        status: result.ok ? ("SENT" as const) : ("FAILED" as const),
+        error: result.ok ? null : result.error,
+      };
+    }),
+  ];
+  if (logRows.length > 0) await db.meetingReminderLog.createMany({ data: logRows });
 
-  const sentTotal = alreadySent.size + results.filter((r) => r.ok).length;
-  const status: MeetingReminderStatus =
-    sentTotal === 0 ? "FAILED" : sentTotal >= allRecipients.length ? "SENT" : "PARTIALLY_SENT";
+  const expected = allEmailRecipients.length + allWhatsAppRecipients.length;
+  const sentTotal =
+    alreadyEmailed.size + alreadyWhatsApped.size + emailResults.filter((r) => r.ok).length + whatsAppResults.filter((r) => r.ok).length;
+  const status: MeetingReminderStatus = sentTotal === 0 ? "FAILED" : sentTotal >= expected ? "SENT" : "PARTIALLY_SENT";
   await db.meeting.update({ where: { id: meetingId }, data: { reminderStatus: status, reminderProcessedAt: new Date() } });
   return status;
 }

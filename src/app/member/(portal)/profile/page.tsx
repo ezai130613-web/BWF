@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/member/ui";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { RequestProfileEditForm } from "@/components/member/request-profile-edit-form";
+import { BirthdayForm } from "@/components/member/birthday-form";
 
 export default async function MemberProfilePage() {
   const { member } = await requireMemberProfile();
@@ -19,6 +20,8 @@ export default async function MemberProfilePage() {
         title="My Profile"
         description="Edits here don't go live immediately — BWF reviews every change before it becomes public."
       />
+
+      <BirthdayForm day={member.birthDay} month={member.birthMonth} year={member.birthYear} />
 
       {pendingRevision ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-6">

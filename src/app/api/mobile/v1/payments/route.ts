@@ -4,7 +4,8 @@ import { getContent } from "@/lib/content";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
 import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
 import { fieldsFromJson } from "@/lib/payments/member-payments";
-import { summarizeMemberPayments } from "@/lib/payments/overview";
+import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
+import { MEETING_FEE_GST_PERCENT, parseFee, quoteMembershipFee } from "@/lib/payments/fees";
 import { submitMemberPaymentFor } from "@/lib/payments/submit";
 import { isOwnStorageUrl, isStorageConfigured } from "@/lib/storage";
 import { invalid, json, mobileHandler, requireMobileMember } from "@/lib/mobile/api";
@@ -77,6 +78,12 @@ export const GET = mobileHandler(async (request: Request) => {
       ifsc: content["payment.membershipBankIfsc"],
     },
     uploadsEnabled: isStorageConfigured(),
+    monthGrid: buildMonthGrid(payments, member.joinedAt),
+    feeQuote: {
+      monthlyMeetingInr: parseFee(content["fees.monthlyMeeting"]),
+      gstPercent: MEETING_FEE_GST_PERCENT,
+      membershipTotalInr: quoteMembershipFee(parseFee(content["fees.annualMembership"])),
+    },
   };
   return json(body);
 });

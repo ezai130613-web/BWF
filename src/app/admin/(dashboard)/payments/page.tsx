@@ -7,6 +7,8 @@ import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
 import { getRemarksForMembers } from "@/lib/remarks";
+import { ExportButton } from "@/components/admin/export-button";
+import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -76,7 +78,7 @@ export default async function PaymentsPage({
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             <AdminPageIcon />Payment Management</h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Member payment submissions — monthly meeting fees (at check-in or from the member portal) and
+            Member payment submissions — monthly meeting fees (from the member portal or app; older ones at check-in) and
             annual membership. Independent of attendance. Pending submissions are never counted as
             verified receipts.
           </p>
@@ -85,9 +87,10 @@ export default async function PaymentsPage({
           <Link href="/admin/payments/links" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Payment links
           </Link>
-          <Link href="/api/admin/exports/payments" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-            Export Excel
-          </Link>
+          <ExportButton
+            dataset="payments"
+            params={{ chapterId: effectiveChapterId, meetingId: params.meetingId, status: params.status, type: params.type, from: params.from, to: params.to, q: params.q }}
+          />
           <Link href="/admin/payments/members" className="text-sm text-neutral-600 underline hover:text-emerald-800">
             Member-wise view →
           </Link>
@@ -185,7 +188,10 @@ export default async function PaymentsPage({
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div>
                 <dt className="text-xs text-neutral-500">Amount</dt>
-                <dd className="font-medium text-neutral-900">{money.format(Number(payment.amountPaidInr))}</dd>
+                <dd className="font-medium text-neutral-900">
+                  {money.format(Number(payment.amountPaidInr))}
+                  <ExpectedAmountNote paid={Number(payment.amountPaidInr)} expected={payment.expectedAmountInr === null ? null : Number(payment.expectedAmountInr)} />
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Months</dt>

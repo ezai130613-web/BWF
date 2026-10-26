@@ -7,7 +7,19 @@ import {
   parseProofFields,
   type PaymentFieldSource,
 } from "@/lib/payments/member-payments";
+import { getContent } from "@/lib/content";
+import { parseFee, quoteMeetingFee, quoteMembershipFee } from "@/lib/payments/fees";
 import { Prisma } from "@/generated/prisma/client";
+
+/** Phase 40 — what a payment should come to with today's fee settings (null when the fee isn't set). */
+export async function expectedAmountFor(type: "MEETING" | "MEMBERSHIP", months: number): Promise<Prisma.Decimal | null> {
+  const content = await getContent(["fees.monthlyMeeting", "fees.annualMembership"]);
+  const total =
+    type === "MEETING"
+      ? (quoteMeetingFee(parseFee(content["fees.monthlyMeeting"]), months)?.total ?? null)
+      : quoteMembershipFee(parseFee(content["fees.annualMembership"]));
+  return total === null ? null : new Prisma.Decimal(total);
+}
 
 export type MemberPaymentState = { error?: string; success?: boolean };
 
@@ -39,6 +51,7 @@ export async function submitMemberPaymentFor(
       numberOfMonths: p.numberOfMonths,
       monthsCovered: p.monthsCovered,
       amountPaidInr: new Prisma.Decimal(p.amountPaidInr),
+      expectedAmountInr: await expectedAmountFor("MEETING", p.numberOfMonths),
       actualPaymentDate: p.actualPaymentDate,
       proofUrl: p.proofUrl,
       overlapsApprovedCoverage: await hasApprovedOverlap(memberId, p.monthsCovered),
@@ -59,6 +72,7 @@ export async function submitMemberPaymentFor(
       numberOfMonths: 0,
       monthsCovered: [],
       amountPaidInr: new Prisma.Decimal(p.amountPaidInr),
+      expectedAmountInr: await expectedAmountFor("MEMBERSHIP", 0),
       actualPaymentDate: p.actualPaymentDate,
       proofUrl: p.proofUrl,
       overlapsApprovedCoverage: await hasApprovedMembership(memberId, membershipYear),

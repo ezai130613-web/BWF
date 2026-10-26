@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatIst, formatIstDateTime } from "@/lib/ist";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 export default async function FeedbackPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   await requirePermission("feedback:view");
@@ -16,14 +17,17 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-            <AdminPageIcon />Feedback</h1>
-          <p className="mt-1 max-w-xl text-sm text-neutral-600">
-            Super Admin only (brief §34) — never published, and not shown to Central or Chapter
-            Admins unless a Super Admin later grants that explicitly. Every submission is also emailed to the
-            recipients configured in Settings.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+              <AdminPageIcon />Feedback</h1>
+            <p className="mt-1 max-w-xl text-sm text-neutral-600">
+              Super Admin only (brief §34) — never published, and not shown to Central or Chapter
+              Admins unless a Super Admin later grants that explicitly. Every submission is also emailed to the
+              recipients configured in Settings.
+            </p>
+          </div>
+          <ExportButton dataset="feedback" />
         </div>
         <Link href="/admin/settings" className="text-sm text-neutral-500 underline hover:text-emerald-800">
           Email recipients →

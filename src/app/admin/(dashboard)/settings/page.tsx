@@ -5,15 +5,20 @@ import { getDefaultFeedbackRecipients } from "@/lib/feedback/notify";
 import { isEmailProviderConfigured } from "@/lib/email";
 import { SettingsPanel } from "@/components/admin/settings-panel";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { AttendanceAutomationSettings } from "@/components/admin/attendance-automation-settings";
+import { getAbsenceTrackingFrom } from "@/lib/attendance/absences";
+import { WHATSAPP_TEMPLATES, whatsAppMode } from "@/lib/whatsapp";
+import { formatIstDateTime } from "@/lib/ist";
 
 export default async function SettingsPage() {
   await requirePermission("users:manage");
 
-  const [notifySuperAdmins, requireEmailCode, defaults, extras] = await Promise.all([
+  const [notifySuperAdmins, requireEmailCode, defaults, extras, trackingFrom] = await Promise.all([
     getBooleanSetting("feedback.notifySuperAdmins"),
     getBooleanSetting("memberActivation.requireEmailCode"),
     getDefaultFeedbackRecipients(),
     db.feedbackEmailRecipient.findMany({ orderBy: { createdAt: "asc" } }),
+    getAbsenceTrackingFrom(),
   ]);
 
   return (
@@ -34,6 +39,11 @@ export default async function SettingsPage() {
         requireEmailCode={requireEmailCode}
         defaults={defaults}
         extras={extras.map((e) => ({ id: e.id, email: e.email, isEnabled: e.isEnabled }))}
+      />
+      <AttendanceAutomationSettings
+        trackingFrom={trackingFrom ? formatIstDateTime(trackingFrom) : null}
+        whatsApp={whatsAppMode()}
+        templates={Object.values(WHATSAPP_TEMPLATES).map((t) => ({ name: t.name, body: t.body }))}
       />
     </div>
   );

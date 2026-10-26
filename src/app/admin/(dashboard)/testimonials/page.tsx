@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { CreateTestimonialForm } from "@/components/admin/create-testimonial-form";
 import { setTestimonialStatus, toggleTestimonialFeatured } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { ExportButton } from "@/components/admin/export-button";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700",
@@ -28,13 +29,16 @@ export default async function TestimonialsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Testimonials</h1>
-        <p className="mt-1 max-w-xl text-sm text-neutral-600">
-          Public submissions require approval (brief §33) — nothing appears on the site until
-          approved here.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Testimonials</h1>
+          <p className="mt-1 max-w-xl text-sm text-neutral-600">
+            Public submissions require approval (brief §33) — nothing appears on the site until
+            approved here.
+          </p>
+        </div>
+        <ExportButton dataset="testimonials" />
       </div>
 
       {pending.length > 0 ? (
