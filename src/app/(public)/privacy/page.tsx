@@ -14,9 +14,9 @@ export default async function PrivacyPage() {
     <LegalPageShell
       eyebrow="Legal"
       title="Privacy Policy"
-      lastUpdated="14 September 2026"
+      lastUpdated="26 October 2026"
       intro={
-        "This Privacy Policy explains how Builders World Forum (“BWF,” “we,” “us”) collects, uses, shares, and protects personal data when you visit this website, apply for membership, or register as a visitor to a chapter meeting."
+        "This Privacy Policy explains how Builders World Forum (“BWF,” “we,” “us”) collects, uses, shares, and protects personal data when you visit this website, apply for membership, register as a visitor to a chapter meeting, or use the BWF member app for iPhone and Android."
       }
     >
       <h2>1. Who this policy covers</h2>
@@ -26,7 +26,8 @@ export default async function PrivacyPage() {
         <li>prospective members who submit a membership application;</li>
         <li>guests who register for a chapter meeting;</li>
         <li>
-          active members with a directory profile and, if granted, a member portal login; and
+          active members with a directory profile and, if granted, a member portal login or the BWF
+          member app; and
         </li>
         <li>BWF chapter and central administrators who use the internal admin system.</li>
       </ul>
@@ -51,6 +52,21 @@ export default async function PrivacyPage() {
         </li>
         <li>Testimonials and feedback you submit through the website.</li>
         <li>
+          <strong>Member activity:</strong> the referrals, Thank You Slips (including the business
+          value you record), one-to-ones, Power Dates, Conclaves, consumers and Chief Guests you
+          record in the member portal or app, and your meeting attendance and check-ins. These are
+          used to show your activity reports and BWF Score, and are visible to the members involved
+          and to BWF administrators.
+        </li>
+        <li>
+          <strong>Payment submissions:</strong> when you tell us you&apos;ve paid a meeting or
+          membership fee, the amount, payment date, months or year it covers, and the screenshot or
+          PDF receipt you upload as proof. BWF&apos;s accounts team reviews these.
+        </li>
+        <li>
+          <strong>Account deletion requests:</strong> the request and any reason you give.
+        </li>
+        <li>
           <strong>Login credentials:</strong> if you&apos;re a member with portal access or a BWF
           administrator, your email and password (stored hashed, never in plain text), and
           one-time passcodes we email you to verify sign-in.
@@ -73,13 +89,40 @@ export default async function PrivacyPage() {
 
       <h3>2.3 What we don&apos;t collect</h3>
       <p>
-        We don&apos;t currently process online payments through this website — membership fees are
-        collected outside the platform. If online payment is enabled here in future, this section
-        will be updated to describe what the payment processor collects. Clicking our WhatsApp
+        We don&apos;t process card or bank payments — you pay BWF directly (for example by UPI or
+        bank transfer), and we never see or store your card, bank login or UPI credentials; only the
+        payment details and proof you choose to submit (see above). Clicking our WhatsApp
         button opens a chat directly on your own device; we record only
         that the click happened (for analytics), never the content of anything you say to us on
         WhatsApp — that&apos;s covered by WhatsApp/Meta&apos;s own privacy policy, not this one.
       </p>
+
+      <h3>2.4 The BWF member app</h3>
+      <ul>
+        <li>
+          <strong>Sign-in:</strong> when you sign in, the app stores a sign-in token in your
+          phone&apos;s secure storage (iOS Keychain / Android Keystore). Signing out, or
+          &ldquo;Sign out of all devices&rdquo;, ends it.
+        </li>
+        <li>
+          <strong>Location:</strong> only when you tap &ldquo;Members near me&rdquo;, the app sends
+          your current location to our servers to find BWF members within the distance you chose.
+          We don&apos;t save it to your account or use it for anything else, and the app never uses
+          location in the background.
+        </li>
+        <li>
+          <strong>Camera:</strong> used only to scan the check-in QR code at a chapter meeting. Only
+          the code is used; no photo is taken or sent.
+        </li>
+        <li>
+          <strong>Photos and files:</strong> the app only reads the screenshot or PDF you pick as
+          payment proof, and uploads just that file.
+        </li>
+        <li>
+          The app contains no advertising, no third-party analytics and no tracking, and we
+          don&apos;t share app data with data brokers.
+        </li>
+      </ul>
 
       <h2>3. How we use your information</h2>
       <ul>
@@ -93,6 +136,12 @@ export default async function PrivacyPage() {
           joining.
         </li>
         <li>To operate member login accounts, including the profile-edit approval workflow.</li>
+        <li>
+          To record member activity, attendance and meeting check-ins, and to calculate activity
+          reports and BWF Scores.
+        </li>
+        <li>To review payment submissions and keep accounts records.</li>
+        <li>To show members other BWF members near them, when they ask the app to.</li>
         <li>To respond to feedback and testimonials.</li>
         <li>
           To send transactional emails — application status updates, sign-in confirmations,
@@ -164,7 +213,11 @@ export default async function PrivacyPage() {
       <p>
         Under India&apos;s Digital Personal Data Protection Act, 2023, you may request access to,
         correction of, or erasure of your personal data, and may withdraw consent where our
-        processing relies on it. Contact our Grievance Officer using the details below.
+        processing relies on it. Contact our Grievance Officer using the details below. Members can
+        also ask for their account and personal data to be deleted from the app (More &rarr;
+        &ldquo;Delete my account&rdquo;); BWF confirms with you and completes it within 30 days,
+        keeping only records we&apos;re legally required to retain (such as payment records) for as
+        long as required.
       </p>
       <p>
         Grievance Officer: Nagappan · buildersworldforum7@gmail.com · +91 99401 39493
