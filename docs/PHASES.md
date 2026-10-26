@@ -4473,3 +4473,9 @@ first EAS build / TestFlight, App Store Connect record + submission.
   Screenshots uploaded. Next: TestFlight on a real iPhone, then listing/privacy/review info and
   "Add for Review". `.easignore` added after noticing the first upload (57.7 MB) included
   untracked roster PDFs; later uploads verified with `eas build:inspect` (no PDFs/website source).
+- **Privacy policy updated for the app (2026-10-26, user-approved)**: `/privacy` now covers the
+  member app (§2.4: secure-storage sign-in token, on-demand location for "Members near me" not
+  saved, camera only for QR check-in, only the picked payment-proof file, no ads/analytics/
+  tracking), member activity records, payment submissions, in-app deletion requests, and §2.3 no
+  longer claims payments happen entirely offline. Live and verified. Matches the App Privacy
+  answers in `mobile/store/app-store-listing.md`.
