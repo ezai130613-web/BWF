@@ -1631,6 +1631,81 @@ member). There is no edit or delete, so the history can't be lost. A remark writ
 before conversion has `memberId` null until `convertApplicationToMember` stamps it. Readers also
 match on `application.convertedMemberId`, so older conversions are covered too.
 
+### Native mobile app — iOS + Android (decided 2026-10-26; Phases 31–34 built the same day)
+
+**This reverses Phase 18's "member portal, not a native App Store app" call.** The user asked
+for a real app on the App Store and Play Store. Decided with the user 2026-10-26:
+
+- **Expo / React Native (TypeScript)**, built and submitted with EAS. Not a Capacitor/WebView
+  wrapper — Apple guideline 4.2 routinely rejects apps that are mostly a website, and a wrapper
+  would also inherit the portal's cookie-session model, which doesn't fit a phone.
+- **Members only for v1** — the Phase 18/30 portal features. Admins keep using the website.
+- **Lives in `mobile/` in this repo** — not a separate repo, so an API change and the app change
+  that uses it land in one commit. `mobile/` is its own npm project (Expo's toolchain must not
+  leak into the Next.js build); shared request/response shapes live in plain TS modules under
+  `src/lib/mobile/` that both sides import.
+
+**Architecture (as built, Phases 31–34):**
+- **The app talks to a versioned JSON API, `/api/mobile/v1/**`** (24 route handlers). The
+  portal is written as Server Actions, which only a browser page from this site can call. The
+  business logic inside those actions moved into plain `src/lib/**` functions that both the
+  Server Action and the mobile route call — never a second copy of the rules (same DRY reasoning
+  as Phase 11's shared `login.ts`): `lib/auth/activation.ts`, `lib/auth/sign-out-everywhere.ts`,
+  `lib/member-activities/record.ts` (all seven activity recorders), `lib/members/dashboard.ts`,
+  `lib/members/nearby-search.ts`, `lib/members/profile-revision.ts`,
+  `lib/points/detailed-reports.ts`, `lib/payments/overview.ts`, `lib/payments/submit.ts`,
+  `lib/attendance/checkin.ts`. The web actions are now thin wrappers (session → shared function
+  → `revalidatePath`).
+- **Auth: per-device opaque tokens, not NextAuth cookies.** A `MobileSession` row per signed-in
+  device stores only a SHA-256 hash of a random 32-byte `bwfm_…` token (plain SHA-256 is right
+  for a high-entropy token and allows a unique-index lookup); the app keeps the token in the
+  iOS Keychain / Android Keystore (`expo-secure-store`). Every request re-checks the session row
+  *and* `User.status` / `User.sessionVersion`, so suspension, password reset, activation, and
+  "Sign out of all devices" revoke phone sessions exactly like web ones. 30-day sliding expiry
+  (`lastUsedAt` refreshed at most hourly). Login goes through the same `authorizeLogin()`
+  (lockout, generic errors, `MEMBER_ROLE_KEYS`, username or email) plus a per-IP rate limit,
+  since temporary passwords are only word + 4 digits. `requireMobileMember()` plays the role
+  `requireMemberProfile()` plays for the portal; a pending activation answers
+  `403 ACTIVATION_REQUIRED` everywhere except the activation endpoints. Completing activation
+  bumps `sessionVersion` (ending the temp-password session), so that endpoint returns a fresh
+  token. Password reset reuses the existing `/api/member/auth/*` JSON routes unchanged.
+- **Errors are `{ error, code }` JSON with stable codes** (`mobileHandler()` in
+  `src/lib/mobile/api.ts`); unexpected errors become a generic 500, never a stack trace. All
+  responses are `Cache-Control: no-store`.
+- **One contract file, types only.** `src/lib/mobile/contract.ts` defines every response shape;
+  the app imports it with `import type` via a `@contract` path alias, so a shape change is a
+  type error on both sides and nothing from the website is bundled into the app. The website's
+  `tsconfig.json`/ESLint exclude `mobile/` (it has its own toolchain).
+- **App-side hardening the web didn't need:** recorders now verify the chosen member(s) exist
+  and are ACTIVE (a stale/forged id was a foreign-key 500 before — applies to the web too);
+  payment/check-in `proofUrl` must be one of our own `paymentProof` storage URLs (mobile only —
+  the web form is unchanged); profile edits from the app can only touch the 20 text fields and
+  are filled out with the member's current values, because the admin review screen shows any
+  field missing from a revision as "changed to blank".
+- **Find Members Nearby uses the phone's own location** (`expo-location`, foreground only) for
+  the radius search — no Google Maps key needed on the phone. Typing an area falls back to the
+  saved-address text match, same as the web without a key.
+- **Deliberately not in app v1:** Articles (long-form writing stays on the web), the WhatsApp
+  share banners, and editing photos/brochure/map location (all still on the website). The app
+  links to the website for those.
+
+**Roadmap — one phase at a time, each logged in `docs/PHASES.md`:**
+1. ✅ **Phase 31 — Mobile API foundation.** `MobileSession` + token auth (login, logout, me,
+   activation, sign-out-all), `requireMobileMember()`, rate limiting, and the read endpoints for
+   the dashboard (score, this-month stats, next meeting). Extract the shared logic from the
+   matching Server Actions.
+2. ✅ **Phase 32 — Expo app shell.** `mobile/` scaffold (Expo Router, EAS config, env per
+   build profile), sign-in + first-login activation, dashboard, member-portal visual language.
+3. ✅ **Phase 33 — Activities.** Referrals, Thank You Slips, One-to-Ones, Power Dates, Conclaves
+   (incl. the Phase 30 chapter → category → member picker), Points, Reports, Detailed Reports.
+4. ✅ **Phase 34 — Meetings, Find Members Nearby, Profile, Payments.** Meetings + QR check-in,
+   nearby search (phone location), payments with proof upload, profile view + edit request (still routed through
+   admin approval — non-negotiable §20).
+5. **Phase 35 — Store readiness + submission.** Icons/splash, push notifications if wanted,
+   App Store privacy labels + Play Data safety form, account-deletion path (Play requires one
+   for any app with accounts), a dedicated reviewer demo login that can't pollute real
+   reports/rankings, TestFlight + Play internal testing, then submission.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so
@@ -1653,7 +1728,11 @@ they aren't lost, with the phase they'd first block:
 | WhatsApp Business API + Razorpay business verification | Post-V2 (§71) | Both have real-world verification lead times — worth starting that process independently of the dev timeline if they're wanted eventually. |
 | Historical attendance/payment data migration from the previous application | Phase 22 spec §5 | Deferred at the user's own choice (2026-09-17) — no agreed legacy Excel export format/file exists yet. Build the importer once a real export is in hand; guessing the shape now risks rework. |
 | ~~Second reference invitation poster (Phase 30 item 4)~~ | ~~Phase 30~~ | **Resolved 2026-10-03** — poster rebuilt to the client's reference; see Phase 30 section. |
-| Google Maps API keys (browser + server) | Phase 30 | Needed for Places autocomplete, the results map and the geocoding backfill; text-match fallback until then. |
+| Google Maps API keys (browser + server) | Phase 30 | Needed for Places autocomplete, the results map and the geocoding backfill; text-match fallback until then. Mobile Phase 34 needs iOS/Android-restricted keys too. |
+| Apple Developer + Google Play Console access | Mobile Phase 35 (start now) | **Handover email received 2026-10-26** from the previous developer (Magesh E): credentials folder for Play, App Store and "server"; Play Store data transfer still in progress. Open: rotate passwords + 2FA, confirm any existing app's bundle ID / package name (the new app should ship as an update to it), and get the Android upload key or keystore (without it the existing Play listing can't be updated). Need: who owns them (organization vs personal), admin access for the user (Apple: Account Holder/Admin role in App Store Connect; Play: Admin in Play Console), and whether a BWF app/bundle ID already exists there. Ownership stays with BWF. |
+| App bundle ID / package name + deploying the API | Mobile Phase 35 | `mobile/app.json` uses the placeholder `com.buildersworldforum.app`; if the previous developer already published a BWF app, the new one must reuse that app's iOS bundle ID and Android package (and, for Android, its upload key) so it ships as an update. `mobile/eas.json` points every build at `https://buildersworldforum.com`, where this site is live (Phase 30 correction 20). The live site needs these Phase 31–34 changes **deployed** (and the already-applied `mobile_sessions` migration) before any app build can sign in. |
+| Dependency vulnerabilities in the website (`npm audit`, found 2026-10-26) | Before launch | 9 advisories in the root project — 1 critical (`next` 16.0.0–16.4.0), 4 high (`zod` <4.6.6, `sharp`, `brace-expansion`, `source-map-js`), 4 moderate. Pre-existing (not introduced by the mobile work); needs a deliberate Next.js/zod upgrade + regression pass. `mobile/` has 5 high, all in Expo's own build tooling (`@expo/cli` → zod 3), where the only "fix" npm offers is downgrading Expo — wait for an SDK patch. |
+| Final Privacy Policy URL | Mobile Phase 35 | Both stores require a public privacy policy URL; `/privacy` is still a draft pending legal review (row below), and must also cover the app (device tokens, location for nearby search). |
 | ~~Reference invitation poster for the Meeting Invitation Generator's final layout~~ | ~~Phase 24~~ | **Resolved 2026-09-18** (same day) — client supplied a reference poster; `drawInvitationPoster()` redesigned to match its alignment/icon-driven detail row, background photo intentionally omitted per the client's own instruction (chief guest photo fills that role instead). See the Phase 24 section above. |
 | Legal review of Privacy Policy / Terms & Conditions copy | Phase 14 | Site collects member/visitor PII. `/privacy` and `/terms` now carry a full first-draft policy (2026-09-04, grounded in the actual data model/integrations — see `src/components/legal/legal-page-shell.tsx`), visibly marked "draft — pending legal review" with bracketed placeholders (entity name, jurisdiction, grievance officer, fee terms, liability/indemnification clauses). Still must not launch as final until a real lawyer reviews it and those placeholders are filled in. |
 | ~~Leads system (brief §35) has no phase of its own~~ | Noticed in Phase 9 | Built 2026-09-06 (backlog #17), then **REMOVED again 2026-09-14** (client correction, `docs/PHASES.md` Phase 20) — the client considers it a duplicate of Visitors/Membership Applications; `/admin/leads` and the `Lead` model no longer exist. |

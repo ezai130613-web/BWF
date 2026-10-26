@@ -4316,3 +4316,102 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   admin included. **Done (client approved, same day)**: `vercel.json` now sets
   `"regions": ["sin1"]`. Responses now show `bom1::sin1`, and `/members` went from ~1.7s to ~0.4s
   (warm). All main pages return 200 after the switch.
+
+---
+
+## Phases 31–34 — Native mobile app: API + Expo app (2026-10-26)
+
+**Status:** Complete (built and verified in one session at the user's request). Phase 35 — store
+submission — is next and is blocked on store-account access, not code.
+
+**Decisions (asked first, 2026-10-26):** Expo / React Native, members-only v1, code in `mobile/`
+in this repo. Full rationale in `docs/ARCHITECTURE.md` → "Native mobile app". Reverses Phase 18's
+portal-only call.
+
+### Phase 31 — Mobile API foundation
+- `MobileSession` model + migration `20261026150000_mobile_sessions` (additive: one new table).
+  Applied to the live Neon DB via the documented `migrate diff` → `db execute` →
+  `migrate resolve --applied` path; `migrate status` clean afterwards.
+- Per-device bearer tokens (`src/lib/mobile/session.ts`), shared plumbing
+  (`src/lib/mobile/api.ts`: `mobileHandler`, `requireMobileUser`, `requireMobileMember`, stable
+  error codes), and the types-only contract (`src/lib/mobile/contract.ts`).
+- Endpoints: `auth/login`, `auth/logout`, `auth/sign-out-everywhere`, `auth/activation/code`,
+  `auth/activation/complete` (returns a fresh token), `me`, `dashboard`. Password reset reuses
+  the existing `/api/member/auth/*` routes.
+- Shared-logic extraction: first-login activation → `src/lib/auth/activation.ts`; sign out
+  everywhere → `src/lib/auth/sign-out-everywhere.ts` (now also revokes phone sessions); dashboard
+  data → `src/lib/members/dashboard.ts`. The portal pages/actions call these.
+
+### Phase 32 — Expo app shell (`mobile/`)
+- Expo SDK 58, Expo Router, TypeScript strict, React Compiler. Token in Keychain/Keystore
+  (`expo-secure-store`; localStorage only on the dev-only web preview). `Stack.Protected` routes:
+  signed out → sign-in / forgot password; temporary credentials → activation only; signed in →
+  tabs (Home, Activity, Meetings, Nearby, More). Any 401 signs the app out cleanly.
+- BWF icon/adaptive icon/splash generated from `public/images/brand/bwf-logo.png`; emerald/gold
+  portal palette. `app.json` permission texts; microphone blocked (`RECORD_AUDIO` removed),
+  location foreground-only. `eas.json` development / preview (APK) / production profiles.
+  Unused template modules removed; template LICENSE (Expo's MIT) removed.
+
+### Phase 33 — Activities
+- All seven recorders → `src/lib/member-activities/record.ts`, shared by the 7 portal actions
+  and the app. New for both: the chosen member(s) must exist and be ACTIVE (was a FK 500).
+- Endpoints: GET/POST `referrals`, `thank-you-slips`, `one-to-ones`, `power-dates`, `conclaves`,
+  `consumers`, `chief-guests`; GET `members/picker`, `points`, `reports?period=`,
+  `detailed-reports?tab=` (loader moved to `src/lib/points/detailed-reports.ts`, page uses it).
+- App: one data-driven list screen + one record form for all seven types; Chapter → Category →
+  Member picker with search and multi-select (Conclaves).
+
+### Phase 34 — Meetings, check-in, nearby, profile, payments
+- Endpoints: `meetings`, `members/nearby`, GET/POST `profile`, GET/POST `payments`,
+  `uploads/payment-proof`, GET/POST `checkin/[token]`.
+- Shared: nearby search → `src/lib/members/nearby-search.ts`; profile revision →
+  `src/lib/members/profile-revision.ts`; payment standing → `src/lib/payments/overview.ts`;
+  payment submit → `src/lib/payments/submit.ts`; QR check-in → `src/lib/attendance/checkin.ts`
+  (payment parsers now accept FormData or JSON via `fieldsFromJson`).
+- **Bug fixed on the live website too:** Find Members Nearby's "N members haven't set a business
+  location" count spread `OR` over the name-search `OR`, so with a name typed it counted every
+  unlocated member. Now `AND`-combined.
+- App: QR scanner (`expo-camera`, accepts only `<site>/member/checkin/<token>`), check-in with
+  optional same-month payment, "Members near me" from the phone's location, payments with
+  screenshot/PDF proof upload (presigned R2 PUT; server only accepts our own proof URLs),
+  profile view + edit request (20 text fields, filled out with current values).
+
+**Verification performed:**
+- Live-DB test data was blocked by the session's safety policy, so all testing ran against a
+  **private local Postgres** (`prisma dev --name bwf-mobile-test`, all 50 migrations applied,
+  verified empty first, deleted afterwards) with `EMAIL_PROVIDER=console`.
+- **API: 83/83 checks** (`/api/mobile/v1/**` end to end): auth errors, case-insensitive
+  username + email login, full activation (bad email, wrong code, mismatched
+  passwords, success → old token revoked, temp credentials dead, new ones work), every
+  recorder's validation (self, unknown member, bad enum, negative amount, foreign referral,
+  conclave < 2), lists/totals, points/reports for all four periods, detailed reports, nearby
+  radius 5/10 km ordering + distance, name filter + the bug fix, text fallback, invalid coords,
+  profile edit (+ blocked second edit), payments (foreign proof URL
+  rejected, idempotent resubmit, meeting + membership), check-in (unknown token 404, preview,
+  check-in, idempotent second check-in), logout one device vs sign out everywhere.
+- **Website regression: 22/22** — browser login, all 17 refactored portal pages load, nearby page
+  shows the corrected count, consumer form records through the shared recorder, no page errors.
+- **App: 25/25** in a 390×844 browser (Expo web, `--disable-web-security` for the test only):
+  sign-in error, activation with emailed code, sign out, picker-driven referral, conclave server
+  validation + multi-select, Thank You Slip (₹1,50,000 formatting), meetings, geolocation nearby
+  (2.3 km nearest first), points/reports/detailed reports/payments/profile/more, profile edit
+  pending notice, QR check-in, payment form gated on proof, session survives reload, no
+  console errors. Screenshots reviewed by eye; one real usability fix made (nearby results were
+  below the fold), plus a `router.back()` with no history fixed (`goBack()` fallback).
+- `npx expo export` for iOS and Android: both Hermes bundles build. `expo-doctor` 20/20.
+  App `tsc` + `expo lint` clean. Website `typecheck`, `lint`, `build` clean (`mobile/` excluded
+  from the website's tsconfig/ESLint).
+- **Not verified:** account lockout via the app (same `authorizeLogin()` as the web, not
+  re-tested); that a non-text field sent from the app is dropped (code path only — the app UI
+  never sends one); a real device or simulator (no Xcode on this machine) — camera scanning,
+  Keychain storage, native permission prompts and the actual R2 upload from a phone are untested
+  until the first EAS build; HawkScan (no `hawk` runtime / `HAWK_API_KEY`).
+
+**Known issues / follow-ups:**
+- **Deploy the website** before any app build is useful — production doesn't have
+  `/api/mobile/v1` yet (the `mobile_sessions` table is already live).
+- Bundle ID/package are placeholders until we know whether an old BWF store app exists.
+- Store accounts (handover from Magesh E in progress, Play transfer pending), privacy policy
+  still a draft, `npm audit` findings — all in `docs/ARCHITECTURE.md` open decisions.
+- Not in app v1: Articles, WhatsApp share banners, photo/brochure/location editing, push
+  notifications (meeting reminders are email-only).
