@@ -56,3 +56,7 @@ next-env.d.ts
 # a source for Phase 20 Batch 7's member photo extraction, not referenced
 # by the app itself).
 /docs/reference/
+
+# Roster PDFs dropped in the repo root (real members' phone numbers/emails) —
+# same reason as /docs/reference/ above.
+/Roster*.pdf

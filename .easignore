@@ -1,0 +1,129 @@
+# EAS Build upload filter (2026-10-26). The Expo app lives in mobile/ inside
+# the website's repository, so EAS uploads from the repo root; this file
+# replaces .gitignore for that upload (EAS prefers it), so it repeats both
+# .gitignore files and then drops everything the app build doesn't need —
+# above all the website source, docs and any local PDFs with member data.
+
+# ---- copied from /.gitignore ----
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (never commit real credentials — .env.example is the only tracked template)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# Raw/unprocessed source photography — the real, served copies live in
+# /public (tracked). This is 40MB of originals never referenced by the app.
+/Images/
+
+# Raw source QR codes — the served copies live in /public/images/payment
+# (tracked). Not referenced by the app directly from here.
+/QR Codes/
+
+# Reference roster-sheet PDFs contain real members' personal phone numbers
+# and emails — this repo is public, so these stay local-only (used once as
+# a source for Phase 20 Batch 7's member photo extraction, not referenced
+# by the app itself).
+/docs/reference/
+
+# Roster PDFs dropped in the repo root (real members' phone numbers/emails) —
+# same reason as /docs/reference/ above.
+/Roster*.pdf
+
+
+# ---- copied from /mobile/.gitignore ----
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+mobile/node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+example
+
+# generated native folders
+ios
+android
+
+# ---- not needed to build the app ----
+/src/
+/public/
+/docs/
+/prisma/
+/scripts/
+/.github/
+/.agents/
+/.windsurf/
+/.claude/
+/mobile/.claude/
+/mobile/store/
+*.pdf
