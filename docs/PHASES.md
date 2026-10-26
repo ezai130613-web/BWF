@@ -4408,8 +4408,13 @@ portal-only call.
   until the first EAS build; HawkScan (no `hawk` runtime / `HAWK_API_KEY`).
 
 **Known issues / follow-ups:**
-- **Deploy the website** before any app build is useful — production doesn't have
-  `/api/mobile/v1` yet (the `mobile_sessions` table is already live).
+- ~~Deploy the website~~ **Done 2026-10-26**: pushed to `main` (Vercel auto-deploy, live ~60s
+  later). Read-only production smoke test: every `/api/mobile/v1` endpoint answers unauthenticated
+  calls with `401 {code: UNAUTHENTICATED}`, bogus tokens rejected, unknown-user login gets the
+  generic error, `Cache-Control: no-store`; `/`, `/member/login`, `/members`, `/api/health` 200.
+  Found that the bare domain 308-redirects to `www.` — the app now calls
+  `https://www.buildersworldforum.com` directly (a cross-host redirect can drop the
+  Authorization header). Not yet tested in production: a real member signing in through the app.
 - Bundle ID/package are placeholders until we know whether an old BWF store app exists.
 - Store accounts (handover from Magesh E in progress, Play transfer pending), privacy policy
   still a draft, `npm audit` findings — all in `docs/ARCHITECTURE.md` open decisions.

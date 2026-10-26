@@ -7,16 +7,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "https://buildersworldforum.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://www.buildersworldforum.com" }
     },
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://buildersworldforum.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://www.buildersworldforum.com" }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://buildersworldforum.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://www.buildersworldforum.com" }
     }
   },
   "submit": {

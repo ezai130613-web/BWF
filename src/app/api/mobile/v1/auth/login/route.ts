@@ -8,8 +8,8 @@ import { getMobileAccount } from "@/lib/mobile/account";
 import { json, MobileApiError, mobileHandler, readJson } from "@/lib/mobile/api";
 
 const bodySchema = z.object({
-  identifier: z.string().trim().min(1, "Enter your username or email.").max(254),
-  password: z.string().min(1, "Enter your password.").max(200),
+  identifier: z.string("Enter your username or email.").trim().min(1, "Enter your username or email.").max(254),
+  password: z.string("Enter your password.").min(1, "Enter your password.").max(200),
   platform: z.string().max(20).optional(),
   deviceName: z.string().max(100).optional(),
   appVersion: z.string().max(20).optional(),
