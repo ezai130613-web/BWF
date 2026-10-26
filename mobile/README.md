@@ -36,8 +36,8 @@ npx eas-cli@latest submit --platform android                      # → Play Con
 ```
 
 `eas.json` sets `EXPO_PUBLIC_API_URL` per profile. App name, bundle ID / package
-(`com.buildersworldforum.app` — **replace with the existing store app's IDs if BWF already has
-one**), icons and permission texts live in `app.json`.
+(`com.buildersworldforum.members` — permanent once the store listing exists; `com.buildersworldforum.app`
+was already taken by another Apple team), icons and permission texts live in `app.json`.
 
 ## Layout
 

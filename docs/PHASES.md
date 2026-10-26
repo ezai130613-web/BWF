@@ -4461,3 +4461,8 @@ rotation (old password 401, new 200). Regressions re-run: **API 83/83, website 2
 
 **Not done yet:** creating the demo login on the live database (needs the user's go-ahead), the
 first EAS build / TestFlight, App Store Connect record + submission.
+
+- **Bundle ID changed (2026-10-26)**: the first `eas build` failed — Apple reported
+  `com.buildersworldforum.app` "not available" to team M3DQSV3NCW (registered by another team).
+  Now `com.buildersworldforum.members` for iOS and Android. Expo project linked as
+  `builders-world-forum/bwf` (`eas init`); microphone stays blocked in the Android manifest.

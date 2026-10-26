@@ -8,7 +8,7 @@ Everything below is ready to paste. Character limits are Apple's.
 |---|---|
 | Name (30) | `BWF – Builders World Forum` |
 | Subtitle (30) | `Member app for BWF chapters` |
-| Bundle ID | `com.buildersworldforum.app` |
+| Bundle ID | `com.buildersworldforum.members` |
 | SKU | `bwf-members-ios` |
 | Primary language | English (U.K.) or English (U.S.) |
 | Category | Business (secondary: Productivity) |
