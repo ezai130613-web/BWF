@@ -71,6 +71,7 @@ model User {
   memberAccount     Member?
   reviewedRevisions MemberProfileRevision[]
   reviewedArticles  Blog[]
+  adminRemarks      AdminRemark[]
 
   @@map("users")
 }
@@ -267,7 +268,7 @@ model Category {
   /// Defaults true so a newly created category appears without extra steps;
   /// existing rows were backfilled to the official list (roster-specific
   /// labels start hidden). Only applies while `isActive` is also true.
-  showOnApplyForm Boolean @default(true)
+  showOnApplyForm      Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -457,6 +458,9 @@ model Member {
   // 2026-10-03 corrections
   feedbackInvitations Feedback[]           @relation("FeedbackInvitedBy")
   meetingReminderLogs MeetingReminderLog[]
+
+  // 2026-10-26 — admin-only remarks (approval, renewal, general).
+  adminRemarks AdminRemark[]
 
   // Phase 14 — Postgres doesn't auto-index FK scalar columns; these three
   // are filtered/counted against constantly (directory search, dashboard
@@ -876,6 +880,8 @@ model MembershipApplication {
 
   notes String?
 
+  adminRemarks AdminRemark[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1278,6 +1284,8 @@ model Payment {
   /// instead of creating a second transaction (spec: "Prevent duplicate
   /// payment submissions caused by repeated clicks or retries").
   idempotencyKey String @unique
+
+  adminRemarks AdminRemark[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2272,4 +2280,49 @@ model FeedbackEmailRecipient {
   updatedAt DateTime @updatedAt
 
   @@map("feedback_email_recipients")
+}
+
+// ---------------------------------------------------------------------------
+// 2026-10-26 client request — admin remarks recorded when approving a
+// membership (application approval / conversion) or a renewal (annual
+// membership payment approval), plus general remarks added from the member's
+// page. Append-only on purpose: the client wants them "always retrievable",
+// so there is no edit or delete. Admin-only — never shown in the member
+// portal (unlike Payment.reviewRemarks, which the member sees).
+//
+// memberId is null only while the remark belongs to an application that
+// hasn't been converted yet; convertApplicationToMember stamps it then.
+// authorName is a snapshot so the remark still reads correctly if the
+// admin's account is later renamed or removed.
+// ---------------------------------------------------------------------------
+
+enum AdminRemarkContext {
+  MEMBERSHIP_APPROVAL
+  RENEWAL
+  GENERAL
+}
+
+model AdminRemark {
+  id      String             @id @default(cuid())
+  context AdminRemarkContext
+  body    String
+
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  applicationId String?
+  application   MembershipApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  authorUserId String?
+  author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorName   String
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([applicationId])
+  @@map("admin_remarks")
 }

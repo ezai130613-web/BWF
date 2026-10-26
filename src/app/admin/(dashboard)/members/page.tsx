@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { CreateMemberForm } from "@/components/admin/create-member-form";
 import { updateMemberStatus } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { getRemarksForMembers } from "@/lib/remarks";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -55,6 +56,7 @@ export default async function MembersPage({
     select: { memberId: true },
   });
   const pendingMemberIds = new Set(pendingRevisions.map((r) => r.memberId));
+  const remarksByMember = await getRemarksForMembers(members.map((m) => m.id));
 
   return (
     <div className="flex flex-col gap-8">
@@ -135,6 +137,15 @@ export default async function MembersPage({
                     <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                       Edit pending
                     </span>
+                  ) : null}
+                  {remarksByMember.get(member.id)?.length ? (
+                    <Link
+                      href={`/admin/members/${member.id}`}
+                      title={`Latest remark: ${remarksByMember.get(member.id)![0].body}`}
+                      className="ml-2 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 hover:bg-sky-100"
+                    >
+                      {remarksByMember.get(member.id)!.length} remark{remarksByMember.get(member.id)!.length === 1 ? "" : "s"}
+                    </Link>
                   ) : null}
                 </td>
                 <td className="px-4 py-3 text-neutral-600">{member.company.name}</td>

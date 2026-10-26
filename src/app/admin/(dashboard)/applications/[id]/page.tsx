@@ -7,6 +7,10 @@ import { ApplicationNotesForm } from "@/components/admin/application-notes-form"
 import { ReassignChapterForm } from "@/components/admin/reassign-chapter-form";
 import { ConvertApplicationForm } from "@/components/admin/convert-application-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { AdminRemarksList } from "@/components/admin/admin-remarks";
+import { AddRemarkForm } from "@/components/admin/add-remark-form";
+import { getApplicationRemarks } from "@/lib/remarks";
+import { addApplicationRemark } from "../actions";
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("applications:manage");
@@ -18,7 +22,10 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
   });
   if (!application) notFound();
 
-  const chapters = await db.chapter.findMany({ orderBy: { name: "asc" } });
+  const [chapters, remarks] = await Promise.all([
+    db.chapter.findMany({ orderBy: { name: "asc" } }),
+    getApplicationRemarks(application.id, application.convertedMemberId),
+  ]);
 
   const links: [string, string][] = [];
   for (const [label, href] of [
@@ -176,6 +183,23 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             <h2 className="text-sm font-semibold text-neutral-900">Status</h2>
             <div className="mt-3">
               <ApplicationStatusControl applicationId={application.id} status={application.status} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
+            <h2 className="text-sm font-semibold text-neutral-900">Approval remarks</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              Internal, never shown to the applicant. Kept permanently and carried onto the member&rsquo;s record.
+            </p>
+            <div className="mt-3 max-h-80 overflow-y-auto">
+              <AdminRemarksList remarks={remarks} />
+            </div>
+            <div className="mt-4 border-t border-neutral-100 pt-4">
+              <AddRemarkForm
+                action={addApplicationRemark}
+                hiddenFields={{ applicationId: application.id }}
+                placeholder="e.g. approved after meeting the Head Table, references checked…"
+              />
             </div>
           </div>
 

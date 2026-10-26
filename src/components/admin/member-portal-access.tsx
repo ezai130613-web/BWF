@@ -72,7 +72,7 @@ export function MemberPortalAccess({
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => run(() => resetMemberTemporaryPassword(memberId), "Reset this member's password back to the temporary password?")}
+                onClick={() => run(() => resetMemberTemporaryPassword(memberId), "Give this member a new temporary password?")}
                 className="text-sm text-neutral-600 underline hover:text-emerald-800 disabled:opacity-50"
               >
                 Reset to temporary password
@@ -97,7 +97,7 @@ export function MemberPortalAccess({
         <div>
           <h2 className="text-sm font-semibold text-neutral-900">Member portal login</h2>
           <p className="mt-1 text-xs text-neutral-500">
-            Creates the next username for this member&rsquo;s chapter (Chapter 1 → BWFCC1xx, Chapter 2 → BWFCC2xx…) with the temporary password 1234.
+            Creates the next username for this member&rsquo;s chapter (Chapter 1 → BWFCC1xx, Chapter 2 → BWFCC2xx…) and a one-time temporary password shown here once.
           </p>
         </div>
         <button

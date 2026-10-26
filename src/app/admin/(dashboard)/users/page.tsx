@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { ADMIN_ROLE_KEYS } from "@/lib/auth/constants";
 import { db } from "@/lib/db";
@@ -21,12 +22,20 @@ export default async function UsersPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-          <AdminPageIcon />Users</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Admin accounts only — member portal logins are managed from each member&apos;s profile.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            <AdminPageIcon />Users</h1>
+          <p className="mt-1 text-sm text-neutral-600">
+            Admin accounts only — member portal logins are managed from each member&apos;s profile.
+          </p>
+        </div>
+        <Link
+          href="/api/admin/exports/admin-users"
+          className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:border-emerald-800 hover:text-emerald-800"
+        >
+          Download list (PDF)
+        </Link>
       </div>
 
       <ReauthGuard>

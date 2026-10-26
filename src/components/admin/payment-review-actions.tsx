@@ -6,7 +6,10 @@ import { reviewPayment } from "@/app/admin/(dashboard)/payments/actions";
 const initialState: { error?: string; success?: boolean } = {};
 
 /** Spec: Approve / Reject (reason required) / Request Clarification — gated by payments:approve, rendered only for callers who hold it (see the page's own canApprove check). */
-export function PaymentReviewActions({ paymentId, status }: { paymentId: string; status: string }) {
+export function PaymentReviewActions({ paymentId, status, type }: { paymentId: string; status: string; type: "MEETING" | "MEMBERSHIP" }) {
+  // Annual membership = renewal: offer an internal, admin-only remark that
+  // stays on the member's record (2026-10-26).
+  const withAdminRemark = type === "MEMBERSHIP";
   const [mode, setMode] = useState<"REJECTED" | "CLARIFICATION_REQUESTED" | null>(null);
   const approveAction = useActionState(reviewPayment.bind(null, paymentId, "APPROVED"), initialState);
   const rejectAction = useActionState(reviewPayment.bind(null, paymentId, "REJECTED"), initialState);
@@ -27,6 +30,7 @@ export function PaymentReviewActions({ paymentId, status }: { paymentId: string;
         error={rejectAction[0]?.error}
         onCancel={() => setMode(null)}
         submitLabel="Confirm Reject"
+        withAdminRemark={withAdminRemark}
       />
     );
   }
@@ -42,15 +46,30 @@ export function PaymentReviewActions({ paymentId, status }: { paymentId: string;
         error={clarifyAction[0]?.error}
         onCancel={() => setMode(null)}
         submitLabel="Send Request"
+        withAdminRemark={withAdminRemark}
       />
     );
   }
 
-  const [, approveFormAction, approvePending] = approveAction;
+  const [approveState, approveFormAction, approvePending] = approveAction;
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
-      <form action={approveFormAction}>
+    <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
+      {withAdminRemark ? (
+        <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+          Renewal remarks (optional, admin-only — saved to the member&rsquo;s record)
+          <textarea
+            name="adminRemark"
+            form={`approve-${paymentId}`}
+            rows={2}
+            maxLength={2000}
+            className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+      ) : null}
+      {approveState?.error ? <p className="text-xs text-red-600">{approveState.error}</p> : null}
+      <div className="flex flex-wrap items-center gap-2">
+      <form id={`approve-${paymentId}`} action={approveFormAction}>
         <button
           type="submit"
           disabled={approvePending}
@@ -73,6 +92,7 @@ export function PaymentReviewActions({ paymentId, status }: { paymentId: string;
       >
         Request Clarification
       </button>
+      </div>
     </div>
   );
 }
@@ -85,6 +105,7 @@ function ReasonForm({
   error,
   onCancel,
   submitLabel,
+  withAdminRemark,
 }: {
   label: string;
   required: boolean;
@@ -93,6 +114,7 @@ function ReasonForm({
   error?: string;
   onCancel: () => void;
   submitLabel: string;
+  withAdminRemark: boolean;
 }) {
   return (
     <form action={formAction} className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
@@ -100,6 +122,12 @@ function ReasonForm({
         {label}
         <textarea name="remarks" required={required} rows={2} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
       </label>
+      {withAdminRemark ? (
+        <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+          Internal renewal remarks (optional, admin-only — the member never sees this)
+          <textarea name="adminRemark" rows={2} maxLength={2000} className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm" />
+        </label>
+      ) : null}
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className="rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50">

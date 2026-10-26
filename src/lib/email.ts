@@ -19,13 +19,22 @@ type SendEmailInput = {
   to: string;
   subject: string;
   text: string;
+  /** Optional HTML part; `text` stays the fallback for clients that don't render HTML. */
+  html?: string;
+  /**
+   * Overrides EMAIL_FROM_ADDRESS for this one message, e.g. the membership
+   * T&C mail from info@ (2026-10-26). Must be on a domain verified with the
+   * provider (buildersworldforum.com is).
+   */
+  from?: string;
+  replyTo?: string;
   /** Phase 13 — the weekly report send attaches its export file this way. */
   attachments?: EmailAttachment[];
 };
 
 async function sendViaResend(input: SendEmailInput) {
   const apiKey = process.env.EMAIL_API_KEY;
-  const from = process.env.EMAIL_FROM_ADDRESS ?? "Builders World Forum <no-reply@bwf.example>";
+  const from = input.from ?? process.env.EMAIL_FROM_ADDRESS ?? "Builders World Forum <no-reply@bwf.example>";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -38,6 +47,8 @@ async function sendViaResend(input: SendEmailInput) {
       to: input.to,
       subject: input.subject,
       text: input.text,
+      html: input.html,
+      reply_to: input.replyTo,
       attachments: input.attachments?.map((a) => ({
         filename: a.filename,
         content: a.content.toString("base64"),
@@ -56,7 +67,7 @@ function sendViaConsole(input: SendEmailInput) {
     ? `\nAttachments: ${input.attachments.map((a) => a.filename).join(", ")}`
     : "";
   console.log(
-    `\n[dev email — no EMAIL_PROVIDER configured]\nTo: ${input.to}\nSubject: ${input.subject}${attachmentLine}\n\n${input.text}\n`,
+    `\n[dev email — no EMAIL_PROVIDER configured]\n${input.from ? `From: ${input.from}\n` : ""}To: ${input.to}\nSubject: ${input.subject}${attachmentLine}\n\n${input.text}\n`,
   );
 }
 

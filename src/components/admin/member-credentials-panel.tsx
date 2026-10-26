@@ -3,8 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  credentialsPdf,
   generateMemberCredentials,
   reissueTemporaryCredentials,
+  resetAllMemberCredentials,
   type IssuedCredential,
 } from "@/app/admin/(dashboard)/member-credentials/actions";
 
@@ -43,6 +45,21 @@ function downloadCsv(rows: IssuedCredential[]) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+async function downloadPdf(rows: IssuedCredential[]): Promise<string | null> {
+  const result = await credentialsPdf(rows);
+  if (!result.base64) return result.error ?? "Couldn't build the PDF.";
+  const bytes = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bwf-member-credentials-${new Date().toISOString().slice(0, 10)}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return null;
+}
+
+const RESET_ALL_PHRASE = "RESET ALL";
 
 export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }) {
   const router = useRouter();
@@ -116,7 +133,7 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
           type="button"
           disabled={pending || selected.length === 0}
           onClick={() => {
-            if (confirm(`Reset ${selected.length} not-yet-activated member(s) to the temporary password 1234?`)) {
+            if (confirm(`Give ${selected.length} not-yet-activated member(s) a new temporary password?`)) {
               run(() => reissueTemporaryCredentials(selected), "Reset");
             }
           }}
@@ -127,6 +144,31 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
         <p className="text-xs text-neutral-500">Reset works only for members who haven&rsquo;t activated yet.</p>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-red-200 bg-red-50/50 p-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold text-red-800">Reset ALL members</h2>
+          <p className="mt-1 text-xs text-red-800/80">
+            Gives every active member ({rows.length}) a new temporary password — including the {counts.ACTIVATED} who
+            already activated — and creates logins for anyone without one. Usernames stay the same. Everyone&rsquo;s
+            current password stops working and they&rsquo;re signed out; each must activate again. Tell members before
+            you do this, and download the PDF straight away: the passwords are shown only once.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={pending || rows.length === 0}
+          onClick={() => {
+            const typed = prompt(
+              `This resets the password of all ${rows.length} active members and signs them all out.\n\nType ${RESET_ALL_PHRASE} to continue.`,
+            );
+            if (typed?.trim().toUpperCase() === RESET_ALL_PHRASE) run(resetAllMemberCredentials, "Issued");
+          }}
+          className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-600 disabled:opacity-50"
+        >
+          {pending ? "Working…" : `Reset ALL members (${rows.length})`}
+        </button>
+      </div>
+
       {error ? <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
       {issued ? (
@@ -134,10 +176,24 @@ export function MemberCredentialsPanel({ rows }: { rows: CredentialMemberRow[] }
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-neutral-900">{message}</h2>
-              <p className="mt-1 text-xs text-neutral-600">Download the sheet to share each row with that member.</p>
+              <p className="mt-1 text-xs text-neutral-600">
+                Download the sheet now — these passwords can&rsquo;t be shown again. Share each row only with that member.
+              </p>
             </div>
             {issued.length > 0 ? (
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    startTransition(async () => {
+                      setError(await downloadPdf(issued).catch(() => "Couldn't build the PDF — try again."));
+                    })
+                  }
+                  className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Download PDF
+                </button>
                 <button
                   type="button"
                   onClick={() => downloadCsv(issued)}

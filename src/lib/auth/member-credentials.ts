@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { db } from "@/lib/db";
 
 /**
@@ -6,16 +7,30 @@ import { db } from "@/lib/db";
  * number + a 2-digit sequence: Chapter 01 → BWFCC101, BWFCC102 …, Chapter 02
  * → BWFCC201 … — continuing from the highest already issued in that chapter.
  *
- * Every temporary password is the same short value, by client decision, so
- * credentials are easy to hand out. Accepted trade-off: until a member
- * finishes first-login activation (verify email + set a private password of
- * 12+ characters), anyone who knows their username can sign in as them —
- * activation should happen promptly after distribution. Only the Argon2id
- * hash is stored, as for every other password.
+ * Temporary passwords (2026-10-21, replacing the shared "1234"): one per
+ * account, an easy word plus 4 digits ("mango-4821") — simple to read out or
+ * type on a phone, but not guessable from the username pattern the way one
+ * shared value was. Until a member finishes first-login activation (verify
+ * email + set a private password of 12+ characters) the temporary password
+ * is all that protects the account. Only the Argon2id hash is stored, as for
+ * every other password; the plaintext is shown to the issuing admin once.
  */
 
-export const TEMPORARY_PASSWORD = "1234";
 export const USERNAME_PREFIX = "BWFCC";
+
+const PASSWORD_WORDS = [
+  "mango", "lotus", "river", "tiger", "maple", "cedar", "coral", "amber", "brick", "stone",
+  "tower", "plaza", "bridge", "arch", "beam", "crane", "steel", "marble", "granite", "teak",
+  "palm", "lemon", "olive", "pearl", "ruby", "jade", "eagle", "falcon", "otter", "panda",
+  "cloud", "storm", "sunny", "harbor", "island", "garden", "meadow", "forest", "canyon", "summit",
+  "rocket", "comet", "planet", "silver", "golden", "copper", "violet", "indigo", "saffron", "ginger",
+];
+
+/** A fresh temporary password: word + "-" + 4 digits, from a CSPRNG. */
+export function generateTemporaryPassword(): string {
+  const word = PASSWORD_WORDS[randomInt(PASSWORD_WORDS.length)];
+  return `${word}-${String(randomInt(10000)).padStart(4, "0")}`;
+}
 
 /** Still on an auto-issued BWFCC### username — activation makes them choose their own. */
 export function hasTemporaryUsername(username: string | null | undefined): boolean {

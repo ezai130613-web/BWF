@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { istParts } from "@/lib/ist";
+import { AdminRemarksList } from "@/components/admin/admin-remarks";
+import { getMemberRemarks } from "@/lib/remarks";
 
 /** Month-by-month grid window around the current month. */
 const GRID_MONTHS_BEFORE = 3;
@@ -119,11 +121,14 @@ export default async function PaymentMembersPage({
     return <p className="text-sm text-red-600">You don&rsquo;t have access to this member.</p>;
   }
 
-  const payments = await db.payment.findMany({
-    where: { memberId: member.id },
-    include: { meeting: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [payments, remarks] = await Promise.all([
+    db.payment.findMany({
+      where: { memberId: member.id },
+      include: { meeting: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    getMemberRemarks(member.id),
+  ]);
 
   // Month-by-month coverage from 3 months before to 3 months after the
   // current IST month (2026-10-21), stretched further ahead when a paid-in-
@@ -169,6 +174,14 @@ export default async function PaymentMembersPage({
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold text-neutral-900">{member.name}</h2>
         <p className="text-sm text-neutral-600">{member.chapter.name}</p>
+      </div>
+
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
+        <h3 className="text-sm font-semibold text-neutral-900">Admin remarks</h3>
+        <p className="mt-1 text-xs text-neutral-500">Internal — approval, renewal and general remarks. Never shown to the member.</p>
+        <div className="mt-3">
+          <AdminRemarksList remarks={remarks} />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">

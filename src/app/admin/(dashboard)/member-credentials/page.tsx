@@ -31,10 +31,10 @@ export default async function MemberCredentialsPage() {
           <AdminPageIcon />Member Login Credentials</h1>
         <p className="mt-1 max-w-3xl text-sm text-neutral-600">
           Issue temporary logins in bulk: username <strong>BWFCC</strong> + chapter number + serial (Chapter 1 →
-          BWFCC101, BWFCC102…; Chapter 2 → BWFCC201…), temporary password <strong>1234</strong>. On first sign-in
-          each member verifies their own email and sets a private password; the temporary password stops working
-          for them at that moment. Until then anyone who knows a username could sign in as that member — ask
-          members to activate promptly.
+          BWFCC101, BWFCC102…; Chapter 2 → BWFCC201…), each with its own temporary password (like{" "}
+          <strong>mango-4821</strong>), shown once and downloadable as a PDF. On first sign-in each member verifies
+          their own email and sets a private password; the temporary password stops working for them at that
+          moment. Passwords can&rsquo;t be looked up later — only reset.
         </p>
       </div>
       <ReauthGuard>

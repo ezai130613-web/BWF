@@ -6,13 +6,14 @@ import { db } from "@/lib/db";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth/password";
-import { TEMPORARY_PASSWORD, assignUsernames } from "@/lib/auth/member-credentials";
+import { assignUsernames, generateTemporaryPassword } from "@/lib/auth/member-credentials";
 import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { memberProfileFieldsSchema, normalizeMemberProfileFields } from "@/lib/members/profile-fields";
 import { slugify } from "@/lib/slugify";
 import { normalizeCompanyName } from "@/lib/companies/normalize";
 import { GST_FORMAT_ERROR, isValidGstNumber, normalizeGstNumber } from "@/lib/companies/gst";
 import { notifyProfileRevisionReviewed } from "@/lib/notifications";
+import { addAdminRemark } from "@/lib/remarks";
 import type { $Enums } from "@/generated/prisma/client";
 
 async function generateUniqueMemberSlug(name: string) {
@@ -291,7 +292,7 @@ export type MemberLoginResult = { error?: string; username?: string; password?: 
 
 /**
  * One-click member login (2026-10-03): the next BWFCC username for the
- * member's chapter + the shared temporary password, flagged so the member
+ * member's chapter + a fresh temporary password, flagged so the member
  * must verify an email and set a private password on first sign-in — the
  * same scheme as the bulk generator (src/lib/auth/member-credentials.ts).
  */
@@ -303,7 +304,8 @@ export async function createMemberLogin(memberId: string): Promise<MemberLoginRe
   if (member.status !== "ACTIVE") return { error: "Only active members can be given a login." };
 
   const memberRole = await db.role.findUniqueOrThrow({ where: { key: "MEMBER" } });
-  const passwordHash = await hashPassword(TEMPORARY_PASSWORD);
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
 
   // Retry once if another admin took the same next number at the same moment.
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -326,7 +328,7 @@ export async function createMemberLogin(memberId: string): Promise<MemberLoginRe
       await logActivity({ userId: session.user.id, action: "member.portal_access_granted", entity: "Member", entityId: memberId, metadata: { username } });
       revalidatePath(`/admin/members/${memberId}`);
       revalidatePath("/admin/member-credentials");
-      return { username, password: TEMPORARY_PASSWORD };
+      return { username, password: temporaryPassword };
     } catch (err) {
       if (err instanceof Error && err.message === "already-linked") return { error: "This member was just given a login by someone else — reload the page." };
       if (attempt === 1) return { error: "Couldn't create the login — please try again." };
@@ -342,10 +344,11 @@ export async function resetMemberTemporaryPassword(memberId: string): Promise<Me
   if (!member.user?.username || !member.user.mustChangePassword) {
     return { error: "This member has already activated their account — they can use “Forgot password” instead." };
   }
+  const temporaryPassword = generateTemporaryPassword();
   await db.user.update({
     where: { id: member.user.id },
     data: {
-      password: await hashPassword(TEMPORARY_PASSWORD),
+      password: await hashPassword(temporaryPassword),
       temporaryPasswordIssuedAt: new Date(),
       sessionVersion: { increment: 1 },
       failedLoginCount: 0,
@@ -354,7 +357,7 @@ export async function resetMemberTemporaryPassword(memberId: string): Promise<Me
   });
   await logActivity({ userId: session.user.id, action: "member.credentials_reissued", entity: "Member", entityId: memberId, metadata: { count: 1 } });
   revalidatePath(`/admin/members/${memberId}`);
-  return { username: member.user.username, password: TEMPORARY_PASSWORD };
+  return { username: member.user.username, password: temporaryPassword };
 }
 
 export async function toggleMemberPortalAccess(memberId: string) {
@@ -474,4 +477,28 @@ function isUniqueConstraintError(error: unknown, field: string) {
     "meta" in error &&
     JSON.stringify((error as { meta?: unknown }).meta).includes(field)
   );
+}
+
+const memberRemarkSchema = z.object({
+  memberId: z.string().min(1),
+  context: z.enum(["RENEWAL", "GENERAL"]).default("GENERAL"),
+  body: z.string().trim().min(1, "Write a remark first.").max(2000, "Keep remarks under 2000 characters."),
+});
+
+/** 2026-10-26 — admin-only remark from the member's page (append-only). */
+export async function addMemberRemark(_prevState: { error?: string; success?: boolean } | undefined, formData: FormData) {
+  const parsed = memberRemarkSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const member = await db.member.findUnique({ where: { id: parsed.data.memberId }, select: { id: true, chapterId: true } });
+  if (!member) return { error: "Member not found.", success: false };
+
+  await requireChapterAccess(member.chapterId, "members:manage");
+  const session = await requireAdminSession();
+
+  await addAdminRemark({ userId: session.user.id, context: parsed.data.context, body: parsed.data.body, memberId: member.id });
+
+  revalidatePath(`/admin/members/${member.id}`);
+  revalidatePath("/admin/members");
+  return { error: undefined, success: true };
 }

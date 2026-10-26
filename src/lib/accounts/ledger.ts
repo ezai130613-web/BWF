@@ -39,6 +39,9 @@ export type LedgerRow = {
   reviewedAt: Date | null;
   reviewRemarks: string | null;
   proofUrl: string;
+  /** Member payments only — null for visitor payments. */
+  memberId: string | null;
+  paymentType: "MEETING" | "MEMBERSHIP" | null;
 };
 
 const STATUSES: PaymentApprovalStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CLARIFICATION_REQUESTED"];
@@ -155,6 +158,8 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       reviewedAt: p.reviewedAt,
       reviewRemarks: p.reviewRemarks,
       proofUrl: p.proofUrl,
+      memberId: p.memberId,
+      paymentType: p.type,
     })),
     ...visitorPayments.map((p) => ({
       id: p.id,
@@ -173,6 +178,8 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       reviewedAt: p.reviewedAt,
       reviewRemarks: p.reviewRemarks,
       proofUrl: p.proofUrl,
+      memberId: null,
+      paymentType: null,
     })),
   ];
 

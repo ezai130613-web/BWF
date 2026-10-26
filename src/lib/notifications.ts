@@ -1,4 +1,12 @@
 import { sendEmail } from "@/lib/email";
+import { SITE_URL } from "@/lib/site";
+import {
+  getMembershipTerms,
+  MEMBERSHIP_TERMS_INTRO,
+  MEMBERSHIP_TERMS_LAST_UPDATED,
+  membershipTermsToHtml,
+  membershipTermsToText,
+} from "@/lib/legal/membership-terms";
 
 /**
  * Phase 13 (brief §49) — one function per business-workflow email trigger,
@@ -18,6 +26,25 @@ import { sendEmail } from "@/lib/email";
 
 function adminNotificationAddress(): string | undefined {
   return process.env.NOTIFICATION_EMAIL || undefined;
+}
+
+/**
+ * Sender for mail that speaks for the membership office (2026-10-26 client
+ * request: the T&C email to applicants comes "from an authorised mail id").
+ * Sending from info@ works without a mailbox (the domain is verified with
+ * Resend), but info@ has no inbox yet, so replies go to a real one:
+ * MEMBERSHIP_EMAIL_REPLY_TO, else the business alert inbox
+ * (NOTIFICATION_EMAIL), else the sender itself.
+ */
+function membershipFromAddress(): { from: string; replyTo: string } {
+  const from = process.env.MEMBERSHIP_EMAIL_FROM || "Builders World Forum <info@buildersworldforum.com>";
+  const replyTo =
+    process.env.MEMBERSHIP_EMAIL_REPLY_TO || adminNotificationAddress() || (from.match(/<([^>]+)>/)?.[1] ?? from);
+  return { from, replyTo };
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export async function notifyVisitorRegistered(input: {
@@ -45,22 +72,66 @@ We look forward to seeing you there.
   });
 }
 
+/**
+ * Sent the moment an application is submitted (2026-10-26): the
+ * acknowledgement plus the full Membership Terms & Conditions the applicant
+ * just accepted, from the membership mailbox (info@), so they have their own
+ * copy on record. Same words as /membership-terms (shared data source).
+ */
 export async function notifyApplicationSubmitted(input: {
   applicantName: string;
   applicantEmail: string;
   companyName: string;
   categoryName: string;
   waitlisted: boolean;
+  termsAcceptedAt: Date;
 }) {
+  const sections = await getMembershipTerms();
+  const acceptedOn = input.termsAcceptedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "long", timeStyle: "short" });
+  const termsUrl = `${SITE_URL}/membership-terms`;
+  const statusLine = input.waitlisted
+    ? "Every chapter currently has this category filled, so your application has been added to our waiting list — we'll be in touch as soon as a slot opens."
+    : "Our team will review your application and be in touch shortly.";
+  const thanksLine = `Thank you for applying to join Builders World Forum as our ${input.categoryName} representative for ${input.companyName}.`;
+  const acceptedLine = `You accepted the Membership Terms & Conditions below on ${acceptedOn} (IST). Please keep this email for your records.`;
+
   await sendEmail({
+    ...membershipFromAddress(),
     to: input.applicantEmail,
-    subject: "We've received your Builders World Forum application",
+    subject: "Your Builders World Forum application & Membership Terms and Conditions",
     text: `Hi ${input.applicantName},
 
-Thank you for applying to join Builders World Forum as our ${input.categoryName} representative for ${input.companyName}.
-${input.waitlisted ? "\nEvery chapter currently has this category filled, so your application has been added to our waiting list — we'll be in touch as soon as a slot opens." : "\nOur team will review your application and be in touch shortly."}
+${thanksLine}
+
+${statusLine}
+
+${acceptedLine}
+
+MEMBERSHIP TERMS & CONDITIONS
+Last updated: ${MEMBERSHIP_TERMS_LAST_UPDATED}
+
+${MEMBERSHIP_TERMS_INTRO}
+
+${membershipTermsToText(sections)}
+
+Also available online: ${termsUrl}
+
+If you have any questions, just reply to this email.
 
 — Builders World Forum`,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f2937;max-width:640px;">
+<p>Hi ${escapeHtml(input.applicantName)},</p>
+<p>${escapeHtml(thanksLine)}</p>
+<p>${escapeHtml(statusLine)}</p>
+<p style="padding:10px 12px;background:#f0fdf4;border-left:3px solid #166534;">${escapeHtml(acceptedLine)}</p>
+<h2 style="margin:28px 0 2px;font-size:18px;color:#14532d;">Membership Terms &amp; Conditions</h2>
+<p style="margin:0 0 12px;font-size:12px;color:#6b7280;">Last updated: ${escapeHtml(MEMBERSHIP_TERMS_LAST_UPDATED)}</p>
+<p>${escapeHtml(MEMBERSHIP_TERMS_INTRO)}</p>
+${membershipTermsToHtml(sections)}
+<p style="margin-top:24px;">Also available online: <a href="${escapeHtml(termsUrl)}" style="color:#166534;">${escapeHtml(termsUrl)}</a></p>
+<p>If you have any questions, just reply to this email.</p>
+<p>— Builders World Forum</p>
+</div>`,
   });
 
   const notifyAddress = adminNotificationAddress();

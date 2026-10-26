@@ -9,6 +9,7 @@ import { computeActiveSlotKey, SLOT_TAKEN_ERROR } from "@/lib/members/slot";
 import { findMatchingCompany } from "@/lib/companies/match";
 import { slugify } from "@/lib/slugify";
 import { notifyApplicationStatusChanged } from "@/lib/notifications";
+import { addAdminRemark } from "@/lib/remarks";
 import type { $Enums } from "@/generated/prisma/client";
 
 function revalidateApplicationPaths(id: string) {
@@ -95,7 +96,41 @@ export async function reassignApplicationChapter(_prevState: { error?: string } 
   return { error: undefined };
 }
 
-const convertSchema = z.object({ applicationId: z.string() });
+const applicationRemarkSchema = z.object({
+  applicationId: z.string().min(1),
+  body: z.string().trim().min(1, "Write a remark first.").max(2000, "Keep remarks under 2000 characters."),
+});
+
+/**
+ * 2026-10-26 — admin-only approval remark on an application. Attached to the
+ * member too once the application has been converted, so it follows them.
+ */
+export async function addApplicationRemark(_prevState: { error?: string; success?: boolean } | undefined, formData: FormData) {
+  const session = await requirePermission("applications:manage");
+
+  const parsed = applicationRemarkSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input.", success: false };
+
+  const application = await db.membershipApplication.findUnique({
+    where: { id: parsed.data.applicationId },
+    select: { id: true, convertedMemberId: true },
+  });
+  if (!application) return { error: "Application not found.", success: false };
+
+  await addAdminRemark({
+    userId: session.user.id,
+    context: "MEMBERSHIP_APPROVAL",
+    body: parsed.data.body,
+    applicationId: application.id,
+    memberId: application.convertedMemberId,
+  });
+
+  revalidateApplicationPaths(application.id);
+  if (application.convertedMemberId) revalidatePath(`/admin/members/${application.convertedMemberId}`);
+  return { error: undefined, success: true };
+}
+
+const convertSchema = z.object({ applicationId: z.string(), remarks: z.string().max(2000, "Keep remarks under 2000 characters.").optional() });
 
 /**
  * Brief §17 step 7 — the only way a Member ever gets created from an
@@ -115,7 +150,7 @@ export async function convertApplicationToMember(_prevState: { error?: string } 
   const session = await requirePermission("applications:manage");
 
   const parsed = convertSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Invalid input." };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const { applicationId } = parsed.data;
 
   const application = await db.membershipApplication.findUniqueOrThrow({ where: { id: applicationId } });
@@ -191,6 +226,16 @@ export async function convertApplicationToMember(_prevState: { error?: string } 
     await db.membershipApplication.update({
       where: { id: applicationId },
       data: { convertedMemberId: member.id, status: "PAID" },
+    });
+
+    // Approval remarks recorded on the application now follow the member.
+    await db.adminRemark.updateMany({ where: { applicationId, memberId: null }, data: { memberId: member.id } });
+    await addAdminRemark({
+      userId: session.user.id,
+      context: "MEMBERSHIP_APPROVAL",
+      body: parsed.data.remarks,
+      applicationId,
+      memberId: member.id,
     });
 
     await logActivity({

@@ -4198,3 +4198,104 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   approved or pending payment covers a later month. The current month is outlined, with a one-line legend.
 - Verified with typecheck, lint and a check of the month-range calculation. The page itself wasn't
   re-rendered in a browser after this change.
+
+### Phase 30 correction 17 (2026-10-21) — Reset all member passwords, per-member temporary passwords, credential PDFs
+
+- **Client asked for a fresh temporary password for every member** (some had already activated)
+  and a PDF of usernames + passwords. Stored passwords are Argon2id hashes and can't be read back,
+  so this is a reset, run by the Super Admin from the admin panel — not a lookup.
+- **Shared `1234` retired.** `generateTemporaryPassword()` in `src/lib/auth/member-credentials.ts`
+  gives each account its own easy password (word + 4 digits, e.g. `mango-4821`, CSPRNG). The client
+  had suggested permutations of 1234; declined because 24 possibilities on sequential usernames
+  would let anyone sign in as any member. Used by Generate, Reset (selected), the new Reset all,
+  and the per-member Create login / Reset on `/admin/members/[id]`.
+- **Reset ALL members** (`/admin/member-credentials`, `users:manage` + recent re-auth, typed
+  `RESET ALL` confirmation): creates logins for active members without one, then gives every
+  active member login — activated or not — a new temporary password, `mustChangePassword` again,
+  `sessionVersion` bump (signs everyone out), lockouts cleared. Usernames and emails are kept
+  (members who chose their own username keep it). Accounts holding an admin role are skipped.
+  Audit action `member.credentials_reset_all`.
+- **Download PDF** next to the CSV for any just-issued list (`credentialsPdf` server action →
+  `memberCredentialsPdf()` in `src/lib/auth/credentials-pdf.ts`). Passwords are shown once and
+  never stored.
+- **Admin list PDF**: "Download list (PDF)" on `/admin/users` → `/api/admin/exports/admin-users`
+  (names, usernames, emails, roles, chapter, status, last login — no passwords).
+- Reset batches its updates (20 per transaction): one transaction over ~150 updates outran
+  Prisma's 5s timeout against Neon on the first live attempt (rolled back cleanly; only the 3
+  missing logins had been created).
+- **Run on the live database the same day at the client's request** via a one-off script (same
+  logic, not committed): all 149 active members reset (20 previously activated, 129 pending — 3 of
+  those logins newly created), every row verified against its stored hash, audit-logged against
+  the Super Admin. PDFs saved outside the repo: `../BWF-Member-Login-Credentials-2026-10-21.pdf`,
+  `../BWF-Admin-Accounts-2026-10-21.pdf` (10 admins, no passwords). The app buttons are
+  typechecked and linted but not clicked through in a browser.
+- **Admin accounts reset too (client, same day)** so every admin must attach an email: all 10
+  admin logins (3 Super Admins, 1 disabled account included) got a fresh temporary password,
+  `mustChangePassword`, sessions revoked — `/admin/activate` then requires an email and a new
+  password. Verified against stored hashes; audit action `admin.credentials_reset_all`. PDF:
+  `../BWF-Admin-Login-Credentials-2026-10-21.pdf`. `renderTablePdf` is now exported for this.
+  Note: Settings → `memberActivation.requireEmailCode` was **off**, so emails entered at
+  activation are required but not code-verified.
+
+### Phase 30 correction 18 (2026-10-26) — Membership T&C renewal/training pointers; admin remarks
+
+- **Membership T&C** (`src/components/legal/membership-terms-content.tsx`, shown on
+  `/membership-terms` and the `/apply` pop-up): §3's 15-day post-due-date renewal window and
+  grace-period bullets were replaced by the client's rule: renew annually, pay at least 20 days
+  before expiry (365 days from signup), or the slot and category go to new applicants. §4 adds
+  mandatory quarterly training/orientation. Last-updated date is now 26 October 2026.
+- **Admin remarks** (client: "remarks when approving a member for membership or renewal, always
+  retrievable, shown wherever the member is considered"). New append-only `AdminRemark`
+  (migration `20261026120000_admin_remarks`, additive): context `MEMBERSHIP_APPROVAL` |
+  `RENEWAL` | `GENERAL`, linked to the member and to the application/payment it was recorded on,
+  with a snapshot of the author's name. No edit or delete. Admin-only: the member portal never reads it
+  (unlike `Payment.reviewRemarks`, which the member sees). Helpers live in `src/lib/remarks.ts`.
+  - **Recorded at:** application page "Approval remarks" panel, plus an optional field on "Create
+    member account" (conversion copies the application's remarks to the new member); the
+    Approve/Reject/Clarify forms for **annual membership** payments (optional "Renewal remarks",
+    on both `/admin/payments` and `/admin/accounts`); and the member page (General or Renewal).
+  - **Shown on:** member page (full history), application page (including the converted member's
+    later remarks), Payments and Accounts cards for annual membership payments (latest remark, the rest
+    behind a toggle), the Payments member-wise view, and an "N remarks" badge on the Members list.
+    Remarks on applications converted before this change are found through
+    `convertedMemberId`.
+- Migration applied to the Neon database with `prisma migrate deploy` on 2026-10-26.
+- Verified on a dev server (`TZ=UTC`) with Chrome via Playwright, using a temporary Super Admin +
+  Accounts login, chapter, category and application (all deleted afterwards; audit-log rows kept per
+  precedent). Tested: an approval remark on the application, then conversion with a remark (both
+  carried to the member); a Renewal remark added on the member page; the "3 remarks" badge on the
+  Members list; an annual membership payment card showing the summary; approving it with a renewal
+  remark (the count went to 4, and the member-visible `reviewRemarks` stayed empty); the summary on
+  Accounts; the history on the member-wise view. Not tested: Reject/Clarify with a remark, and phone
+  width.
+
+### Phase 30 correction 19 (2026-10-26) — Membership T&C emailed to every applicant from info@
+
+- **The applicant's confirmation email now carries the full Membership T&C** and is sent from
+  `Builders World Forum <info@buildersworldforum.com>`, with replies going to the same address. It is one
+  email, not two: the acknowledgement (or waiting-list note), the date and time the applicant accepted the
+  terms, the complete terms (HTML with a plain-text fallback), and a link to `/membership-terms`.
+  It's sent from `notifyApplicationSubmitted()` right after the application is saved, and a failed send still
+  never fails the submission. The admin alert to `NOTIFICATION_EMAIL` is unchanged.
+- **Sender**: `MEMBERSHIP_EMAIL_FROM` env var, defaulting to the info@ address. info@ has no inbox
+  yet, so **Reply-To** is `MEMBERSHIP_EMAIL_REPLY_TO`, falling back to `NOTIFICATION_EMAIL`
+  (buildersworldforum1@gmail.com), then the sender. Applicants see info@; replies reach the Gmail inbox. The
+  buildersworldforum.com domain was confirmed **verified** in Resend (2026-10-26), so any address on it can
+  send. `sendEmail()` gained optional `html`, `from` and `replyTo`.
+- **One source for the terms**: the copy moved from JSX into data in
+  `src/lib/legal/membership-terms.ts` (`getMembershipTerms()`, plus text/HTML email renderers).
+  `MembershipTermsContent` now renders that data for `/membership-terms` and the `/apply` pop-up,
+  so the page, pop-up and email can't drift. Edit the terms there.
+- Verified: `tsc`/eslint clean. A whitespace-insensitive diff of the old JSX text against the new data
+  showed identical wording and all 12 headings. `/membership-terms` was screenshotted on a dev server. The
+  full email was generated through the console fallback (sender, subject, acceptance line and
+  terms checked) and its HTML screenshotted. A real test email to the user's own address (with the admin alert switched off) was **delivered**
+  according to Resend, From info@ and Reply-To buildersworldforum1@gmail.com. The link in the email uses
+  `NEXT_PUBLIC_SITE_URL`, so production must have it set to the live domain.
+- **info@ forwarding deferred (client, 2026-10-26)**: launching with the Reply-To redirect only.
+  DNS findings for later. DNS is at GoDaddy. The root MX points to `mail.buildersworldforum.com`, which
+  has no A record, so the domain receives **no** mail today. The root SPF (`v=spf1 +a +mx +ip4:69.57.172.231
+  +include.mysecurecloudhost.com …`) is a malformed leftover from the old host. When forwarding is wanted:
+  ImprovMX alias `info` → buildersworldforum1@gmail.com, replace that MX with `mx1/mx2.improvmx.com`
+  (10/20), set the SPF to `v=spf1 include:spf.improvmx.com ~all`, and leave the Resend `send.*` /
+  `resend._domainkey` records alone. Then set Reply-To back to info@.

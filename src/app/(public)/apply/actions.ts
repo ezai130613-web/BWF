@@ -118,7 +118,7 @@ export async function submitApplication(
     status = "WAITLISTED";
   }
 
-  await db.membershipApplication.create({
+  const application = await db.membershipApplication.create({
     data: {
       ...rest,
       gstNumber,
@@ -140,6 +140,7 @@ export async function submitApplication(
       companyName: rest.companyName,
       categoryName: category?.name ?? "your category",
       waitlisted: status === "WAITLISTED",
+      termsAcceptedAt: application.termsAcceptedAt ?? new Date(),
     });
   } catch (error) {
     console.error("notifyApplicationSubmitted failed (application still submitted):", error);

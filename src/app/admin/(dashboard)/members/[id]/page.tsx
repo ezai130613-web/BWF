@@ -8,6 +8,10 @@ import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-rev
 import { MemberTestimonials } from "@/components/admin/member-testimonials";
 import { MemberInductionForm } from "@/components/admin/member-induction-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { AdminRemarksList } from "@/components/admin/admin-remarks";
+import { AddRemarkForm } from "@/components/admin/add-remark-form";
+import { getMemberRemarks } from "@/lib/remarks";
+import { addMemberRemark } from "../actions";
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,6 +50,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     include: { visitorProfile: true, meeting: true, chapter: true },
     orderBy: { createdAt: "desc" },
   });
+  const remarks = await getMemberRemarks(member.id);
+
   const uniqueVisitorCount = new Set(invitedVisits.map((v) => v.visitorProfileId)).size;
 
   return (
@@ -66,6 +72,32 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         memberStatus={member.status}
         linkedUser={member.user ? { email: member.user.email, username: member.user.username, status: member.user.status, mustChangePassword: member.user.mustChangePassword } : null}
       />
+
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold text-neutral-900">Admin remarks</h2>
+          <p className="text-xs text-neutral-500">
+            {remarks.length} remark{remarks.length === 1 ? "" : "s"} · internal, never shown to the member
+          </p>
+        </div>
+        <p className="mt-1 text-xs text-neutral-500">
+          Remarks from membership approval, renewal (annual membership payment) reviews, and any added here. Remarks
+          can&rsquo;t be edited or deleted, so they&rsquo;re always available when this member is considered again.
+        </p>
+        <div className="mt-4 max-h-96 overflow-y-auto">
+          <AdminRemarksList remarks={remarks} />
+        </div>
+        <div className="mt-4 border-t border-neutral-100 pt-4">
+          <AddRemarkForm
+            action={addMemberRemark}
+            hiddenFields={{ memberId: member.id }}
+            contexts={[
+              { value: "GENERAL", label: "General" },
+              { value: "RENEWAL", label: "Renewal" },
+            ]}
+          />
+        </div>
+      </div>
 
       {pendingRevision ? (
         <ReviewProfileRevisionForm

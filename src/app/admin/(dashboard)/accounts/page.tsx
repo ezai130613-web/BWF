@@ -5,6 +5,8 @@ import { getLedgerRows, getLedgerSummary, parseLedgerFilters, STATUS_LABELS } fr
 import { PaymentReviewActions } from "@/components/admin/payment-review-actions";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
+import { getRemarksForMembers } from "@/lib/remarks";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const PAGE_LIMIT = 200;
@@ -32,6 +34,11 @@ export default async function AccountsPage({
     getLedgerRows(filters, PAGE_LIMIT),
     getLedgerSummary(filters),
     db.chapter.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  // Renewal context: annual membership rows show the member's admin remarks.
+  const remarksByMember = await getRemarksForMembers([
+    ...new Set(rows.filter((r) => r.paymentType === "MEMBERSHIP" && r.memberId).map((r) => r.memberId as string)),
   ]);
 
   const pending = {
@@ -161,9 +168,12 @@ export default async function AccountsPage({
                     </p>
                   ) : null}
                   {row.reviewRemarks ? <p className="mt-1 text-xs text-neutral-500">Remarks: {row.reviewRemarks}</p> : null}
+                  {row.paymentType === "MEMBERSHIP" && row.memberId ? (
+                    <AdminRemarksSummary remarks={remarksByMember.get(row.memberId) ?? []} />
+                  ) : null}
                   {canApprove ? (
                     row.type === "MEMBER" ? (
-                      <PaymentReviewActions paymentId={row.id} status={row.status} />
+                      <PaymentReviewActions paymentId={row.id} status={row.status} type={row.paymentType ?? "MEETING"} />
                     ) : (
                       <VisitorPaymentReviewActions visitorPaymentId={row.id} status={row.status} />
                     )

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
+import { addAdminRemark } from "@/lib/remarks";
 
 /**
  * Approve, Reject (reason required) or Request Clarification. Phase 29
@@ -20,6 +21,13 @@ export async function reviewPayment(
 ) {
   const remarks = formData.get("remarks");
   const remarksText = typeof remarks === "string" ? remarks.trim() : "";
+  // 2026-10-26 — separate admin-only remark (reviewRemarks above is shown to
+  // the member). For an annual membership payment this is the renewal remark.
+  const adminRemark = formData.get("adminRemark");
+  const adminRemarkText = typeof adminRemark === "string" ? adminRemark.trim() : "";
+  if (adminRemarkText.length > 2000) {
+    return { error: "Keep the internal remark under 2000 characters.", success: false };
+  }
 
   if (status === "REJECTED" && !remarksText) {
     return { error: "A reason is required to reject a payment.", success: false };
@@ -48,8 +56,17 @@ export async function reviewPayment(
     metadata: { from: payment.status, to: status, remarks: remarksText || undefined },
   });
 
+  await addAdminRemark({
+    userId: session.user.id,
+    context: payment.type === "MEMBERSHIP" ? "RENEWAL" : "GENERAL",
+    body: adminRemarkText,
+    memberId: payment.memberId,
+    paymentId: payment.id,
+  });
+
   revalidatePath("/admin/payments");
   revalidatePath("/admin/payments/members");
   revalidatePath("/admin/accounts");
+  if (adminRemarkText) revalidatePath(`/admin/members/${payment.memberId}`);
   return { error: undefined, success: true };
 }

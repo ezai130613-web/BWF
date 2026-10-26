@@ -1623,6 +1623,14 @@ separate settings table — the latest invite *is* the template.
 **Member portal has its own design primitives** (`src/components/member/ui.tsx`, server-safe)
 and `lucide-react` icons — the admin panel is intentionally unchanged.
 
+**Admin remarks are their own append-only table (2026-10-26), not more text columns.**
+`AdminRemark` rows carry a context (membership approval / renewal / general), the member, and
+optionally the application or payment they were written against. They are kept separate from
+`MembershipApplication.notes` (one editable scratchpad) and `Payment.reviewRemarks` (shown to the
+member). There is no edit or delete, so the history can't be lost. A remark written on an application
+before conversion has `memberId` null until `convertApplicationToMember` stamps it. Readers also
+match on `application.convertedMemberId`, so older conversions are covered too.
+
 ## Open decisions (not blocking Phase 0, but needed before the phase that touches them)
 
 These were flagged during the initial brief review and don't have answers yet. Listed here so

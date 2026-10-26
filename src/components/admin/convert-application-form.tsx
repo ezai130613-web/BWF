@@ -11,6 +11,16 @@ export function ConvertApplicationForm({ applicationId, disabled }: { applicatio
   return (
     <form action={formAction} className="mt-3">
       <input type="hidden" name="applicationId" value={applicationId} />
+      <label className="mb-3 flex flex-col gap-1 text-xs font-medium text-neutral-600">
+        Approval remarks (optional, admin-only)
+        <textarea
+          name="remarks"
+          rows={2}
+          maxLength={2000}
+          placeholder="Saved to the member's record"
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
+        />
+      </label>
       <button
         type="submit"
         disabled={disabled || pending}

@@ -5,6 +5,8 @@ import { formatMonthsCovered } from "@/lib/attendance/manage";
 import { PaymentReviewActions } from "@/components/admin/payment-review-actions";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
+import { getRemarksForMembers } from "@/lib/remarks";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -52,6 +54,11 @@ export default async function PaymentsPage({
       _sum: { amountPaidInr: true },
     }),
     effectiveChapterId ? db.meeting.findMany({ where: { chapterId: effectiveChapterId }, orderBy: { startsAt: "desc" } }) : [],
+  ]);
+
+  // Renewal context: annual membership payments show the member's admin remarks.
+  const remarksByMember = await getRemarksForMembers([
+    ...new Set(payments.filter((p) => p.type === "MEMBERSHIP").map((p) => p.memberId)),
   ]);
 
   const sumFor = (statuses: string[]) =>
@@ -203,7 +210,9 @@ export default async function PaymentsPage({
               {payment.reviewRemarks ? <p className="text-xs text-neutral-500">Remarks: {payment.reviewRemarks}</p> : null}
             </div>
 
-            {canApprove ? <PaymentReviewActions paymentId={payment.id} status={payment.status} /> : null}
+            {payment.type === "MEMBERSHIP" ? <AdminRemarksSummary remarks={remarksByMember.get(payment.memberId) ?? []} /> : null}
+
+            {canApprove ? <PaymentReviewActions paymentId={payment.id} status={payment.status} type={payment.type} /> : null}
           </div>
         ))}
         {payments.length === 0 ? (
