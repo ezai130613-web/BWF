@@ -4299,3 +4299,18 @@ could be re-granted `payments:view` from Roles & Permissions, but the Super Admi
   ImprovMX alias `info` → buildersworldforum1@gmail.com, replace that MX with `mx1/mx2.improvmx.com`
   (10/20), set the SPF to `v=spf1 include:spf.improvmx.com ~all`, and leave the Resend `send.*` /
   `resend._domainkey` records alone. Then set Reply-To back to info@.
+
+### Phase 30 correction 20 (2026-10-26) — Live test of /apply; submit speed
+
+- **Live end-to-end test on buildersworldforum.com** (Chrome via Playwright, 4 submissions named
+  "TEST Applicant … (please ignore)", using placeholder "TEST" images, not real ID). The T&C pop-up showed the new quarterly
+  training term. Each application saved with `termsAcceptedAt`. The applicant email arrived **from
+  info@buildersworldforum.com** (Reply-To buildersworldforum1@gmail.com) and the admin alert was
+  delivered, according to Resend. All 4 applications and their uploaded test files were deleted afterwards.
+- **Submit took ~14s** before "Thank you" showed. Cause: the Server Action re-renders `/apply`, which
+  ran 2 queries per category (111 categories) through a 5-connection pool. New
+  `getChapterAvailabilityMatrix()` (`src/lib/applications/availability.ts`) does it in 2 queries,
+  with identical output checked against the old function. The emails now go out in `after()`. Submit is now ~6s.
+- **Remaining latency is region, not code**: Vercel functions run in `iad1` (Washington, DC) while
+  Neon is in `ap-southeast-1` (Singapore), so every query crosses the globe. This affects the whole site,
+  admin included. Setting the Vercel function region to `sin1` would fix it. That decision is with the client.
