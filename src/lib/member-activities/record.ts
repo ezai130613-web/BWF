@@ -39,8 +39,20 @@ const UNKNOWN_MEMBER = "That member couldn't be found. Refresh the list and pick
 const referralSchema = z.object({
   toMemberId: z.string().min(1, "Select a member"),
   type: z.enum(["OUTSIDE", "SELF"], "Choose the referral type"),
+  contactName: z.string().max(200).optional().transform((v) => v?.trim() || undefined),
+  contactPhone: z
+    .string()
+    .max(30)
+    .optional()
+    .transform((v) => v?.trim() || undefined)
+    .refine((v) => !v || /^[+\d][\d\s()-]{5,}$/.test(v), "Enter a valid contact number"),
   description: optionalText(),
 });
+
+/** "Ravi Kumar, 98765 43210" — the referral's contact, or null if none was given. */
+export function referralContact(r: { contactName: string | null; contactPhone: string | null }): string | null {
+  return [r.contactName, r.contactPhone].filter(Boolean).join(", ") || null;
+}
 
 export async function recordReferral(actor: Actor, input: unknown): Promise<RecordResult> {
   const parsed = referralSchema.safeParse(input);

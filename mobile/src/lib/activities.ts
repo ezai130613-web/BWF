@@ -60,16 +60,23 @@ export const ACTIVITY_KINDS: ActivityKind[] = [
           { value: 'SELF', label: 'Self / Inside' },
         ],
       },
+      { name: 'contactName', label: 'Contact person (optional)', type: 'text' },
+      { name: 'contactPhone', label: 'Contact number (optional)', type: 'phone' },
       { name: 'description', label: 'Details (optional)', type: 'multiline', hint: 'What the opportunity is — e.g. "Kitchen remodel, Anna Nagar".' },
     ],
     sections: (raw) => {
       const d = raw as ReferralsResponse;
-      const row = (r: ReferralsResponse['given'][number], dir: string) => ({
-        key: r.id,
-        title: `${dir} ${r.other.name}`,
-        subtitle: [r.type === 'OUTSIDE' ? 'Outside' : 'Self / Inside', r.other.company, ref(r.description)].filter(Boolean).join(' · '),
-        meta: formatDate(r.createdAt),
-      });
+      const row = (r: ReferralsResponse['given'][number], dir: string) => {
+        const contact = [r.contactName, r.contactPhone].filter(Boolean).join(', ');
+        return {
+          key: r.id,
+          title: `${dir} ${r.other.name}`,
+          subtitle: [r.type === 'OUTSIDE' ? 'Outside' : 'Self / Inside', r.other.company, contact && `Contact: ${contact}`, ref(r.description)]
+            .filter(Boolean)
+            .join(' · '),
+          meta: formatDate(r.createdAt),
+        };
+      };
       return [
         { title: `Given (${d.given.length})`, rows: d.given.map((r) => row(r, 'To')) },
         { title: `Received (${d.received.length})`, rows: d.received.map((r) => row(r, 'From')) },

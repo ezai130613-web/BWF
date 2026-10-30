@@ -61,6 +61,12 @@ export function RecordReferralForm({ members }: { members: PickerMember[] }) {
           ))}
         </div>
       </fieldset>
+      <Field label="Contact person (optional)" htmlFor="referral-contact-name">
+        <input id="referral-contact-name" name="contactName" maxLength={200} className={inputClass} />
+      </Field>
+      <Field label="Contact number (optional)" htmlFor="referral-contact-phone">
+        <input id="referral-contact-phone" name="contactPhone" type="tel" inputMode="tel" maxLength={30} className={inputClass} />
+      </Field>
       <Field label="Description (optional)" htmlFor="referral-description" className="md:col-span-2">
         <textarea
           id="referral-description"

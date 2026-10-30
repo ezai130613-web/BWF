@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import type { PointsResponse } from '@contract';
 import { Body, Card, Divider, ListRow, Notice, Screen } from '@/components/ui';
+import { formatInr } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
 import { colors } from '@/theme';
 
@@ -25,7 +26,7 @@ export default function PointsScreen() {
                 {i > 0 ? <Divider /> : null}
                 <ListRow
                   title={r.label}
-                  subtitle={`${r.count} × ${r.pointsEach} pts`}
+                  subtitle={`${r.type === 'THANK_YOU_SLIP' ? `${r.count} slips · ${formatInr(r.quantity)}` : r.count} · ${r.rule}`}
                   right={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{r.subtotal}</Text>}
                 />
               </Fragment>

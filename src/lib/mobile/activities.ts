@@ -39,6 +39,8 @@ export async function listReferrals(memberId: string): Promise<ReferralsResponse
   const row = (r: (typeof given)[number] | (typeof received)[number], other: { name: string; company: { name: string } }) => ({
     id: r.id,
     type: r.type,
+    contactName: r.contactName,
+    contactPhone: r.contactPhone,
     description: r.description,
     createdAt: r.createdAt.toISOString(),
     other: person(other),

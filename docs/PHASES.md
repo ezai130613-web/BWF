@@ -4632,3 +4632,30 @@ grid, pre-fill, 6-month breakdown, edit hint, membership pre-fill, check-in with
   `mobile/src/components/ui.tsx` whenever `secureTextEntry` is set.
 - App changes need a new store build; held back from App Store Connect until the client's corrections
   are all in (user's instruction).
+
+### Phase 43 — Points by value / per person, attendance points, referral contact (2026-10-30)
+Client request: ₹500 of Thank You Slip value = 1 point; Power Date 50 points per person (10 people
+= 500); 50 points per meeting attended; a referral's contact number "hidden and not showing".
+- **"Every N … = P points" rule** in `/admin/points-config`: new `PointsConfig.perUnit` (default 1,
+  so every other activity is unchanged). Thank You Slips are now scored on the **rupee total** of the
+  member's slips (`floor(total ÷ N) × P`, so ₹1,400 + ₹750 = ₹2,150 → 4 points); everything else
+  on its count. Breakdown tables (portal, admin member page, app) show "Recorded" + the rule text.
+- **Attendance** is a new `ActivityType` (`ATTENDANCE`, "Meetings Attended") — counts meetings marked
+  PRESENT. Appears in the points config, every breakdown, and the App Activity export's leaderboard sheet.
+- Migrations `20261030120000_points_per_unit_attendance` (enum value + columns, additive) and
+  `20261030120100_points_config_client_values` (sets the client's values: Thank You Slip ₹500 = 1,
+  Power Date 1 = 50, Attendance 1 = 50 — overwrites whatever was set before for those two types).
+- **Referral contact**: there was no contact field — members typed numbers into Description, which the
+  website portal and admin pages never displayed (only the app did). `Referral.contactName` /
+  `contactPhone` (optional, phone validated) on the web + app forms; shown (tap-to-call on the web) to
+  the giver and receiver, on admin App Activity (tab + member page) and in the export. Descriptions now
+  show on the portal and admin member page too. Not on the WhatsApp share banner.
+- Mobile API: `ScoreRow` gains `quantity`/`perUnit`/`rule`, `ReferralRow` gains `contactName`/`contactPhone`
+  (additive; the 1.0 app ignores them and still shows count × points, which reads oddly only for
+  Thank You Slips). App changes need a new store build.
+
+**Verification** (fresh private `prisma dev`, all migrations, plus live-like pre-existing config rows):
+14/14 — slip value scoring, rule text, Power Date 10 → 500, attendance 3 present/1 absent → 150, total,
+leaderboard = single-member score, edited rule applied, referral contact saved/visible to receiver via
+API, bad phone rejected, contact optional. Typecheck (web + app), lint, build clean.
+**Not verified:** pages in a browser; app on a device.

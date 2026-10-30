@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireChapterAccess } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { computeMemberScore } from "@/lib/points/score";
+import { computeMemberScore, recordedLabel } from "@/lib/points/score";
+import { referralContact } from "@/lib/member-activities/record";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { ExportButton } from "@/components/admin/export-button";
 
@@ -87,8 +88,8 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Activity</th>
-                <th className="px-4 py-3 font-medium">Count</th>
-                <th className="px-4 py-3 font-medium">Points Each</th>
+                <th className="px-4 py-3 font-medium">Recorded</th>
+                <th className="px-4 py-3 font-medium">Rule</th>
                 <th className="px-4 py-3 font-medium">Subtotal</th>
               </tr>
             </thead>
@@ -96,8 +97,8 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
               {breakdown.map((row) => (
                 <tr key={row.type}>
                   <td className="px-4 py-3 text-neutral-900">{row.label}</td>
-                  <td className="px-4 py-3 text-neutral-600">{row.count}</td>
-                  <td className="px-4 py-3 text-neutral-600">{row.pointsEach}</td>
+                  <td className="px-4 py-3 text-neutral-600">{recordedLabel(row)}</td>
+                  <td className="px-4 py-3 text-neutral-600">{row.rule}</td>
                   <td className="px-4 py-3 font-medium text-neutral-900">{row.subtotal}</td>
                 </tr>
               ))}
@@ -108,13 +109,13 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
 
       <ActivitySection title="Referrals given" empty="No referrals given yet.">
         {referralsGiven.map((r) => (
-          <Row key={r.id} left={r.toMember.name} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
+          <Row key={r.id} left={withReferralDetails(r.toMember.name, r)} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
       <ActivitySection title="Referrals received" empty="No referrals received yet.">
         {referralsReceived.map((r) => (
-          <Row key={r.id} left={r.fromMember.name} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
+          <Row key={r.id} left={withReferralDetails(r.fromMember.name, r)} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
@@ -198,4 +199,12 @@ function Row({ left, right }: { left: string; right: string }) {
       <span className="text-neutral-500">{right}</span>
     </div>
   );
+}
+
+function withReferralDetails(
+  name: string,
+  r: { contactName: string | null; contactPhone: string | null; description: string | null },
+): string {
+  const contact = referralContact(r);
+  return [name, contact && `Contact: ${contact}`, r.description].filter(Boolean).join(" · ");
 }

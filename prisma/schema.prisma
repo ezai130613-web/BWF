@@ -1596,6 +1596,13 @@ model Referral {
   type        ReferralType
   description String?
 
+  /// 2026-10-30 — who the referral is and how to reach them, so the receiving
+  /// member can follow up. Optional (a Self/Inside referral has no outside
+  /// contact). Shown only to the two members and admins, never on the
+  /// WhatsApp share banner.
+  contactName  String?
+  contactPhone String?
+
   /// The member who gave/passed the referral.
   fromMemberId String
   fromMember   Member @relation("ReferralGiven", fields: [fromMemberId], references: [id], onDelete: Restrict)
@@ -1827,12 +1834,20 @@ enum ActivityType {
   CONSUMER
   CHIEF_GUEST
   INDUCTION
+  /// 2026-10-30 client request — a meeting the member was marked PRESENT at
+  /// (Attendance), now that real attendance tracking exists.
+  ATTENDANCE
 }
 
 model PointsConfig {
   id           String       @id @default(cuid())
   activityType ActivityType @unique
+  /// Points earned for every `perUnit` units — "Every ₹500 of Thank You Slip
+  /// value = 1 point", "Every 1 person on a Power Date = 50 points". The unit
+  /// is rupees of business value for THANK_YOU_SLIP and a plain count for
+  /// every other type (src/lib/points/score.ts). Only whole multiples score.
   points       Int          @default(0)
+  perUnit      Int          @default(1)
 
   updatedAt DateTime @updatedAt
 

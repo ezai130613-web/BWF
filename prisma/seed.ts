@@ -418,6 +418,7 @@ async function main() {
     "CONSUMER",
     "CHIEF_GUEST",
     "INDUCTION",
+    "ATTENDANCE",
   ] as const;
   for (const activityType of ACTIVITY_TYPES) {
     await db.pointsConfig.upsert({ where: { activityType }, update: {}, create: { activityType, points: 0 } });

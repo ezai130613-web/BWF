@@ -92,7 +92,16 @@ export type PickerMembersResponse = { members: PickerMember[] };
 
 export type PersonRef = { name: string; company: string };
 
-export type ReferralRow = { id: string; type: "OUTSIDE" | "SELF"; description: string | null; createdAt: string; other: PersonRef };
+export type ReferralRow = {
+  id: string;
+  type: "OUTSIDE" | "SELF";
+  /** Added 2026-10-30 — the referred contact, for the receiving member to follow up. */
+  contactName: string | null;
+  contactPhone: string | null;
+  description: string | null;
+  createdAt: string;
+  other: PersonRef;
+};
 export type ReferralsResponse = { given: ReferralRow[]; received: ReferralRow[] };
 
 export type ThankYouSlipRow = { id: string; amountInr: number; description: string | null; createdAt: string; other: PersonRef };
@@ -139,7 +148,21 @@ export type ChiefGuestsResponse = { items: ChiefGuestRow[] };
 
 export type RecordResponse = { ok: true; id: string };
 
-export type ScoreRow = { type: string; label: string; count: number; pointsEach: number; subtotal: number };
+/**
+ * `quantity`, `perUnit` and `rule` added 2026-10-30 (points per ₹ value / per
+ * N units). Older apps ignore them and still read count × pointsEach.
+ */
+export type ScoreRow = {
+  type: string;
+  label: string;
+  count: number;
+  quantity: number;
+  pointsEach: number;
+  perUnit: number;
+  /** "Every ₹500 = 1 pt" — ready to display. */
+  rule: string;
+  subtotal: number;
+};
 export type PointsResponse = { total: number; breakdown: ScoreRow[] };
 
 export type ReportPeriod = "week" | "6mo" | "12mo" | "overall";

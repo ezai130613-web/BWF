@@ -115,6 +115,8 @@ const appActivity: ExportDataset = {
           { header: "To", key: "to", width: 24 },
           { header: "Chapter", key: "chapter", width: 16 },
           { header: "Type", key: "type", width: 20 },
+          { header: "Contact Person", key: "contactName", width: 22 },
+          { header: "Contact Number", key: "contactPhone", width: 16 },
           { header: "Description", key: "description", width: 40 },
         ],
         rows: referrals.map((r) => ({
@@ -123,6 +125,8 @@ const appActivity: ExportDataset = {
           to: r.toMember.name,
           chapter: r.fromMember.chapter.name,
           type: r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral",
+          contactName: r.contactName,
+          contactPhone: r.contactPhone,
           description: r.description,
         })),
       },

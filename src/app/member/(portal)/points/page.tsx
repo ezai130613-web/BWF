@@ -1,7 +1,7 @@
 import { Trophy } from "lucide-react";
 import { PageHeader } from "@/components/member/ui";
 import { requireMemberProfile } from "@/lib/auth/rbac";
-import { computeMemberScore } from "@/lib/points/score";
+import { computeMemberScore, recordedLabel } from "@/lib/points/score";
 
 export default async function MemberPointsPage() {
   const { member } = await requireMemberProfile();
@@ -28,8 +28,8 @@ export default async function MemberPointsPage() {
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Activity</th>
-                <th className="px-4 py-3 font-medium">Count</th>
-                <th className="px-4 py-3 font-medium">Points Each</th>
+                <th className="px-4 py-3 font-medium">Recorded</th>
+                <th className="px-4 py-3 font-medium">Rule</th>
                 <th className="px-4 py-3 font-medium">Subtotal</th>
               </tr>
             </thead>
@@ -37,8 +37,8 @@ export default async function MemberPointsPage() {
               {breakdown.map((row) => (
                 <tr key={row.type}>
                   <td className="px-4 py-3 text-neutral-900">{row.label}</td>
-                  <td className="px-4 py-3 text-neutral-600">{row.count}</td>
-                  <td className="px-4 py-3 text-neutral-600">{row.pointsEach}</td>
+                  <td className="px-4 py-3 text-neutral-600">{recordedLabel(row)}</td>
+                  <td className="px-4 py-3 text-neutral-600">{row.rule}</td>
                   <td className="px-4 py-3 font-medium text-neutral-900">{row.subtotal}</td>
                 </tr>
               ))}

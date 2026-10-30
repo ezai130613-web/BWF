@@ -2,6 +2,7 @@ import { Handshake, Megaphone } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getPickerMembers } from "@/lib/members/picker";
+import { referralContact } from "@/lib/member-activities/record";
 import { RecordReferralForm } from "@/components/member/record-referral-form";
 import { Card, DataTable, PageHeader, formatShortDate, tdClass } from "@/components/member/ui";
 import { ReferralGivenBanner, ShareBannerGallery } from "@/components/member/share-banner";
@@ -72,7 +73,10 @@ export default async function MemberReferralsPage() {
             <DataTable head={["To", "Type", "Date"]} empty={given.length === 0 ? "No referrals given yet." : null}>
               {given.map((r) => (
                 <tr key={r.id}>
-                  <td className={`${tdClass} font-medium text-neutral-900`}>{r.toMember.name}</td>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>
+                    {r.toMember.name}
+                    <ReferralDetails referral={r} />
+                  </td>
                   <td className={`${tdClass} text-neutral-600`}>{TYPE_LABEL[r.type]}</td>
                   <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(r.createdAt)}</td>
                 </tr>
@@ -83,7 +87,10 @@ export default async function MemberReferralsPage() {
             <DataTable head={["From", "Type", "Date"]} empty={received.length === 0 ? "No referrals received yet." : null}>
               {received.map((r) => (
                 <tr key={r.id}>
-                  <td className={`${tdClass} font-medium text-neutral-900`}>{r.fromMember.name}</td>
+                  <td className={`${tdClass} font-medium text-neutral-900`}>
+                    {r.fromMember.name}
+                    <ReferralDetails referral={r} />
+                  </td>
                   <td className={`${tdClass} text-neutral-600`}>{TYPE_LABEL[r.type]}</td>
                   <td className={`${tdClass} whitespace-nowrap text-neutral-500`}>{formatShortDate(r.createdAt)}</td>
                 </tr>
@@ -93,5 +100,31 @@ export default async function MemberReferralsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** The referred contact (tap-to-call) and description under the member's name. */
+function ReferralDetails({
+  referral,
+}: {
+  referral: { contactName: string | null; contactPhone: string | null; description: string | null };
+}) {
+  const contact = referralContact(referral);
+  if (!contact && !referral.description) return null;
+  return (
+    <span className="mt-1 block text-xs font-normal text-neutral-600">
+      {contact ? (
+        <span className="block">
+          Contact: {referral.contactName}
+          {referral.contactName && referral.contactPhone ? ", " : null}
+          {referral.contactPhone ? (
+            <a href={`tel:${referral.contactPhone.replace(/[^\d+]/g, "")}`} className="text-emerald-800 underline">
+              {referral.contactPhone}
+            </a>
+          ) : null}
+        </span>
+      ) : null}
+      {referral.description ? <span className="block whitespace-pre-line">{referral.description}</span> : null}
+    </span>
   );
 }

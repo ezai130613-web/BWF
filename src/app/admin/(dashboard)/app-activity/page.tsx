@@ -4,6 +4,7 @@ import { getChapterScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatInr } from "@/lib/format";
 import { getLeaderboard } from "@/lib/points/score";
+import { referralContact } from "@/lib/member-activities/record";
 import { jumpToMember } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { ExportButton } from "@/components/admin/export-button";
@@ -90,6 +91,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
           { header: "To" },
           ...(showChapter ? [{ header: "Chapter" }] : []),
           { header: "Type" },
+          { header: "Contact" },
           { header: "Description" },
           { header: "Date" },
         ],
@@ -100,6 +102,7 @@ async function loadTab(tab: TabKey, scope: "ALL" | string): Promise<{ columns: C
             r.toMember.name,
             ...(showChapter ? [r.fromMember.chapter.name] : []),
             r.type === "OUTSIDE" ? "Outside Referral" : "Self / Inside Referral",
+            referralContact(r) ?? "—",
             r.description ?? "—",
             r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           ],
