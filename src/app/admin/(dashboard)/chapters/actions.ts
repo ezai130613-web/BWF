@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
 import { slugify } from "@/lib/slugify";
+import { addFoundingTeam } from "@/lib/chapters/founding";
 
 const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -30,6 +31,7 @@ export async function createChapter(_prevState: { error?: string } | undefined, 
   const chapter = await db.chapter.create({
     data: { name: parsed.data.name, slug, location: parsed.data.location, status: "DRAFT" },
   });
+  await addFoundingTeam(chapter.id);
 
   await logActivity({
     userId: session.user.id,

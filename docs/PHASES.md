@@ -4659,3 +4659,19 @@ Client request: ₹500 of Thank You Slip value = 1 point; Power Date 50 points p
 leaderboard = single-member score, edited rule applied, referral contact saved/visible to receiver via
 API, bad phone rejected, contact optional. Typecheck (web + app), lint, build clean.
 **Not verified:** pages in a browser; app on a device.
+
+### Phase 44 — Founder/Co-Founder on every chapter (2026-11-02)
+Client request: Founder Arasu Alagappan and Co-Founder Abi Ramanathan K must appear on every
+chapter's roster, including chapters created later.
+- Live data: Chapter 04 had no Founder/Co-Founder rows (01–03 did); added, pointing at the Chapter 01
+  member records (Chapter 04's own "Abi Ramanathan" is a different member — a plumbing-company rep).
+- `addFoundingTeam()` (`src/lib/chapters/founding.ts`), called from `createChapter`: copies the
+  FOUNDER/CO_FOUNDER `ChapterLeadership` rows from the oldest ACTIVE chapter that has them. A row may
+  reference a member of another chapter; the admin chapter page, roster wizard and roster PDF all query
+  leadership by the row's `chapterId`, so they show up unchanged.
+- The empty DRAFT "Chapter 5" (slug `al-alagappan`, created before this, no members/meetings/visitors
+  or any other linked rows) was deleted at the client's request, to be recreated once this is deployed.
+  The App Review demo chapter is left alone.
+
+**Verification:** fresh private `prisma dev` — new chapter got exactly Founder + Co-Founder (not other
+leadership), second call added no duplicates. Typecheck and lint clean. **Not verified:** in a browser.
