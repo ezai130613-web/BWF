@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { saveRoster } from "@/app/admin/(dashboard)/roster/[meetingId]/actions";
-import type { RosterWizardData, RosterWizardMember } from "@/lib/roster/manage";
+import { addOpenCategory, saveRoster } from "@/app/admin/(dashboard)/roster/[meetingId]/actions";
+import type { RosterWizardCategory, RosterWizardData, RosterWizardMember } from "@/lib/roster/manage";
 import {
   GUEST_SELF_INTRODUCTION_HEADING,
   GUEST_SELF_INTRODUCTION_INSTRUCTIONS,
@@ -69,6 +69,10 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
   const [chiefGuestIds, setChiefGuestIds] = useState<string[]>(data.selectedChiefGuestIds);
   const [members, setMembers] = useState<RosterWizardMember[]>(data.allOtherMembers);
   const [openCategoryIds, setOpenCategoryIds] = useState<string[]>(data.selectedOpenCategoryIds);
+  // Grows when "Add more" puts a category into the list (already persisted
+  // server-side by addOpenCategory; the selection itself still waits for Save).
+  const [categoryCandidates, setCategoryCandidates] = useState<RosterWizardCategory[]>(data.openCategoryCandidates);
+  const [addableCategories, setAddableCategories] = useState<RosterWizardCategory[]>(data.addableOpenCategories);
   const [notesEnabled, setNotesEnabled] = useState(data.notesEnabled);
   const [orderMode, setOrderMode] = useState<OrderMode>(data.orderMode);
 
@@ -91,6 +95,14 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
 
   function toggleCategory(id: string) {
     setOpenCategoryIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function categoryAdded(category: RosterWizardCategory) {
+    setCategoryCandidates((prev) =>
+      prev.some((c) => c.id === category.id) ? prev : [...prev, category].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base", numeric: true })),
+    );
+    setAddableCategories((prev) => prev.filter((c) => c.id !== category.id));
+    setOpenCategoryIds((prev) => (prev.includes(category.id) ? prev : [...prev, category.id]));
   }
 
   function updateScore(memberId: string, rawValue: string) {
@@ -187,14 +199,22 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
       ) : null}
 
       {step === 4 ? (
-        <OpenCategoriesStep candidates={data.openCategoryCandidates} selected={openCategoryIds} onToggle={toggleCategory} onSetAll={setOpenCategoryIds} />
+        <OpenCategoriesStep
+          meetingId={data.meetingId}
+          candidates={categoryCandidates}
+          addable={addableCategories}
+          selected={openCategoryIds}
+          onToggle={toggleCategory}
+          onSetAll={setOpenCategoryIds}
+          onAdded={categoryAdded}
+        />
       ) : null}
 
       {step === 5 ? <NotesStep notesEnabled={notesEnabled} onChange={setNotesEnabled} /> : null}
 
       {step === 6 ? (
         <ReviewStep
-          data={data}
+          data={{ ...data, openCategoryCandidates: categoryCandidates }}
           chapterName={data.chapterName}
           meetingTitle={data.meetingTitle}
           meetingDate={meetingDate}
@@ -463,15 +483,21 @@ function ManageMembersStep({
 }
 
 function OpenCategoriesStep({
+  meetingId,
   candidates,
+  addable,
   selected,
   onToggle,
   onSetAll,
+  onAdded,
 }: {
-  candidates: { id: string; name: string }[];
+  meetingId: string;
+  candidates: RosterWizardCategory[];
+  addable: RosterWizardCategory[];
   selected: string[];
   onToggle: (id: string) => void;
   onSetAll: (ids: string[]) => void;
+  onAdded: (category: RosterWizardCategory) => void;
 }) {
   const allSelected = candidates.length > 0 && selected.length === candidates.length;
   return (
@@ -508,6 +534,68 @@ function OpenCategoriesStep({
           </div>
         </>
       )}
+      <AddOpenCategory meetingId={meetingId} addable={addable} onAdded={onAdded} />
+    </div>
+  );
+}
+
+function AddOpenCategory({ meetingId, addable, onAdded }: { meetingId: string; addable: RosterWizardCategory[]; onAdded: (category: RosterWizardCategory) => void }) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [pending, startTransition] = useTransition();
+
+  function submit() {
+    if (!name.trim()) return;
+    setError(undefined);
+    startTransition(async () => {
+      const result = await addOpenCategory(meetingId, name);
+      if (result.error || !result.category) {
+        setError(result.error ?? "Couldn't add that category.");
+        return;
+      }
+      onAdded(result.category);
+      setName("");
+    });
+  }
+
+  return (
+    <div className="mt-6 border-t border-neutral-200 pt-4">
+      <h4 className="text-sm font-semibold text-neutral-900">Add more open categories</h4>
+      <p className="mt-1 text-xs text-neutral-500">
+        Pick a category that isn&rsquo;t listed above, or type a new name to create it. It&rsquo;s added to the Open Categories list
+        (also offered on other chapters&rsquo; rosters — manage that in Categories) and selected here.
+      </p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          type="text"
+          list="roster-addable-categories"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Category name"
+          maxLength={80}
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm sm:max-w-sm"
+        />
+        <datalist id="roster-addable-categories">
+          {addable.map((c) => (
+            <option key={c.id} value={c.name} />
+          ))}
+        </datalist>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={pending || !name.trim()}
+          className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {pending ? "Adding…" : "Add"}
+        </button>
+      </div>
+      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
     </div>
   );
 }

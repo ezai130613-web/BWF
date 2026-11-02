@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { requireChapterAccess } from "@/lib/auth/rbac";
-import { getOpenCategories } from "@/lib/chapters/availability";
+import { getAddableOpenCategories, getOpenCategories } from "@/lib/chapters/availability";
 import { getLeaderboard } from "@/lib/points/score";
+import { slugify } from "@/lib/slugify";
 
 /**
  * Roster Sheet interactive management (2026-09-16 correction) — data loading
@@ -77,6 +78,8 @@ export type RosterWizardData = {
 
   openCategoryCandidates: RosterWizardCategory[];
   selectedOpenCategoryIds: string[];
+  /** Suggestions for the step's "Add more" box — see getAddableOpenCategories(). */
+  addableOpenCategories: RosterWizardCategory[];
 
   notesEnabled: boolean;
   isSaved: boolean;
@@ -111,7 +114,7 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
 
   await requireChapterAccess(meeting.chapterId, "roster:manage");
 
-  const [existingRoster, chiefGuestCandidates, leadership, assignments, openCategoryCandidates] = await Promise.all([
+  const [existingRoster, chiefGuestCandidates, leadership, assignments, openCategoryCandidates, addableOpenCategories] = await Promise.all([
     db.roster.findUnique({
       where: { meetingId },
       include: { chiefGuests: true, openCategories: true, scores: true },
@@ -131,6 +134,7 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
       orderBy: [{ group: "asc" }, { role: { order: "asc" } }, { createdAt: "asc" }],
     }),
     getOpenCategories(meeting.chapterId),
+    getAddableOpenCategories(meeting.chapterId),
   ]);
 
   const foundingTeam = FOUNDING_ROLE_ORDER.map((key) => leadership.find((l) => l.role.key === key))
@@ -238,9 +242,47 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
 
     openCategoryCandidates,
     selectedOpenCategoryIds,
+    addableOpenCategories,
 
     notesEnabled: existingRoster?.notesEnabled ?? false,
     isSaved: Boolean(existingRoster?.savedAt),
     orderMode: existingRoster?.orderMode ?? "AUTO",
   };
+}
+
+/**
+ * Puts a category into the curated Open Categories list
+ * (`showInOpenCategories`) — so it's offered on later rosters too, not just
+ * this one — creating it if no category by that name (or slug) exists yet.
+ * A new category starts hidden from /apply: it was added for the roster,
+ * and the application form's list is curated separately in
+ * /admin/categories. Refuses a deactivated category, or one an active
+ * member of this chapter already holds (it isn't open here). Caller does
+ * the access check (roster:manage on this chapter).
+ */
+export async function addOpenCategoryForChapter(
+  chapterId: string,
+  rawName: string,
+): Promise<{ category?: RosterWizardCategory; change?: "created" | "shown" | "none"; error?: string }> {
+  const name = rawName.replace(/\s+/g, " ").trim();
+  if (name.length < 2 || name.length > 80) return { error: "Enter a category name (2–80 characters)." };
+  const slug = slugify(name);
+  if (!slug) return { error: "Enter a category name with letters or numbers." };
+
+  const existing = await db.category.findFirst({
+    where: { OR: [{ slug }, { name: { equals: name, mode: "insensitive" } }] },
+  });
+
+  if (!existing) {
+    const created = await db.category.create({ data: { name, slug, showInOpenCategories: true, showOnApplyForm: false } });
+    return { category: { id: created.id, name: created.name }, change: "created" };
+  }
+
+  if (!existing.isActive) return { error: `"${existing.name}" is deactivated — reactivate it in Categories first.` };
+  const heldHere = await db.member.count({ where: { chapterId, status: "ACTIVE", categoryId: existing.id } });
+  if (heldHere > 0) return { error: `"${existing.name}" is already taken by a member of this chapter, so it isn't open.` };
+  if (existing.showInOpenCategories) return { category: { id: existing.id, name: existing.name }, change: "none" };
+
+  await db.category.update({ where: { id: existing.id }, data: { showInOpenCategories: true } });
+  return { category: { id: existing.id, name: existing.name }, change: "shown" };
 }

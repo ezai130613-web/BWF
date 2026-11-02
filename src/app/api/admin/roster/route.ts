@@ -14,6 +14,22 @@ import { generateRosterPdf, type RosterAssignmentRow, type RosterMemberRow } fro
  * `/admin/roster/[meetingId]` — never recomputed or re-derived from the
  * request here.
  */
+
+/** Collapses stray/trailing whitespace from admin-typed names ("Madhan ", "Raj  Thilak") so the printed sheet is clean without touching stored data. */
+function clean(value: string): string;
+function clean(value: string | null): string | null;
+function clean(value: string | null) {
+  return value === null ? null : value.replace(/\s+/g, " ").trim();
+}
+
+/** "+91 98846 00160" → "9884600160", so every Indian mobile prints in the same 10-digit form; anything else is just whitespace-cleaned. */
+function formatPhone(phone: string | null): string | null {
+  const cleaned = clean(phone);
+  if (!cleaned) return null;
+  const digits = cleaned.replace(/[\s\-()]/g, "").replace(/^(\+91|0091|0)(?=\d{10}$)/, "");
+  return /^\d{10}$/.test(digits) ? digits : cleaned;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const meetingId = searchParams.get("meetingId");
@@ -33,7 +49,7 @@ export async function GET(request: Request) {
     where: { meetingId },
     include: {
       chiefGuests: true,
-      openCategories: { orderBy: { name: "asc" } },
+      openCategories: true,
       scores: { include: { member: { include: { company: true, category: true } } }, orderBy: { order: "asc" } },
     },
   });
@@ -56,29 +72,33 @@ export async function GET(request: Request) {
   ]);
 
   const memberRows: RosterMemberRow[] = roster.scores.map((s) => ({
-    name: s.member.name,
-    phone: s.member.phone,
-    email: s.member.email,
-    address: s.member.address,
+    name: clean(s.member.name),
+    phone: formatPhone(s.member.phone),
+    email: clean(s.member.email),
+    address: clean(s.member.address),
     photoUrl: s.member.photoUrl,
-    company: s.member.company.name,
-    category: s.member.category.name,
+    company: clean(s.member.company.name),
+    category: clean(s.member.category.name),
   }));
 
   const roleAssignmentRows: RosterAssignmentRow[] = roleAssignments.map((a) => ({
     group: a.group,
     roleLabel: a.role.label,
-    memberName: a.member.name,
+    memberName: clean(a.member.name),
     photoUrl: a.member.photoUrl,
   }));
 
+  // Sorted here, not by the database: Postgres's byte-order collation put
+  // every capitalised name first ("CCTV Camera", "CHINA…" before "Carvings").
+  const openCategoryNames = roster.openCategories.map((c) => clean(c.name)).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true }));
+
   const pdf = await generateRosterPdf({
     chapterName: meeting.chapter.name,
-    leadership: leadership.map((l) => ({ roleKey: l.role.key, roleLabel: l.role.label, memberName: l.member.name, photoUrl: l.member.photoUrl })),
+    leadership: leadership.map((l) => ({ roleKey: l.role.key, roleLabel: l.role.label, memberName: clean(l.member.name), photoUrl: l.member.photoUrl })),
     roleAssignments: roleAssignmentRows,
     members: memberRows,
-    chiefGuests: roster.chiefGuests.map((g) => ({ name: g.name, photoUrl: g.photoUrl, company: g.company, designation: g.designation })),
-    openCategoryNames: roster.openCategories.map((c) => c.name),
+    chiefGuests: roster.chiefGuests.map((g) => ({ name: clean(g.name), photoUrl: g.photoUrl, company: clean(g.company), designation: clean(g.designation) })),
+    openCategoryNames,
     whatsInItForYou:
       feeContent["roster.whatsInItForYou"] ?? "Connect with builders, contractors, and suppliers in a focused networking space.",
     visitorFeedbackQrUrl: feeContent["roster.visitorFeedbackQrUrl"],

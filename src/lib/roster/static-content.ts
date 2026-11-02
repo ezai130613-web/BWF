@@ -7,7 +7,9 @@
  * the exact same Pledge wording; the Self-Introduction block's heading
  * differs only in "Visitors" (Chapter 1) vs "Guest" (Chapters 2 and 3) —
  * standardized on "Guest" here per the client's own phrasing and since it's
- * the majority wording across the 3 references.
+ * the majority wording across the 3 references. Two typos carried over from
+ * the references were later corrected in the Pledge: "Builders world forum"
+ * → "Builders World Forum", and the missing full stop after "pricing".
  *
  * The client's brief also asked for "BWF rules and regulations" as a
  * distinct static section — checked all 3 references page-by-page and no
@@ -38,8 +40,8 @@ export const GUEST_SELF_INTRODUCTION_LINES = [
 export const PLEDGE_HEADING = "Builders World Forum Pledge";
 
 export const PLEDGE_LINES = [
-  "We, Builders world forum members, commit to valuing and supporting our fellow co-members to enhance their business success.",
-  "We will prioritize referrals received from co-members, providing exceptional service and competitive pricing",
+  "We, Builders World Forum members, commit to valuing and supporting our fellow co-members to enhance their business success.",
+  "We will prioritize referrals received from co-members, providing exceptional service and competitive pricing.",
   "We pledge to work collaboratively as a group, promoting unity and shared goals within the Builders World Forum.",
   "We are dedicated to contributing positively to the construction industry as a whole, fostering growth and innovation.",
 ];

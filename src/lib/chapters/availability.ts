@@ -55,6 +55,22 @@ export async function getOpenCategories(chapterId: string): Promise<{ id: string
   return allActive.filter((c) => !occupiedIds.has(c.id)).map((c) => ({ id: c.id, name: c.name }));
 }
 
+/**
+ * Roster wizard "Add more" (2026-11-02): active categories that aren't in
+ * the curated Open Categories list (`showInOpenCategories` off) and aren't
+ * held by an active member of this chapter — the suggestions offered when
+ * an admin adds a category from the roster's Select Open Categories step.
+ */
+export async function getAddableOpenCategories(chapterId: string): Promise<{ id: string; name: string }[]> {
+  const [hidden, occupied] = await Promise.all([
+    db.category.findMany({ where: { isActive: true, showInOpenCategories: false }, orderBy: { name: "asc" } }),
+    db.member.findMany({ where: { status: "ACTIVE", chapterId }, select: { categoryId: true } }),
+  ]);
+
+  const occupiedIds = new Set(occupied.map((m) => m.categoryId));
+  return hidden.filter((c) => !occupiedIds.has(c.id)).map((c) => ({ id: c.id, name: c.name }));
+}
+
 export async function getOpenCategoryNames(chapterId: string): Promise<string[]> {
   const open = await getOpenCategories(chapterId);
   return open.map((c) => c.name);

@@ -4675,3 +4675,31 @@ chapter's roster, including chapters created later.
 
 **Verification:** fresh private `prisma dev` — new chapter got exactly Founder + Co-Founder (not other
 leadership), second call added no duplicates. Typecheck and lint clean. **Not verified:** in a browser.
+
+### Phase 45 — Roster PDF print fixes (2026-11-02)
+From a review of the real Chapter 04 roster (meeting 2026-11-03). Code only — no data changed.
+- Photos are re-encoded through `sharp` (now a direct dependency) before embedding. A truncated
+  upload had printed as a grey box; corrupt images now fall back to initials.
+- Member rows: phone and email on separate lines (emails were lost behind "·…"); category column
+  wider and wraps; Give/Ask boxes now line up with the header bar.
+- Open Categories: sorted case-insensitively in JS (Postgres put "CCTV"/"CHINA" before "Carvings");
+  no name is ever ellipsized — bulleted grid when everything fits at ≥ 9pt, otherwise a flowing
+  "A • B • C" list packed so names never split across lines.
+- Names/companies/categories whitespace-trimmed at print time; Indian mobiles printed as 10 digits.
+- Pledge typos fixed ("Builders World Forum", full stop after "pricing").
+- Cover gap (client: "too much gap… keep things clean and neat"): the Associates panels move onto the
+  cover under the leadership whenever they fit — stacked if legible, else a compact photo-left row —
+  saving a page; otherwise the leadership is centred in the green band. Associates panels are cut to
+  their content height instead of stretching to the page bottom.
+- Roster wizard, Select Open Categories: an "Add more open categories" box. Suggests active
+  categories hidden from the Open Categories list and not held in this chapter; a typed new name
+  creates the category. Either way it's turned on in the Open Categories list (so later rosters and
+  other chapters get it too) and selected for this roster. New categories start off the /apply form.
+  Deactivated or chapter-occupied categories are refused. Logic in `addOpenCategoryForChapter()`
+  (`src/lib/roster/manage.ts`); `addOpenCategory` action wraps it with `roster:manage` + audit log.
+
+**Verification:** sample PDFs rendered locally (long and short category lists, truncated JPEG) and
+inspected, plus cover variants (with/without founders, with a chief guest). Typecheck and lint
+clean. Add-category logic: 11 checks against a fresh private `prisma dev` (show hidden, already
+listed, occupied, deactivated, bad names, create, slug match). **Not verified:** a real roster
+download in the deployed app; the Add box in a browser.

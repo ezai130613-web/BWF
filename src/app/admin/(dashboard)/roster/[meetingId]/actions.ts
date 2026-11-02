@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireChapterAccess } from "@/lib/auth/rbac";
+import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
-import { getExcludedMemberIds } from "@/lib/roster/manage";
+import { addOpenCategoryForChapter, getExcludedMemberIds } from "@/lib/roster/manage";
 import { getLeaderboard } from "@/lib/points/score";
 
 /**
@@ -138,4 +138,33 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
   revalidatePath("/admin/roster");
 
   return {};
+}
+
+/**
+ * "Add more" on the Select Open Categories step (2026-11-02 client
+ * request) — access check and audit log around addOpenCategoryForChapter().
+ */
+export async function addOpenCategory(meetingId: string, rawName: string): Promise<{ category?: { id: string; name: string }; error?: string }> {
+  const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
+  if (!meeting) return { error: "That meeting no longer exists." };
+
+  await requireChapterAccess(meeting.chapterId, "roster:manage");
+  const session = await requireAdminSession();
+
+  const result = await addOpenCategoryForChapter(meeting.chapterId, rawName);
+  if (!result.category) return { error: result.error };
+  if (result.change !== "none") {
+    await logActivity({
+      userId: session.user.id,
+      action: result.change === "created" ? "category.created" : "category.open_categories_shown",
+      entity: "Category",
+      entityId: result.category.id,
+      metadata: { via: "roster", meetingId },
+    });
+  }
+
+  revalidatePath(`/admin/roster/${meetingId}`);
+  revalidatePath("/admin/categories");
+
+  return { category: result.category };
 }

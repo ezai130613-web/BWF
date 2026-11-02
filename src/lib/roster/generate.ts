@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import PDFDocument from "pdfkit";
+import sharp from "sharp";
 import {
   GUEST_SELF_INTRODUCTION_HEADING,
   GUEST_SELF_INTRODUCTION_INSTRUCTIONS,
@@ -105,6 +106,25 @@ async function fetchImageBuffer(url: string | null | undefined): Promise<Buffer 
     }
     const filePath = path.join(process.cwd(), "public", url.replace(/^\/+/, ""));
     return await readFile(filePath);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Member/coordinator/guest photos are re-encoded through sharp before
+ * pdfkit sees them. pdfkit embeds a JPEG's bytes as-is, so a truncated or
+ * oddly-encoded upload "succeeds" and then renders in the printed PDF as a
+ * grey box with a sliver of photo at the top (seen on a real Chapter 04
+ * roster). sharp fully decodes first — a corrupt file throws here and the
+ * row falls back to initials instead — and also applies EXIF rotation and
+ * shrinks phone-camera originals to print size.
+ */
+async function fetchPhotoBuffer(url: string | null | undefined): Promise<Buffer | null> {
+  const raw = await fetchImageBuffer(url);
+  if (!raw) return null;
+  try {
+    return await sharp(raw).rotate().resize(400, 400, { fit: "cover", withoutEnlargement: true }).flatten({ background: WHITE }).jpeg({ quality: 85 }).toBuffer();
   } catch {
     return null;
   }
@@ -216,7 +236,8 @@ function drawPill(doc: PDFKit.PDFDocument, text: string, cx: number, y: number, 
   return { x, y, width, height };
 }
 
-async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer: Buffer | null) {
+/** Returns whether the Associates panels were placed on the cover (in which case they get no page of their own). */
+async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer: Buffer | null, associateBuffers: (Buffer | null)[]): Promise<boolean> {
   const fullWidth = doc.page.width;
   const width = fullWidth - PAGE_MARGIN * 2;
   let y = 0;
@@ -271,7 +292,7 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer
 
     doc.roundedRect(PAGE_MARGIN, y, width, boxHeight, 16).fillColor(GREEN).fill();
 
-    const guestBuffers = await Promise.all(data.chiefGuests.map((g) => fetchImageBuffer(g.photoUrl)));
+    const guestBuffers = await Promise.all(data.chiefGuests.map((g) => fetchPhotoBuffer(g.photoUrl)));
     let cx = PAGE_MARGIN + (width - guestsWidth) / 2;
     data.chiefGuests.forEach((guest, i) => {
       const cardX = cx;
@@ -309,10 +330,24 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer
   const coreOrder = ["DIRECTOR", "PRESIDENT", "SECRETARY", "TREASURER"];
   const core = coreOrder.map((key) => data.leadership.find((l) => l.roleKey === key)).filter((l): l is RosterLeadershipRow => Boolean(l));
 
-  if (founders.length > 0 || core.length > 0) {
+  // Gap control (2026-11-02 client feedback, "too much gap" on a real
+  // Chapter 04 cover): heights of the leadership blocks are known up-front,
+  // so the Associates panels are pulled up into whatever's left of the band
+  // when they fit at a legible size, instead of leaving most of page 1 empty
+  // green. When they don't fit, the leadership is centred in the band
+  // rather than stacked at the top.
+  const foundersBlockHeight = founders.length > 0 ? 118 + 8 + 24 + 18 : 0;
+  const coreBlockHeight = core.length > 0 ? 100 : 0;
+  const bandPad = 20;
+  const leadershipHeight = foundersBlockHeight + coreBlockHeight;
+  const associatesTop = y + bandPad + leadershipHeight + (leadershipHeight > 0 ? 24 : 12);
+  const associatesBottom = doc.page.height - PAGE_MARGIN + 10;
+  const placeAssociates = associatesLayout(data, associatesTop, associatesBottom, true).fits;
+
+  if (placeAssociates || founders.length > 0 || core.length > 0) {
     const bandHeight = doc.page.height - y;
     doc.rect(0, y, fullWidth, bandHeight).fillColor(GREEN_DARK).fill();
-    let innerY = y + 20;
+    let innerY = placeAssociates ? y + bandPad : y + Math.max(bandPad, (bandHeight - leadershipHeight) / 2);
 
     if (founders.length > 0) {
       const panelHeight = 118;
@@ -320,7 +355,7 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer
       const panelX = PAGE_MARGIN + (width - panelWidth) / 2;
       doc.roundedRect(panelX, innerY, panelWidth, panelHeight, 18).fillColor(GREEN_PALE).fill();
 
-      const founderBuffers = await Promise.all(founders.map((f) => fetchImageBuffer(f.photoUrl)));
+      const founderBuffers = await Promise.all(founders.map((f) => fetchPhotoBuffer(f.photoUrl)));
       const slot = panelWidth / founders.length;
       founders.forEach((f, i) => {
         const fx = panelX + i * slot + slot / 2 - 34;
@@ -339,7 +374,7 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer
 
     if (core.length > 0) {
       const slot = width / core.length;
-      const coreBuffers = await Promise.all(core.map((entry) => fetchImageBuffer(entry.photoUrl)));
+      const coreBuffers = await Promise.all(core.map((entry) => fetchPhotoBuffer(entry.photoUrl)));
       core.forEach((entry, i) => {
         const cx = PAGE_MARGIN + i * slot;
         drawPhoto(doc, coreBuffers[i], cx + slot / 2 - 32, innerY, 64, entry.memberName, { borderColor: WHITE });
@@ -348,52 +383,58 @@ async function renderCover(doc: PDFKit.PDFDocument, data: RosterData, logoBuffer
       });
     }
   }
+
+  if (placeAssociates) drawAssociates(doc, data, associateBuffers, associatesTop, associatesBottom, true);
+  return placeAssociates;
+}
+
+const ASSOCIATE_COLUMNS: { group: RosterAssociateGroup; label: string }[] = [
+  { group: "PRESIDENT", label: "President Associates" },
+  { group: "SECRETARY", label: "Secretary Associates" },
+  { group: "TREASURER", label: "Treasurer Associates" },
+];
+
+/**
+ * Sizes the Associates panels for the space between `top` and `maxBottom`.
+ * Entries sit at a comfortably large, natural size first and only shrink
+ * (`scale` < 1) if a column genuinely can't fit; the panels are then cut to
+ * their content height rather than stretched to `maxBottom`, so a short
+ * column never leaves a tall, mostly-empty panel.
+ */
+function associatesLayout(data: RosterData, top: number, maxBottom: number, allowCompact = false) {
+  const buckets = ASSOCIATE_COLUMNS.map((c) => data.roleAssignments.filter((a) => a.group === c.group));
+  const realMaxCount = Math.max(0, ...buckets.map((b) => b.length));
+  const headerPad = 26;
+  const bottomPad = 16;
+  const naturalRowHeight = 112;
+  const compactRowHeight = 50;
+  // No coordinators at all — a short placeholder card, not three tall empty panels.
+  if (realMaxCount === 0) return { buckets, headerPad, compact: false, fits: maxBottom - top >= 90, scale: 1, rowHeight: 0, panelHeight: 90 };
+  const available = maxBottom - top - headerPad - bottomPad;
+  const scale = Math.min(1, available / (realMaxCount * naturalRowHeight));
+  // Stacked photo-over-caption entries while they stay legible; on the
+  // cover, below that, a compact row (photo left, name/role right) — less
+  // than half the height per person, so a full column still fits under the
+  // leadership instead of spilling onto a page of its own.
+  if (scale >= 0.6 || !allowCompact) {
+    const rowHeight = naturalRowHeight * scale;
+    return { buckets, headerPad, compact: false, fits: scale >= 0.6, scale, rowHeight, panelHeight: headerPad + realMaxCount * rowHeight + bottomPad };
+  }
+  const fits = realMaxCount * compactRowHeight <= available;
+  return { buckets, headerPad, compact: true, fits, scale: 1, rowHeight: compactRowHeight, panelHeight: headerPad + realMaxCount * compactRowHeight + bottomPad };
 }
 
 /** The three-column "Associates" grid — dynamically bucketed by RosterAssignment.group, since the same role can sit under a different column per chapter (see the schema comment on RosterAssociateGroup). */
-async function renderCoordinators(doc: PDFKit.PDFDocument, data: RosterData) {
-  doc.addPage();
-  drawPatternBackground(doc);
+function drawAssociates(doc: PDFKit.PDFDocument, data: RosterData, buffers: (Buffer | null)[], top: number, maxBottom: number, allowCompact = false) {
   const width = doc.page.width - PAGE_MARGIN * 2;
-  const top = PAGE_MARGIN + 20;
-  const bottom = doc.page.height - PAGE_MARGIN;
-
-  const columns: { group: RosterAssociateGroup; label: string }[] = [
-    { group: "PRESIDENT", label: "President Associates" },
-    { group: "SECRETARY", label: "Secretary Associates" },
-    { group: "TREASURER", label: "Treasurer Associates" },
-  ];
-  const buckets = columns.map((c) => data.roleAssignments.filter((a) => a.group === c.group));
   const gap = 20;
   const colWidth = (width - gap * 2) / 3;
-  const realMaxCount = Math.max(0, ...buckets.map((b) => b.length));
-  const maxCount = Math.max(1, realMaxCount);
-  const headerPad = 26;
-  const bottomPad = 20;
-  // No chapter has any coordinators assigned yet in practice — don't
-  // stretch three empty panels to the full page height for that state;
-  // a shorter placeholder card reads as "nothing here yet," not as a
-  // layout bug once real assignments start filling it in.
-  const panelHeight = realMaxCount === 0 ? 220 : bottom - top;
-  const available = panelHeight - headerPad - bottomPad;
-
-  // Size entries at a comfortably large, natural size first — bigger photo,
-  // bigger captions — and only shrink below that if this many entries
-  // genuinely can't fit one column. Previously the row height always
-  // stretched to fill the *entire* page-height panel even with only 3-4
-  // entries per column, spreading them out with large dead gaps between
-  // people — this keeps entries naturally sized/spaced and simply leaves
-  // any leftover panel height as a bottom margin instead.
-  const naturalRowHeight = 118;
-  const naturalPhotoSize = 70;
-  const scale = Math.min(1, available / (maxCount * naturalRowHeight));
-  const rowHeight = naturalRowHeight * scale;
-  const photoSize = Math.max(32, naturalPhotoSize * scale);
+  const { buckets, headerPad, compact, scale, rowHeight, panelHeight } = associatesLayout(data, top, maxBottom, allowCompact);
+  const photoSize = Math.max(32, 70 * scale);
   const nameSize = Math.max(8, 10.5 * scale);
   const roleSize = Math.max(7, 9 * scale);
-
-  const allBuffers = await Promise.all(data.roleAssignments.map((a) => fetchImageBuffer(a.photoUrl)));
-  const bufferByAssignment = new Map(data.roleAssignments.map((a, i) => [a, allBuffers[i]]));
+  const bufferByAssignment = new Map(data.roleAssignments.map((a, i) => [a, buffers[i]]));
+  const columns = ASSOCIATE_COLUMNS;
 
   columns.forEach((column, colIndex) => {
     const x = PAGE_MARGIN + colIndex * (colWidth + gap);
@@ -402,12 +443,21 @@ async function renderCoordinators(doc: PDFKit.PDFDocument, data: RosterData) {
 
     const entries = buckets[colIndex];
     if (entries.length === 0) {
-      doc.fontSize(10).fillColor(MUTED).text("No coordinators assigned yet.", x + 12, top + headerPad + 20, { width: colWidth - 24, align: "center" });
+      doc.fontSize(10).fillColor(MUTED).text("No coordinators assigned yet.", x + 12, top + headerPad + 8, { width: colWidth - 24, align: "center" });
       return;
     }
 
     let entryY = top + headerPad;
     entries.forEach((entry) => {
+      if (compact) {
+        const size = 40;
+        const textX = x + 12 + size + 10;
+        drawPhoto(doc, bufferByAssignment.get(entry) ?? null, x + 12, entryY, size, entry.memberName, { borderColor: WHITE });
+        drawCaption(doc, entry.memberName, textX, entryY + 9, x + colWidth - 8 - textX, { bold: true, size: 9.5, align: "left" });
+        drawCaption(doc, entry.roleLabel, textX, entryY + 23, x + colWidth - 8 - textX, { size: 8, color: GREEN_DARK, align: "left" });
+        entryY += rowHeight;
+        return;
+      }
       drawPhoto(doc, bufferByAssignment.get(entry) ?? null, x + colWidth / 2 - photoSize / 2, entryY, photoSize, entry.memberName, { borderColor: WHITE });
       drawCaption(doc, entry.memberName, x + 6, entryY + photoSize + 7, colWidth - 12, { bold: true, size: nameSize });
       drawCaption(doc, entry.roleLabel, x + 6, entryY + photoSize + 7 + nameSize + 4, colWidth - 12, { size: roleSize, color: GREEN_DARK });
@@ -426,11 +476,13 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData, logo
   const colSno = 34;
   const colPhoto = 78;
   const colDetails = (width - colSno - colPhoto) * 0.42;
-  const colCategory = (width - colSno - colPhoto) * 0.2;
+  // Wider than Give/Ask's even split so multi-word categories ("Bricks (Red,
+  // Fly Ash, …)") wrap inside the cell instead of being ellipsized.
+  const colCategory = (width - colSno - colPhoto) * 0.24;
   const colGive = (width - colSno - colPhoto - colDetails - colCategory) / 2;
   const colAsk = colGive;
 
-  const buffers = await Promise.all(data.members.map((m) => fetchImageBuffer(m.photoUrl)));
+  const buffers = await Promise.all(data.members.map((m) => fetchPhotoBuffer(m.photoUrl)));
 
   for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
     doc.addPage();
@@ -454,9 +506,11 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData, logo
     hx += colDetails;
     doc.text("Category", hx, y + 7, { width: colCategory });
     hx += colCategory;
-    doc.text("Give", hx, y + 7, { width: colGive });
+    // Give/Ask boxes start exactly at their column edge (see the row loop),
+    // so their labels are inset by the same 8pt padding as the other cells.
+    doc.text("Give", hx + 8, y + 7, { width: colGive - 8 });
     hx += colGive;
-    doc.text("Ask", hx, y + 7, { width: colAsk });
+    doc.text("Ask", hx + 8, y + 7, { width: colAsk - 8 });
     doc.fillColor(INK).font("Helvetica");
     y += 24;
 
@@ -480,25 +534,30 @@ async function renderMemberTable(doc: PDFKit.PDFDocument, data: RosterData, logo
         drawPhoto(doc, buffers[memberIndex], cx, rowY + (rowHeight - photoSize) / 2, photoSize, member.name, { borderColor: BORDER });
         cx += colPhoto;
 
-        const lineHeight = 15;
-        let lineY = rowY + Math.max(6, (rowHeight - lineHeight * 4) / 2);
-        doc.font("Helvetica-Bold").fontSize(12).fillColor(INK).text(member.name, cx, lineY, { width: colDetails - 8, height: lineHeight, ellipsis: true });
-        lineY += lineHeight;
-        doc.font("Helvetica").fontSize(10).fillColor(MUTED).text(member.company, cx, lineY, { width: colDetails - 8, height: lineHeight, ellipsis: true });
-        lineY += lineHeight;
-        if (member.address) {
-          doc.text(member.address, cx, lineY, { width: colDetails - 8, height: lineHeight, ellipsis: true });
-        }
-        lineY += lineHeight;
-        const contactLine = [member.phone, member.email].filter(Boolean).join("   ·   ");
-        if (contactLine) doc.text(contactLine, cx, lineY, { width: colDetails - 8, height: lineHeight, ellipsis: true });
+        // Phone and email each get their own line — sharing one line meant
+        // every member with both printed "98xxxxxxxx ·…" and lost the email.
+        const nameLineHeight = 15;
+        const lineHeight = 13;
+        const detailLines = [member.company, member.address, member.phone, member.email].filter((l): l is string => Boolean(l));
+        let lineY = rowY + Math.max(6, (rowHeight - nameLineHeight - lineHeight * detailLines.length) / 2);
+        doc.font("Helvetica-Bold").fontSize(12).fillColor(INK).text(member.name, cx, lineY, { width: colDetails - 8, height: nameLineHeight, ellipsis: true });
+        lineY += nameLineHeight;
+        doc.font("Helvetica").fontSize(9.5).fillColor(MUTED);
+        detailLines.forEach((line) => {
+          doc.text(line, cx, lineY, { width: colDetails - 8, height: lineHeight, ellipsis: true });
+          lineY += lineHeight;
+        });
         doc.fillColor(INK);
         cx += colDetails;
 
-        doc.font("Helvetica").fontSize(10.5).text(member.category, cx, rowY + (rowHeight - 14) / 2, { width: colCategory - 8, height: 28, ellipsis: true });
+        // Wraps to as many lines as the fixed row allows, vertically centred.
+        doc.font("Helvetica").fontSize(10);
+        const categoryMaxHeight = rowHeight - 12;
+        const categoryHeight = Math.min(categoryMaxHeight, doc.heightOfString(member.category, { width: colCategory - 8 }));
+        doc.text(member.category, cx, rowY + (rowHeight - categoryHeight) / 2, { width: colCategory - 8, height: categoryMaxHeight, ellipsis: true });
       }
 
-      cx = PAGE_MARGIN + colSno + colPhoto + colDetails + colCategory + 8;
+      cx = PAGE_MARGIN + colSno + colPhoto + colDetails + colCategory;
       doc.rect(cx, rowY, colGive, rowHeight).strokeColor(BORDER).lineWidth(0.5).stroke();
       cx += colGive;
       doc.rect(cx, rowY, colAsk, rowHeight).strokeColor(BORDER).lineWidth(0.5).stroke();
@@ -599,37 +658,74 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
   const notesReserve = data.notesEnabled ? notesGap + minNotesHeight : 0;
   const maxPanelHeight = pageBottom - panelTop - gapAfterPanel - pledgeHeadingHeight - pledgeBoxHeight - notesReserve - bottomFooterPad;
 
-  let panelHeight: number;
-  let catCols = 3;
-  let catFontSize = 11;
-  let catRowsPerCol = Math.ceil(Math.max(1, data.openCategoryNames.length) / catCols);
-  let catLineHeight = catFontSize + 7;
-
-  if (data.openCategoryNames.length === 0) {
-    panelHeight = Math.max(90, Math.min(140, maxPanelHeight));
-  } else {
-    const naturalHeight = topPad + catRowsPerCol * catLineHeight + bottomPad;
-    if (naturalHeight <= maxPanelHeight) {
-      panelHeight = naturalHeight;
-    } else {
-      // Doesn't fit at the generous baseline (a large, undeduplicated
-      // category list) — try more columns, then shrink font, down to a
-      // legible floor, clipped to the panel regardless as a last resort so
-      // it can never bleed into the Pledge box below.
-      const innerHeight = maxPanelHeight - topPad - bottomPad;
-      for (catCols = 3; catCols <= 6; catCols += 1) {
-        catFontSize = 11;
-        catRowsPerCol = Math.ceil(data.openCategoryNames.length / catCols);
-        catLineHeight = catFontSize + 7;
-        while (catRowsPerCol * catLineHeight > innerHeight && catFontSize > 6.5) {
-          catFontSize -= 0.5;
-          catLineHeight = catFontSize + 5;
-        }
-        if (catRowsPerCol * catLineHeight <= innerHeight) break;
+  // Two layouts, chosen by what fits WITHOUT truncating any name — an
+  // ellipsized grid made several entries indistinguishable on a real
+  // roster ("Electrical…" ×3, "Construction…" ×2), which defeats the point
+  // of telling guests which categories are open:
+  //   1. the reference's bulleted grid, when some column count/font size
+  //      fits every name on one line;
+  //   2. otherwise one flowing "A • B • C" paragraph at the largest font
+  //      that fits, packed line-by-line here so a name is never split
+  //      across lines (pdfkit's own wrapping breaks at hyphens, e.g.
+  //      "Civil Contractor -" / "2").
+  // Only if even the flowing layout can't fit at the 6.5pt floor is it
+  // clipped to the panel, so it can never bleed into the Pledge box below.
+  const catInnerWidth = width - 32;
+  const maxInnerHeight = maxPanelHeight - topPad - bottomPad;
+  const flowSeparator = "   •   ";
+  const packFlowLines = () => {
+    const lines: string[] = [];
+    let current = "";
+    for (const name of data.openCategoryNames) {
+      const candidate = current ? current + flowSeparator + name : name;
+      if (current && doc.widthOfString(candidate) > catInnerWidth) {
+        lines.push(current + flowSeparator.trimEnd());
+        current = name;
+      } else {
+        current = candidate;
       }
-      panelHeight = maxPanelHeight;
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  let grid: { cols: number; rowsPerCol: number; fontSize: number; lineHeight: number } | null = null;
+  let flowFontSize = 11;
+  let flowLines: string[] = [];
+  let flowLineHeight = 0;
+  let contentHeight = 0;
+
+  if (data.openCategoryNames.length > 0) {
+    doc.font("Helvetica");
+    // The grid stops at 9pt: below that the flowing layout fits far more
+    // per line and stays at a larger, more legible size.
+    search: for (let fontSize = 11; fontSize >= 9; fontSize -= 0.5) {
+      doc.fontSize(fontSize);
+      const longest = Math.max(...data.openCategoryNames.map((n) => doc.widthOfString(n)));
+      const lineHeight = fontSize + (fontSize >= 10 ? 7 : 5);
+      for (let cols = 2; cols <= 6; cols += 1) {
+        const colWidth = (catInnerWidth - colGap * (cols - 1)) / cols;
+        if (longest > colWidth - 11) break;
+        const rowsPerCol = Math.ceil(data.openCategoryNames.length / cols);
+        if (rowsPerCol * lineHeight <= maxInnerHeight) {
+          grid = { cols, rowsPerCol, fontSize, lineHeight };
+          contentHeight = rowsPerCol * lineHeight;
+          break search;
+        }
+      }
+    }
+    if (!grid) {
+      for (flowFontSize = 11; ; flowFontSize -= 0.5) {
+        doc.fontSize(flowFontSize);
+        flowLines = packFlowLines();
+        flowLineHeight = flowFontSize + 4;
+        if (flowLines.length * flowLineHeight <= maxInnerHeight || flowFontSize <= 6.5) break;
+      }
+      contentHeight = Math.min(maxInnerHeight, flowLines.length * flowLineHeight);
     }
   }
+
+  const panelHeight = data.openCategoryNames.length === 0 ? Math.max(90, Math.min(140, maxPanelHeight)) : topPad + contentHeight + bottomPad;
 
   doc.roundedRect(PAGE_MARGIN, panelTop, width, panelHeight, 12).fillColor(WHITE).fill();
   drawPill(doc, "OPEN CATEGORIES", PAGE_MARGIN + width / 2, panelTop - 11, { width: 200 });
@@ -638,19 +734,27 @@ function renderFinalPage(doc: PDFKit.PDFDocument, data: RosterData, visitorFeedb
     doc.fontSize(10.5).fillColor(MUTED).text("Every active category is currently occupied in this chapter.", PAGE_MARGIN + 16, panelTop + panelHeight / 2 - 6, { width: width - 32, align: "center" });
   } else {
     const innerTop = panelTop + topPad;
-    const colWidth = (width - 32 - colGap * (catCols - 1)) / catCols;
 
     doc.save();
     doc.rect(PAGE_MARGIN, panelTop, width, panelHeight).clip();
-    doc.font("Helvetica").fontSize(catFontSize).fillColor(INK);
-    data.openCategoryNames.forEach((name, i) => {
-      const col = Math.floor(i / catRowsPerCol);
-      const row = i % catRowsPerCol;
-      const bx = PAGE_MARGIN + 16 + col * (colWidth + colGap);
-      const by = innerTop + row * catLineHeight;
-      doc.rect(bx, by + catFontSize * 0.3, 5, 5).fillColor(GREEN).fill();
-      doc.fillColor(INK).text(name, bx + 11, by, { width: colWidth - 11, height: catLineHeight, ellipsis: true });
-    });
+    if (grid) {
+      const { cols, rowsPerCol, fontSize, lineHeight } = grid;
+      const colWidth = (catInnerWidth - colGap * (cols - 1)) / cols;
+      doc.font("Helvetica").fontSize(fontSize).fillColor(INK);
+      data.openCategoryNames.forEach((name, i) => {
+        const col = Math.floor(i / rowsPerCol);
+        const row = i % rowsPerCol;
+        const bx = PAGE_MARGIN + 16 + col * (colWidth + colGap);
+        const by = innerTop + row * lineHeight;
+        doc.rect(bx, by + fontSize * 0.3, 5, 5).fillColor(GREEN).fill();
+        doc.fillColor(INK).text(name, bx + 11, by, { width: colWidth - 11, height: lineHeight });
+      });
+    } else {
+      doc.font("Helvetica").fontSize(flowFontSize).fillColor(INK);
+      flowLines.forEach((line, i) => {
+        doc.text(line, PAGE_MARGIN + 16, innerTop + i * flowLineHeight, { width: catInnerWidth, height: flowLineHeight, lineBreak: false });
+      });
+    }
     doc.restore();
     doc.fillColor(INK).font("Helvetica");
   }
@@ -735,8 +839,13 @@ export async function generateRosterPdf(data: RosterData): Promise<Buffer> {
   const visitorFeedbackQr = await fetchImageBuffer(data.visitorFeedbackQrUrl);
   const logoBuffer = await fetchImageBuffer("/images/brand/bwf-logo-512.png");
 
-  await renderCover(doc, data, logoBuffer);
-  await renderCoordinators(doc, data);
+  const associateBuffers = await Promise.all(data.roleAssignments.map((a) => fetchPhotoBuffer(a.photoUrl)));
+  const associatesOnCover = await renderCover(doc, data, logoBuffer, associateBuffers);
+  if (!associatesOnCover) {
+    doc.addPage();
+    drawPatternBackground(doc);
+    drawAssociates(doc, data, associateBuffers, PAGE_MARGIN + 20, doc.page.height - PAGE_MARGIN);
+  }
   await renderMemberTable(doc, data, logoBuffer);
   renderFinalPage(doc, data, visitorFeedbackQr);
 
