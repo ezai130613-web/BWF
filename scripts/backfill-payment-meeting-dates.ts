@@ -16,8 +16,11 @@ import { keyToDbDate, meetingDaysForMonths } from "@/lib/payments/coverage";
 
 async function main() {
   const apply = process.argv.includes("--apply");
+  // Rows from before the column existed hold NULL (Prisma reads it as []), which `isEmpty` doesn't match.
+  const ids = await db.$queryRaw<{ id: string }[]>`
+    SELECT id FROM payments WHERE type = 'MEETING' AND ("meetingDates" IS NULL OR cardinality("meetingDates") = 0)`;
   const payments = await db.payment.findMany({
-    where: { type: "MEETING", meetingDates: { isEmpty: true } },
+    where: { id: { in: ids.map((r) => r.id) } },
     include: { member: { select: { name: true, chapter: { select: { id: true, name: true, meetingWeekday: true, meetingWeeksOfMonth: true } } } } },
   });
   for (const p of payments) {
