@@ -3,6 +3,7 @@ import { istParts } from "@/lib/ist";
 import { nthWeekdayOfMonth } from "@/lib/meetings/generate";
 import type { MonthYear } from "@/lib/attendance/manage";
 import { addMonthsKey, dayBefore, dbDateKey, istDateKey, keyToDbDate, meetingsPerMonth, pad } from "@/lib/payments/dates";
+import { isMeetingPackage, MAX_PACKAGE_MEETINGS, MEETING_PACKAGE_SIZES } from "@/lib/payments/fees";
 
 export * from "@/lib/payments/dates";
 
@@ -120,27 +121,24 @@ function startKeyFor(joinedAt: Date, now: Date): string {
 
 /**
  * The member's next meetings not yet paid for or awaiting approval, from
- * today (a meeting today still counts — same-day payment is allowed), enough
- * for `months` months. What the member's "how many months" dropdown fills in.
+ * today (a meeting today still counts — same-day payment is allowed), the
+ * first `count` of them. What the member's meeting-package picker fills in.
  */
 export async function nextUnpaidMeetingDays(
   member: { id: string; joinedAt: Date; chapter: ChapterSchedule },
-  months: number,
+  count: number,
   now = new Date(),
 ): Promise<MeetingDay[]> {
   const coverage = await memberMeetingCoverage(member.id);
   const fromKey = startKeyFor(member.joinedAt, now);
-  const needed = months * meetingsPerMonth(member.chapter);
-  // Look far enough ahead for a full year plus whatever is already paid.
-  const toKey = addMonthsKey(fromKey, Math.max(months, 12) + 12 + 1);
+  const needed = count;
+  // Look far enough ahead for the biggest package plus whatever is already paid.
+  const toKey = addMonthsKey(fromKey, Math.ceil(Math.max(count, MAX_PACKAGE_MEETINGS) / Math.max(1, meetingsPerMonth(member.chapter))) + 12 + 1);
   const days = await chapterMeetingDays(member.chapter, fromKey, toKey);
   return days.filter((d) => !coverage.approved.has(d.date) && !coverage.pending.has(d.date)).slice(0, needed);
 }
 
-/**
- * Converts the older month-based selection (web before this change, and
- * app 1.0/1.1) into the chapter's meeting dates in those months.
- */
+/** Month → meeting dates. Only for converting old month-based payment records (scripts/backfill-payment-meeting-dates.ts). */
 export async function meetingDaysForMonths(chapter: ChapterSchedule, months: MonthYear[]): Promise<string[]> {
   const keys: string[] = [];
   for (const m of months) {
@@ -231,41 +229,33 @@ export async function loadMemberForCoverage(memberId: string) {
   return db.member.findUniqueOrThrow({ where: { id: memberId }, select: MEMBER_FOR_COVERAGE });
 }
 
+/** Payment.numberOfMonths is a legacy column; derived from the meeting count so older screens/exports still read sensibly. */
+export function monthsForMeetings(meetings: number, chapter: ChapterSchedule): number {
+  return Math.max(1, Math.ceil(meetings / Math.max(1, meetingsPerMonth(chapter))));
+}
+
+/** Shown to anyone who tries to pay the meeting fee any way other than a package (e.g. an old app build sending months). */
+export const PACKAGE_ONLY_ERROR = `The meeting fee can only be paid as a package of ${MEETING_PACKAGE_SIZES.join(", ").replace(/, (\d+)$/, " or $1")} meetings. If you're using the app, please update it.`;
+
 /**
- * Which meetings a member's meeting payment covers. Current web/app send
- * `monthsToPay` (1–12) and the server picks the next unpaid meetings — never
- * trusting dates from the browser. Older clients (web before 2026-11-03,
- * app 1.0/1.1) send numberOfMonths + month_i/year_i; those months are
- * converted to the chapter's meeting dates in them.
+ * Which meetings a member's meeting payment covers. The meeting fee can be
+ * paid ONLY as a package — `meetingsToPay` = 2, 6, 12 or 24 — and the server
+ * picks that many next unpaid meetings, never trusting dates from the
+ * browser. Anything else (months, a different count, too few meetings
+ * scheduled for the whole package) is refused.
  */
 export async function resolveMemberMeetingSelection(
   memberId: string,
   formData: { get(name: string): FormDataEntryValue | null },
 ): Promise<{ data: MeetingSelection; error?: undefined } | { data?: undefined; error: string }> {
+  const count = Number(formData.get("meetingsToPay"));
+  if (!isMeetingPackage(count)) return { error: PACKAGE_ONLY_ERROR };
   const member = await loadMemberForCoverage(memberId);
-  const monthsToPay = formData.get("monthsToPay");
-  if (monthsToPay !== null) {
-    const months = Number(monthsToPay);
-    if (!Number.isInteger(months) || months < 1 || months > 12) return { error: "Select how many months to pay for (1 to 12)." };
-    const days = await nextUnpaidMeetingDays(member, months);
-    if (!days.length) return { error: "No upcoming meetings were found for your chapter — please contact BWF." };
-    return { data: { dates: days.map((d) => d.date), numberOfMonths: months } };
+  const days = await nextUnpaidMeetingDays(member, count);
+  if (days.length < count) {
+    return { error: `Only ${days.length} upcoming meetings are scheduled for your chapter — choose a smaller package or contact BWF.` };
   }
-
-  const numberOfMonths = Number(formData.get("numberOfMonths"));
-  if (!Number.isInteger(numberOfMonths) || numberOfMonths < 1 || numberOfMonths > 24) return { error: "Select the number of months." };
-  const months: MonthYear[] = [];
-  for (let i = 0; i < numberOfMonths; i++) {
-    const month = Number(formData.get(`month_${i}`));
-    const year = Number(formData.get(`year_${i}`));
-    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 2000) {
-      return { error: "Select the month and year for every month covered." };
-    }
-    months.push({ month, year });
-  }
-  const dates = await meetingDaysForMonths(member.chapter, months);
-  if (!dates.length) return { error: "No meetings were found for your chapter in those months — please contact BWF." };
-  return { data: { dates, numberOfMonths } };
+  return { data: { dates: days.map((d) => d.date), numberOfMonths: monthsForMeetings(count, member.chapter) } };
 }
 
 /** True if any of these dates is already covered by an APPROVED meeting payment (flagged for review, never auto-rejected). */
@@ -327,7 +317,7 @@ export async function getMemberPaymentContext(memberId: string, now = new Date()
   const [dues, tiles, upcoming] = await Promise.all([
     getMemberDues(member, now),
     memberMeetingTiles(member, now),
-    nextUnpaidMeetingDays(member, 12, now),
+    nextUnpaidMeetingDays(member, MAX_PACKAGE_MEETINGS, now),
   ]);
   return { perMonth, dues, tiles, upcoming: upcoming.map((d) => d.date) };
 }

@@ -4,9 +4,10 @@ import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
 import { summarizeMemberPayments } from "@/lib/payments/overview";
-import { parseFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { packagesSummary, parseFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { PaymentMeetingGrid } from "@/components/member/payment-meeting-grid";
-import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
+import { formatAnnualMembershipFee } from "@/lib/format";
 import { formatMonthsCovered } from "@/lib/attendance/manage";
 import { formatDateKey, getMemberPaymentContext, paymentCoverageLabel } from "@/lib/payments/coverage";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
@@ -27,10 +28,10 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 
 
 /**
- * Member Payments (2026-10-21) — pay the monthly meeting fee or the annual
+ * Member Payments (2026-10-21) — pay the meeting fee (meeting packages) or the annual
  * BWF membership from the portal. Since Phase 40 this (and the app's
  * Payments screen) is the only place members pay — QR check-in only marks
- * attendance — and it opens with a month-by-month tick dashboard. Admins
+ * attendance — and it opens with a meeting-by-meeting tick dashboard. Admins
  * share /member/payments?type=meeting|membership links (Admin → Payment
  * Links); a signed-out member goes through login and lands back here.
  */
@@ -39,14 +40,13 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
   const { type: typeParam, online: onlineResult } = await searchParams;
   const type = typeParam === "membership" ? "MEMBERSHIP" : "MEETING";
 
-  const [payments, content, context] = await Promise.all([
+  const [payments, content, context, packages] = await Promise.all([
     db.payment.findMany({
       where: { memberId: member.id },
       include: { meeting: { select: { title: true } } },
       orderBy: { createdAt: "desc" },
     }),
     getContent([
-      "fees.monthlyMeeting",
       "fees.annualMembership",
       "payment.qrCodeUrl",
       "payment.bankAccountName",
@@ -63,20 +63,19 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
       "payment.membershipBankName",
     ]),
     getMemberPaymentContext(member.id),
+    getMeetingPackages(),
   ]);
   const online = isRazorpayConfigured();
   const { dues } = context;
 
   const { membershipYears, defaultMembershipYear } = summarizeMemberPayments(payments);
-  const monthlyFeeValue = parseFee(content["fees.monthlyMeeting"]);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
-  const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
 
   const details =
     type === "MEETING"
       ? {
           title: "Meeting payment",
-          fee: monthlyFee ? `${withGst(monthlyFee)} per month` : null,
+          fee: packagesSummary(packages),
           qr: content["payment.qrCodeUrl"],
           upiId: content["payment.upiId"],
           payeeName: content["payment.bankAccountName"],
@@ -90,7 +89,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
         }
       : {
           title: "Annual membership (BWF subscription)",
-          fee: annualFee ? `${annualFee.withGst} (${annualFee.total} per year incl. GST)` : null,
+          fee: annualFee ? `${annualFee.base} + GST per year` : null,
           qr: content["payment.membershipQrCodeUrl"],
           upiId: content["payment.membershipUpiId"],
           payeeName: content["payment.membershipBankAccountName"],
@@ -214,8 +213,8 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
             type={type}
             online={online}
             upcoming={context.upcoming}
-            perMonth={context.perMonth}
-            monthlyFee={monthlyFeeValue}
+            packages={packages}
+            membershipFee={parseFee(content["fees.annualMembership"])}
             membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
             membershipYears={membershipYears}
             defaultMembershipYear={defaultMembershipYear}

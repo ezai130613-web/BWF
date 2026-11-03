@@ -3,6 +3,11 @@ import { db } from "@/lib/db";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
 import { updateWebsiteContent } from "./actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { MeetingPackagesEditor } from "@/components/admin/meeting-packages-editor";
+import { MEETING_PACKAGES_KEY, parseMeetingPackages } from "@/lib/payments/fees";
+
+/** Shown by their own editor (the packages table) or no longer used (month fee, 2026-11-03). */
+const HIDDEN_KEYS = new Set([MEETING_PACKAGES_KEY, "fees.monthlyMeeting"]);
 
 /** Keys whose value is an image URL get the upload widget instead of a plain textarea. */
 const IMAGE_KEYS = new Set(["payment.qrCodeUrl", "payment.membershipQrCodeUrl", "roster.visitorFeedbackQrUrl"]);
@@ -11,8 +16,10 @@ export default async function ContentPage() {
   await requirePermission("content:manage");
 
   const blocks = await db.websiteContent.findMany({ orderBy: [{ section: "asc" }, { label: "asc" }] });
-  const bySection = new Map<string, typeof blocks>();
+  const packages = parseMeetingPackages(blocks.find((b) => b.key === MEETING_PACKAGES_KEY)?.value);
+  const bySection = new Map<string, typeof blocks>([["Fees", []]]);
   for (const block of blocks) {
+    if (HIDDEN_KEYS.has(block.key)) continue;
     if (!bySection.has(block.section)) bySection.set(block.section, []);
     bySection.get(block.section)!.push(block);
   }
@@ -28,10 +35,11 @@ export default async function ContentPage() {
         </p>
       </div>
 
-      {[...bySection.entries()].map(([section, items]) => (
+      {[...bySection.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([section, items]) => (
         <div key={section} className="rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6">
           <h2 className="text-sm font-semibold text-neutral-900">{section}</h2>
           <div className="mt-4 flex flex-col gap-4">
+            {section === "Fees" ? <MeetingPackagesEditor initial={packages} /> : null}
             {items.map((item) =>
               IMAGE_KEYS.has(item.key) ? (
                 <form key={item.key} action={updateWebsiteContent.bind(null, item.key)} className="flex flex-col gap-1.5">

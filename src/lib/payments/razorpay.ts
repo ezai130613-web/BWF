@@ -4,11 +4,14 @@ import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import { istParts } from "@/lib/ist";
-import { parseFee, quoteMeetingFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { isMeetingPackage, parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import {
   dbDateKey,
   keyToDbDate,
   loadMemberForCoverage,
+  monthsForMeetings,
+  PACKAGE_ONLY_ERROR,
   monthsOfDates,
   nextUnpaidMeetingDays,
   overlapsApprovedDates,
@@ -22,7 +25,7 @@ import { Prisma } from "@/generated/prisma/client";
  *
  * Uses Razorpay Payment Links (hosted page — works the same from the
  * website and the app, no checkout script). Flow:
- *   1. Member picks months (or the membership year) → createRazorpayCheckout()
+ *   1. Member picks a meeting package (or the membership year) → createRazorpayCheckout()
  *      works out the meeting dates and amount on the server, creates a
  *      Payment Link and a RazorpayCheckout row, and returns the link URL.
  *   2. Member pays on Razorpay → is sent back to /api/payments/razorpay/return,
@@ -72,16 +75,16 @@ async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
 
 export type CheckoutResult = { url: string; error?: undefined } | { url?: undefined; error: string };
 
-/** Step 1 — create a Payment Link for a member's meeting fee (`months` 1–12) or a year's membership. */
+/** Step 1 — create a Payment Link for a meeting package (`meetings` = 2, 6, 12 or 24 — nothing else) or a year's membership. */
 export async function createRazorpayCheckout(
   memberId: string,
-  request: { type: "MEETING"; months: number } | { type: "MEMBERSHIP"; membershipYear: number },
+  request: { type: "MEETING"; meetings: number } | { type: "MEMBERSHIP"; membershipYear: number },
 ): Promise<CheckoutResult> {
   if (!isRazorpayConfigured()) return { error: "Online payment isn't available yet — please use the screenshot upload." };
 
   const member = await loadMemberForCoverage(memberId);
   const profile = await db.member.findUniqueOrThrow({ where: { id: memberId }, select: { name: true, email: true, phone: true } });
-  const content = await getContent(["fees.monthlyMeeting", "fees.annualMembership"]);
+  const content = await getContent(["fees.annualMembership"]);
 
   let amountInr: number;
   let meetingDates: string[] = [];
@@ -90,16 +93,15 @@ export async function createRazorpayCheckout(
   let description: string;
 
   if (request.type === "MEETING") {
-    if (!Number.isInteger(request.months) || request.months < 1 || request.months > 12) {
-      return { error: "Select how many months to pay for (1 to 12)." };
+    const count = request.meetings;
+    if (!isMeetingPackage(count)) return { error: PACKAGE_ONLY_ERROR };
+    const days = await nextUnpaidMeetingDays(member, count);
+    if (days.length < count) {
+      return { error: `Only ${days.length} upcoming meetings are scheduled for your chapter — choose a smaller package or contact BWF.` };
     }
-    const quote = quoteMeetingFee(parseFee(content["fees.monthlyMeeting"]), request.months);
-    if (!quote) return { error: "The monthly meeting fee hasn't been set by BWF yet." };
-    const days = await nextUnpaidMeetingDays(member, request.months);
-    if (!days.length) return { error: "No upcoming meetings were found for your chapter — please contact BWF." };
-    amountInr = quote.total;
+    amountInr = quoteMeetings(count, await getMeetingPackages())!.total;
     meetingDates = days.map((d) => d.date);
-    numberOfMonths = request.months;
+    numberOfMonths = monthsForMeetings(days.length, member.chapter);
     description = `BWF meeting fee — ${days.length} meeting(s), ${meetingDates[0]} to ${meetingDates[meetingDates.length - 1]}`;
   } else {
     const year = request.membershipYear;

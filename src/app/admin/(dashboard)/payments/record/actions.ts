@@ -18,9 +18,12 @@ import {
   meetingsPerMonth,
   memberMeetingCoverage,
   membershipStanding,
+  monthsForMeetings,
   monthsOfDates,
   nextUnpaidMeetingDays,
+  PACKAGE_ONLY_ERROR,
 } from "@/lib/payments/coverage";
+import { isMeetingPackage, MAX_PACKAGE_MEETINGS } from "@/lib/payments/fees";
 
 /**
  * Offline payments entered by Accounts / Super Admin (client, 2026-11-03):
@@ -35,7 +38,7 @@ export type MemberPaymentOptions = {
   perMonth: number;
   /** Chapter meeting days from 3 months back to 15 months ahead, with what's already on file. */
   days: { date: string; status: "APPROVED" | "PENDING" | null }[];
-  /** Next 12 months of unpaid meetings — the auto-selection for "N months". */
+  /** Next unpaid meetings (enough for the biggest package) — the auto-selection for a package. */
   nextUnpaid: string[];
   membership: { year: number; status: "APPROVED" | "PENDING" | null }[];
 };
@@ -51,7 +54,7 @@ export async function loadMemberPaymentOptions(memberId: string): Promise<Member
     chapterMeetingDays(member.chapter, addMonthsKey(today, -3), addMonthsKey(today, 15)),
     memberMeetingCoverage(memberId),
     // "Next unpaid" for Accounts starts from today too — a back-dated entry can tick earlier meetings by hand.
-    nextUnpaidMeetingDays(member, 12),
+    nextUnpaidMeetingDays(member, MAX_PACKAGE_MEETINGS),
     ...[year - 1, year, year + 1].map((y) => membershipStanding(memberId, y)),
   ]);
   return {
@@ -76,7 +79,6 @@ const schema = z.object({
   actualPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the payment date."),
   reference: z.string().trim().max(200).optional(),
   remarks: z.string().trim().max(1000).optional(),
-  numberOfMonths: z.coerce.number().int().min(0).max(24).optional(),
   membershipYear: z.coerce.number().int().optional(),
   idempotencyKey: z.string().min(1).max(100),
 });
@@ -93,7 +95,6 @@ export async function recordOfflinePayment(_prev: RecordPaymentState | undefined
     actualPaymentDate: formData.get("actualPaymentDate"),
     reference: formData.get("reference") || undefined,
     remarks: formData.get("remarks") || undefined,
-    numberOfMonths: formData.get("numberOfMonths") || undefined,
     membershipYear: formData.get("membershipYear") || undefined,
     idempotencyKey: formData.get("idempotencyKey"),
   });
@@ -121,7 +122,9 @@ export async function recordOfflinePayment(_prev: RecordPaymentState | undefined
   let summary: string;
   if (input.type === "MEETING") {
     const dates = [...new Set(formData.getAll("meetingDate").map(String))].filter(isDateKey).sort();
-    if (!dates.length) return { error: "Tick at least one meeting date." };
+    const packageSize = Number(formData.get("meetingsToPay"));
+    if (!isMeetingPackage(packageSize)) return { error: PACKAGE_ONLY_ERROR };
+    if (dates.length !== packageSize) return { error: `Tick exactly ${packageSize} meetings for this package (${dates.length} ticked).` };
     // Only real meeting days of the member's chapter, and none already paid.
     const coverageMember = await loadMemberForCoverage(member.id);
     const valid = new Set(
@@ -134,7 +137,7 @@ export async function recordOfflinePayment(_prev: RecordPaymentState | undefined
     if (already.length) return { error: `Already paid: ${already.join(", ")}. Untick those dates.` };
     data = {
       ...base,
-      numberOfMonths: input.numberOfMonths || Math.max(1, Math.round(dates.length / meetingsPerMonth(coverageMember.chapter))),
+      numberOfMonths: monthsForMeetings(dates.length, coverageMember.chapter),
       meetingDates: dates.map(keyToDbDate),
       monthsCovered: monthsOfDates(dates),
     };

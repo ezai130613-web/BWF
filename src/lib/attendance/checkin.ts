@@ -69,7 +69,7 @@ export async function checkInMember(memberId: string, token: string, formData: P
   }
 
   const overlapsApprovedCoverage = paymentInput ? await overlapsApprovedDates(memberId, paymentInput.dates) : false;
-  const expectedAmountInr = paymentInput ? await expectedAmountFor("MEETING", paymentInput.numberOfMonths) : null;
+  const expectedAmountInr = paymentInput ? await expectedAmountFor("MEETING", paymentInput.dates.length) : null;
 
   await db.$transaction(async (tx) => {
     const existing = await tx.attendance.findUnique({

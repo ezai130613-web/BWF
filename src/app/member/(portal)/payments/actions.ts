@@ -32,7 +32,7 @@ export async function startOnlinePayment(
   try {
     const result =
       type === "MEETING"
-        ? await createRazorpayCheckout(member.id, { type, months: Number(formData.get("monthsToPay")) })
+        ? await createRazorpayCheckout(member.id, { type, meetings: Number(formData.get("meetingsToPay")) })
         : await createRazorpayCheckout(member.id, { type, membershipYear: Number(formData.get("membershipYear")) });
     return result.error ? { error: result.error } : { url: result.url };
   } catch (err) {

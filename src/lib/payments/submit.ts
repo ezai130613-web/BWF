@@ -3,23 +3,23 @@ import { db } from "@/lib/db";
 import { hasApprovedMembership, parseProofFields, type PaymentFieldSource } from "@/lib/payments/member-payments";
 import { keyToDbDate, monthsOfDates, overlapsApprovedDates, resolveMemberMeetingSelection } from "@/lib/payments/coverage";
 import { getContent } from "@/lib/content";
-import { parseFee, quoteMeetingFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { Prisma } from "@/generated/prisma/client";
 
-/** Phase 40 — what a payment should come to with today's fee settings (null when the fee isn't set). */
-export async function expectedAmountFor(type: "MEETING" | "MEMBERSHIP", months: number): Promise<Prisma.Decimal | null> {
-  const content = await getContent(["fees.monthlyMeeting", "fees.annualMembership"]);
+/** Phase 40 — what a payment should come to (meeting package price for `meetings`, or the annual fee; null when unset). */
+export async function expectedAmountFor(type: "MEETING" | "MEMBERSHIP", meetings: number): Promise<Prisma.Decimal | null> {
   const total =
     type === "MEETING"
-      ? (quoteMeetingFee(parseFee(content["fees.monthlyMeeting"]), months)?.total ?? null)
-      : quoteMembershipFee(parseFee(content["fees.annualMembership"]));
+      ? (quoteMeetings(meetings, await getMeetingPackages())?.total ?? null)
+      : quoteMembershipFee(parseFee((await getContent(["fees.annualMembership"]))["fees.annualMembership"]));
   return total === null ? null : new Prisma.Decimal(total);
 }
 
 export type MemberPaymentState = { error?: string; success?: boolean };
 
 /**
- * Member portal / payment-link submission (2026-10-21) — a monthly meeting
+ * Member portal / payment-link submission (2026-10-21) — a meeting-package
  * payment or the annual membership subscription, made outside of QR
  * check-in, so it's never tied to a meeting or an attendance record. Lands
  * in the same Payment table and the same Pending Approval review queue.
@@ -49,7 +49,7 @@ export async function submitMemberPaymentFor(
       meetingDates: dates.map(keyToDbDate),
       monthsCovered: monthsOfDates(dates),
       amountPaidInr: new Prisma.Decimal(proof.data.amountPaidInr),
-      expectedAmountInr: await expectedAmountFor("MEETING", numberOfMonths),
+      expectedAmountInr: await expectedAmountFor("MEETING", dates.length),
       actualPaymentDate: proof.data.actualPaymentDate,
       proofUrl: proof.data.proofUrl,
       overlapsApprovedCoverage: await overlapsApprovedDates(memberId, dates),

@@ -8,7 +8,7 @@ import {
   type RecordPaymentState,
 } from "@/app/admin/(dashboard)/payments/record/actions";
 import { formatDateKey } from "@/lib/payments/dates";
-import { formatRupees, MEETING_FEE_GST_PERCENT } from "@/lib/payments/fees";
+import { formatRupees, packageLabel, plusGst, quoteMeetings, type MeetingPackage } from "@/lib/payments/fees";
 import { cn } from "@/lib/utils";
 
 const input =
@@ -18,18 +18,21 @@ const label = "flex flex-col gap-1.5 text-sm font-medium text-neutral-700";
 const todayIst = () => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
 
 /**
- * Accounts' offline-payment form (2026-11-03). Choosing "N months" ticks the
- * member's next N × (meetings per month) unpaid meetings; any date can then
- * be ticked or unticked by hand ("middle of the month" cases). Dates already
+ * Accounts' offline-payment form (2026-11-03). Choosing a meeting package
+ * (2/6/12/24) ticks the member's next that-many unpaid meetings; any date can
+ * be swapped by hand, but exactly that many must stay ticked — the meeting fee
+ * can only be paid as a package. Prices are shown as "₹X + GST". Dates already
  * paid are shown but can't be ticked.
  */
 export function RecordPaymentForm({
   members,
-  monthlyFee,
+  packages,
+  membershipFee,
   membershipTotal,
 }: {
+  membershipFee: number | null;
   members: { id: string; label: string }[];
-  monthlyFee: number | null;
+  packages: MeetingPackage[];
   membershipTotal: number | null;
 }) {
   const [query, setQuery] = useState("");
@@ -38,7 +41,7 @@ export function RecordPaymentForm({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
   const [type, setType] = useState<"MEETING" | "MEMBERSHIP">("MEETING");
-  const [months, setMonths] = useState(1);
+  const [packageSize, setPackageSize] = useState<number>(packages[0].meetings);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typedAmount, setTypedAmount] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
@@ -49,7 +52,7 @@ export function RecordPaymentForm({
   }, [members, query]);
 
   function autoSelect(opts: MemberPaymentOptions, n: number) {
-    setSelected(new Set(opts.nextUnpaid.slice(0, n * opts.perMonth)));
+    setSelected(new Set(opts.nextUnpaid.slice(0, n)));
   }
 
   function pickMember(id: string) {
@@ -62,7 +65,7 @@ export function RecordPaymentForm({
       const result = await loadMemberPaymentOptions(id);
       if ("error" in result) return setLoadError(result.error);
       setOptions(result);
-      autoSelect(result, months);
+      autoSelect(result, packageSize);
     });
   }
 
@@ -76,16 +79,16 @@ export function RecordPaymentForm({
       const fresh = id ? await loadMemberPaymentOptions(id) : null;
       if (fresh && !("error" in fresh)) {
         setOptions(fresh);
-        setSelected(new Set());
+        autoSelect(fresh, packageSize);
       }
     }
     return result;
   }, {} as RecordPaymentState);
 
-  const perMeeting = options && monthlyFee ? monthlyFee / options.perMonth : null;
-  const meetingSubtotal = perMeeting ? Math.round(perMeeting * selected.size) : null;
-  const meetingTotal = meetingSubtotal === null ? null : meetingSubtotal + Math.round((meetingSubtotal * MEETING_FEE_GST_PERCENT) / 100);
-  const suggested = type === "MEETING" ? meetingTotal : membershipTotal;
+  const meetingQuote = quoteMeetings(packageSize, packages);
+  // The meeting fee is paid only as a package: exactly that many meetings must be ticked.
+  const countMismatch = type === "MEETING" && options !== null && selected.size !== packageSize;
+  const suggested = type === "MEETING" ? (meetingQuote?.total ?? null) : membershipTotal;
   const amount = typedAmount ?? (suggested ? String(suggested) : "");
 
   // Default to this year, or next year once this year is paid — never silently to last year.
@@ -112,7 +115,7 @@ export function RecordPaymentForm({
           {loadError ? <span className="text-xs font-normal text-red-600">{loadError}</span> : null}
           {options ? (
             <span className="text-xs font-normal text-neutral-600">
-              {options.name} · {options.chapterName} · {options.perMonth} meetings a month
+              {options.name} · {options.chapterName}
             </span>
           ) : null}
         </div>
@@ -167,31 +170,36 @@ export function RecordPaymentForm({
 
       {options && type === "MEETING" ? (
         <div className="flex flex-col gap-3">
+          <input type="hidden" name="meetingsToPay" value={packageSize} />
           <label className={cn(label, "max-w-xs")}>
-            How many months
+            Meeting package
             <select
-              name="numberOfMonths"
-              value={months}
+              value={packageSize}
               onChange={(e) => {
                 const n = Number(e.target.value);
-                setMonths(n);
+                setPackageSize(n);
                 setTypedAmount(null);
                 autoSelect(options, n);
               }}
               className={input}
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n} month{n === 1 ? "" : "s"} ({n * options.perMonth} meetings)
+              {packages.map((p) => (
+                <option key={p.meetings} value={p.meetings}>
+                  {packageLabel(p)}
                 </option>
               ))}
             </select>
           </label>
           <div>
             <p className="text-sm font-medium text-neutral-700">
-              Meetings covered — {selected.size} ticked
-              <span className="ml-2 font-normal text-neutral-500">(auto-ticked from the next unpaid meeting; adjust if needed)</span>
+              Meetings covered — {selected.size} of {packageSize} ticked
+              <span className="ml-2 font-normal text-neutral-500">(auto-ticked from the next unpaid meeting; you can swap dates)</span>
             </p>
+            {countMismatch ? (
+              <p className="mt-1 text-xs text-red-600">
+                Tick exactly {packageSize} meetings — the meeting fee can only be paid as a package of 2, 6, 12 or 24 meetings.
+              </p>
+            ) : null}
             <div className="mt-2 grid max-h-80 grid-cols-2 gap-1.5 overflow-y-auto rounded-xl border border-neutral-200 bg-neutral-50 p-3 sm:grid-cols-3 lg:grid-cols-4">
               {options.days.map((d) => {
                 const paid = d.status === "APPROVED";
@@ -246,9 +254,18 @@ export function RecordPaymentForm({
 
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
-          Amount received (₹)
+          Amount received (₹, incl. GST)
           <input type="number" name="amountPaidInr" required min={1} step="0.01" value={amount} onChange={(e) => setTypedAmount(e.target.value)} className={input} />
-          {suggested ? <span className="text-xs font-normal text-neutral-500">Calculated: {formatRupees(suggested)} incl. GST</span> : null}
+          {type === "MEETING" && meetingQuote ? (
+            <span className="text-xs font-normal text-neutral-500">
+              Package: {plusGst(meetingQuote.subtotal)} ({formatRupees(meetingQuote.total)} with GST)
+            </span>
+          ) : type === "MEMBERSHIP" && membershipFee ? (
+            <span className="text-xs font-normal text-neutral-500">
+              Membership: {plusGst(membershipFee)}
+              {membershipTotal ? ` (${formatRupees(membershipTotal)} with GST)` : ""}
+            </span>
+          ) : null}
         </label>
         <label className={label}>
           Reference (optional)
@@ -265,7 +282,7 @@ export function RecordPaymentForm({
 
       <button
         type="submit"
-        disabled={saving || !options}
+        disabled={saving || !options || countMismatch}
         className="self-start rounded-lg bg-emerald-800 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
       >
         {saving ? "Saving…" : "Record payment"}

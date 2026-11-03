@@ -1,6 +1,8 @@
 import { getContent } from "@/lib/content";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
 import { Container } from "@/components/ui/container";
+import { finalFee, formatRupees } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { SectionLabel } from "@/components/ui/section-label";
 
 export async function MeetingCharges() {
@@ -10,7 +12,6 @@ export async function MeetingCharges() {
     "fees.visitorOnspotMeetingOnly",
     "fees.visitorOnspotMeetingBreakfast",
     "fees.annualMembership",
-    "fees.monthlyMeeting",
   ]);
 
   const prebookMeetingOnly = withGst(formatInr(content["fees.visitorPrebookMeetingOnly"]));
@@ -18,7 +19,7 @@ export async function MeetingCharges() {
   const onspotMeetingOnly = withGst(formatInr(content["fees.visitorOnspotMeetingOnly"]));
   const onspotBreakfast = withGst(formatInr(content["fees.visitorOnspotMeetingBreakfast"]));
   const annual = formatAnnualMembershipFee(content["fees.annualMembership"]);
-  const monthly = formatInr(content["fees.monthlyMeeting"]);
+  const packages = await getMeetingPackages();
 
   return (
     <section className="bg-emerald-900 py-24">
@@ -65,15 +66,22 @@ export async function MeetingCharges() {
                 <p className="font-display text-3xl text-gold-400">{annual?.withGst ?? "Contact BWF"}</p>
                 <p className="mt-1 text-sm text-ivory-100">Annual Membership Fee</p>
                 <p className="mt-1 text-sm text-slate-400">
-                  {annual ? `${annual.total} per year including GST.` : "Applicable annual BWF membership fee."}
+                  {annual ? "Per year, plus GST." : "Applicable annual BWF membership fee."}
                 </p>
               </div>
               <div>
-                <p className="font-display text-3xl text-gold-400">{monthly ?? "Contact BWF"}</p>
-                <p className="mt-1 text-sm text-ivory-100">Monthly Meeting Charges</p>
-                <p className="mt-1 text-sm text-slate-400">
-                  Covers both regular meetings of the month — hotel/venue, breakfast/food, and
-                  meeting arrangements.
+                <p className="font-display text-3xl text-gold-400">{withGst(formatRupees(finalFee(packages[0])))}</p>
+                <p className="mt-1 text-sm text-ivory-100">Meeting Charges — {packages[0].meetings} meetings</p>
+                <ul className="mt-2 flex flex-col gap-0.5 text-sm text-slate-300">
+                  {packages.slice(1).map((p) => (
+                    <li key={p.meetings}>
+                      {p.meetings} meetings — {withGst(formatRupees(finalFee(p)))}
+                      {p.discount ? <span className="text-gold-400"> (save {formatRupees(p.discount)})</span> : null}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm text-slate-400">
+                  Covers hotel/venue, breakfast/food, and meeting arrangements for each meeting.
                 </p>
               </div>
             </div>

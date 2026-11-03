@@ -282,18 +282,38 @@ export type PaymentsResponse = {
   /** Phase 40 — month-by-month meeting-fee status (tick = approved). Optional: older servers don't send it. */
   monthGrid?: PaymentMonthTile[];
   /** Phase 40 — numbers for pre-filling the amount: monthly fee before GST, GST %, annual membership total incl. GST. */
-  feeQuote?: { monthlyMeetingInr: number | null; gstPercent: number; membershipTotalInr: number | null };
+  feeQuote?: {
+    /** Always null now — the meeting fee is meetingPackages only. Kept for older builds. */
+    monthlyMeetingInr: number | null;
+    gstPercent: number;
+    membershipTotalInr: number | null;
+    /** Annual membership fee before GST (shown as "₹X + GST"). */
+    membershipFeeInr?: number | null;
+  };
   // --- 2026-11-03: meeting-date payments. Optional: older servers don't send them. ---
   /** "You're due for payment" — null when nothing is due. */
   dues?: { title: string; items: string[] } | null;
   /** Meeting-by-meeting status (replaces monthGrid in newer app builds). */
   meetingGrid?: PaymentMeetingTile[];
-  /** The member's next unpaid meeting dates ("YYYY-MM-DD"), 12 months' worth — the preview for "N months". */
+  /** The member's next unpaid meeting dates ("YYYY-MM-DD"), enough for the biggest package — the preview of what a package covers. */
   upcomingUnpaid?: string[];
   /** Meetings in one month for this chapter (2 today). */
   meetingsPerMonth?: number;
+  /** 2026-11-03 — the meeting fee is sold only as these packages (2/6/12/24 meetings). Pay with meetingsToPay. */
+  meetingPackages?: MeetingPackage[];
   /** True when Razorpay is switched on: pay with POST /payments/online instead of uploading proof. */
   onlinePayments?: boolean;
+};
+
+export type MeetingPackage = {
+  meetings: number;
+  /** Package price before GST, e.g. 5500. */
+  priceInr: number;
+  /** The admin-set fees for the package, before the discount. */
+  originalInr: number;
+  discountInr: number;
+  gstInr: number;
+  totalInr: number;
 };
 
 export type PaymentMeetingTile = {

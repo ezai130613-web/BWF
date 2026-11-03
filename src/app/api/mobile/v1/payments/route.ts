@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
-import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
+import { formatAnnualMembershipFee } from "@/lib/format";
 import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
 import { fieldsFromJson } from "@/lib/payments/member-payments";
 import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
-import { MEETING_FEE_GST_PERCENT, parseFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { MEETING_FEE_GST_PERCENT, packagesSummary, parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { submitMemberPaymentFor } from "@/lib/payments/submit";
 import { formatDateKey, getMemberPaymentContext, paymentCoverageLabel } from "@/lib/payments/coverage";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
@@ -14,7 +15,6 @@ import { invalid, json, mobileHandler, requireMobileMember } from "@/lib/mobile/
 import type { PaymentsResponse } from "@/lib/mobile/contract";
 
 const PAYEE_KEYS = [
-  "fees.monthlyMeeting",
   "fees.annualMembership",
   "payment.qrCodeUrl",
   "payment.bankAccountName",
@@ -33,10 +33,11 @@ const PAYEE_KEYS = [
 /** The member's payments, standing, and where to pay — the data behind /member/payments. */
 export const GET = mobileHandler(async (request: Request) => {
   const { member } = await requireMobileMember(request);
-  const [payments, content, context] = await Promise.all([
+  const [payments, content, context, packages] = await Promise.all([
     db.payment.findMany({ where: { memberId: member.id }, include: { meeting: { select: { title: true } } }, orderBy: { createdAt: "desc" } }),
     getContent(PAYEE_KEYS),
     getMemberPaymentContext(member.id),
+    getMeetingPackages(),
   ]);
   const { dues } = context;
   const dueItems: string[] = [];
@@ -45,7 +46,6 @@ export const GET = mobileHandler(async (request: Request) => {
   }
   if (dues.membership.status === null) dueItems.push(`Annual BWF membership for ${dues.membership.year}.`);
   const summary = summarizeMemberPayments(payments);
-  const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
 
   const body: PaymentsResponse = {
@@ -67,8 +67,8 @@ export const GET = mobileHandler(async (request: Request) => {
     membershipYears: summary.membershipYears,
     defaultMembershipYear: summary.defaultMembershipYear,
     fees: {
-      monthlyMeeting: monthlyFee ? `${withGst(monthlyFee)} per month` : null,
-      annualMembership: annualFee ? `${annualFee.withGst} (${annualFee.total} per year incl. GST)` : null,
+      monthlyMeeting: packagesSummary(packages),
+      annualMembership: annualFee ? `${annualFee.base} + GST per year` : null,
     },
     meetingPayee: {
       qrCodeUrl: content["payment.qrCodeUrl"],
@@ -89,14 +89,20 @@ export const GET = mobileHandler(async (request: Request) => {
     uploadsEnabled: isStorageConfigured(),
     monthGrid: buildMonthGrid(payments, member.joinedAt),
     feeQuote: {
-      monthlyMeetingInr: parseFee(content["fees.monthlyMeeting"]),
+      // Meeting fees are packages now (meetingPackages); null so older app builds don't show a per-month price.
+      monthlyMeetingInr: null,
       gstPercent: MEETING_FEE_GST_PERCENT,
       membershipTotalInr: quoteMembershipFee(parseFee(content["fees.annualMembership"])),
+      membershipFeeInr: parseFee(content["fees.annualMembership"]),
     },
     dues: dueItems.length ? { title: `Hi ${member.name.split(" ")[0]}, you're due for payment`, items: dueItems } : null,
     meetingGrid: context.tiles,
     upcomingUnpaid: context.upcoming,
     meetingsPerMonth: context.perMonth,
+    meetingPackages: packages.map((p) => {
+      const q = quoteMeetings(p.meetings, packages)!;
+      return { meetings: p.meetings, priceInr: q.subtotal, originalInr: q.original, discountInr: q.discount, gstInr: q.gst, totalInr: q.total };
+    }),
     onlinePayments: isRazorpayConfigured(),
   };
   return json(body);

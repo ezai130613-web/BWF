@@ -335,6 +335,18 @@ async function main() {
       value: "20000",
     },
     { key: "fees.monthlyMeeting", label: "Monthly meeting charge (₹)", section: "Fees", value: null },
+    // 2026-11-03 — meeting fee packages (fees + discount each), edited as a table in Website Content → Fees.
+    {
+      key: "fees.meetingPackages",
+      label: "Meeting fee packages",
+      section: "Fees",
+      value: JSON.stringify([
+        { meetings: 2, fee: 2000, discount: 0 },
+        { meetings: 6, fee: 6000, discount: 500 },
+        { meetings: 12, fee: 12000, discount: 1000 },
+        { meetings: 24, fee: 24000, discount: 3000 },
+      ]),
+    },
     // User-supplied real BWF bank accounts (2026-09-09) — two SEPARATE
     // accounts, not one: Meeting/visitor payment goes to the ICICI account,
     // Membership payment to a different IDFC FIRST account. Do not merge

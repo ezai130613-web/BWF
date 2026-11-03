@@ -284,7 +284,7 @@ export function ApplyWizard({
               <p className="text-sm text-ivory-100">
                 Annual membership fee: <span className="font-medium text-gold-400">{annualFee.withGst}</span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">{annualFee.total} per year including GST.</p>
+              <p className="mt-1 text-xs text-slate-400">Per year, plus GST.</p>
             </div>
           ) : null}
 

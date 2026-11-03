@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
 import { getBooleanSetting } from "@/lib/settings";
 import { parseFee, quoteMembershipFee } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { RecordPaymentForm } from "@/components/admin/record-payment-form";
 import { AttendancePaymentSwitch } from "@/components/admin/attendance-payment-switch";
@@ -20,7 +21,7 @@ export default async function RecordPaymentPage() {
       select: { id: true, name: true, phone: true, chapter: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
-    getContent(["fees.monthlyMeeting", "fees.annualMembership"]),
+    getContent(["fees.annualMembership"]),
     getBooleanSetting("attendance.requirePayment"),
   ]);
 
@@ -31,8 +32,8 @@ export default async function RecordPaymentPage() {
           <AdminPageIcon />Record Offline Payment
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          For members who paid by cash, bank transfer, UPI or cheque. Pick the member and how many months — their next
-          unpaid meetings are ticked for you; untick or tick extra dates if needed. It&apos;s approved straight away and
+          For members who paid by cash, bank transfer, UPI or cheque. Pick the member and a meeting package (2, 6, 12 or 24
+          meetings) — their next unpaid meetings are ticked for you; untick or tick extra dates if needed. It&apos;s approved straight away and
           counts for attendance.
         </p>
       </div>
@@ -41,7 +42,8 @@ export default async function RecordPaymentPage() {
 
       <RecordPaymentForm
         members={members.map((m) => ({ id: m.id, label: `${m.name} — ${m.chapter.name}${m.phone ? ` · ${m.phone}` : ""}` }))}
-        monthlyFee={parseFee(content["fees.monthlyMeeting"])}
+        packages={await getMeetingPackages()}
+        membershipFee={parseFee(content["fees.annualMembership"])}
         membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
       />
     </div>

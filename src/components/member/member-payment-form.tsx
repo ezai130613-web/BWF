@@ -9,22 +9,22 @@ import {
 } from "@/app/member/(portal)/payments/actions";
 import { MeetingPaymentFields, ProofFields } from "@/components/checkin/meeting-payment-fields";
 import { FormStatus, inputClass, primaryButtonClass } from "@/components/member/ui";
-import { formatRupees, quoteMeetingFee } from "@/lib/payments/fees";
+import { plusGst, quoteMeetings, type MeetingPackage } from "@/lib/payments/fees";
 
 const initialState: MemberPaymentState = {};
 const initialOnline: OnlinePaymentState = {};
 
 /**
- * Member payment form. 2026-11-03: the meeting fee is chosen as "how many
- * months" and shows the exact meetings it covers. With Razorpay switched on
+ * Member payment form. 2026-11-03: the meeting fee is a meeting package
+ * (2/6/12/24 meetings) and shows the exact meetings it covers. With Razorpay switched on
  * (`online`), the member pays on Razorpay and it's approved automatically;
  * otherwise they upload a screenshot for BWF to approve, as before.
  */
 export function MemberPaymentForm({
   type,
   upcoming,
-  perMonth,
-  monthlyFee,
+  packages,
+  membershipFee,
   membershipTotal,
   membershipYears,
   defaultMembershipYear,
@@ -32,9 +32,9 @@ export function MemberPaymentForm({
 }: {
   type: "MEETING" | "MEMBERSHIP";
   upcoming: string[];
-  perMonth: number;
-  /** The monthly fee (before GST) and annual total (incl. GST). */
-  monthlyFee: number | null;
+  packages: MeetingPackage[];
+  /** Annual membership fee before GST, and the total incl. GST (pre-fills the amount paid). */
+  membershipFee: number | null;
   membershipTotal: number | null;
   membershipYears: number[];
   defaultMembershipYear: number;
@@ -44,7 +44,9 @@ export function MemberPaymentForm({
   const [onlineState, onlineAction, onlinePending] = useActionState(startOnlinePayment.bind(null, type), initialOnline);
   // One key per form mount (same duplicate-submit protection as check-in).
   const [idempotencyKey] = useState(() => crypto.randomUUID());
-  const [months, setMonths] = useState(1);
+  // Only packages the chapter has enough scheduled meetings for.
+  const available = packages.filter((p) => p.meetings <= upcoming.length);
+  const [meetings, setMeetings] = useState<number>(available[0]?.meetings ?? 0);
 
   useEffect(() => {
     if (onlineState?.url) window.location.href = onlineState.url;
@@ -62,14 +64,16 @@ export function MemberPaymentForm({
     );
   }
 
-  const onlineTotal = type === "MEETING" ? (quoteMeetingFee(monthlyFee, months)?.total ?? null) : membershipTotal;
+  // Shown before GST, always as "₹X + GST".
+  const price = type === "MEETING" ? (quoteMeetings(meetings, available)?.subtotal ?? null) : membershipFee;
+  const blocked = type === "MEETING" && !available.length;
   const busy = online ? onlinePending || Boolean(onlineState?.url) : pending;
 
   return (
     <form action={online ? onlineAction : formAction} className="flex flex-col gap-4">
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {type === "MEETING" ? (
-        <MeetingPaymentFields upcoming={upcoming} perMonth={perMonth} monthlyFee={monthlyFee} withProof={!online} onMonthsChange={setMonths} />
+        <MeetingPaymentFields upcoming={upcoming} packages={available} withProof={!online} onMeetingsChange={setMeetings} />
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -83,9 +87,9 @@ export function MemberPaymentForm({
             </select>
           </label>
           {online ? (
-            membershipTotal ? (
+            membershipFee ? (
               <p className="text-sm text-neutral-700">
-                Amount: <span className="font-semibold text-neutral-900">{formatRupees(membershipTotal)}</span> (incl. GST)
+                Amount: <span className="font-semibold text-neutral-900">{plusGst(membershipFee)}</span>
               </p>
             ) : null
           ) : (
@@ -94,11 +98,11 @@ export function MemberPaymentForm({
         </>
       )}
       <FormStatus error={online ? onlineState?.error : state?.error} />
-      <button type="submit" disabled={busy} className={`${primaryButtonClass} self-start`}>
+      <button type="submit" disabled={busy || blocked} className={`${primaryButtonClass} self-start`}>
         {online
           ? busy
             ? "Opening Razorpay…"
-            : `Pay ${onlineTotal ? formatRupees(onlineTotal) : ""} online`.replace("  ", " ")
+            : `Pay ${price ? plusGst(price) : ""} online`.replace("  ", " ")
           : pending
             ? "Submitting…"
             : "Submit payment"}

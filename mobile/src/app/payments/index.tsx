@@ -31,19 +31,14 @@ export default function PaymentsScreen() {
           {data.dues ? <Notice tone="danger" message={`${data.dues.title}\n• ${data.dues.items.join('\n• ')}\nYou need both paid to mark attendance.`} /> : null}
 
           <StatGrid>
-            {data.meetingGrid ? (
-              <StatTile
-                label={`Next meeting · ${data.meetingGrid.find((t) => t.next)?.label ?? '—'}`}
-                value={(() => {
-                  const next = data.meetingGrid.find((t) => t.next);
-                  return !next ? '—' : next.status === 'PAID' ? 'Paid' : next.status === 'PENDING' ? 'Pending' : 'Not paid';
-                })()}
-                icon="calendar-outline"
-              />
-            ) : (
-              <StatTile label={`Meeting fee · ${data.thisMonth.label}`} value={standing(data.thisMonth.status)} icon="calendar-outline" />
-            )}
-            {data.meetingGrid ? null : <StatTile label="Meeting fee paid through" value={data.paidThrough ?? '—'} icon="time-outline" />}
+            <StatTile
+              label={`Next meeting · ${data.meetingGrid?.find((t) => t.next)?.label ?? '—'}`}
+              value={(() => {
+                const next = data.meetingGrid?.find((t) => t.next);
+                return !next ? '—' : next.status === 'PAID' ? 'Paid' : next.status === 'PENDING' ? 'Pending' : 'Not paid';
+              })()}
+              icon="calendar-outline"
+            />
             <StatTile label={`Membership · ${data.membership.year}`} value={standing(data.membership.status)} icon="ribbon-outline" />
           </StatGrid>
 
@@ -52,13 +47,6 @@ export default function PaymentsScreen() {
               <PaymentMonthGrid tiles={data.meetingGrid.map((t) => ({ month: 0, year: 0, label: t.label, status: t.status, current: t.next }))} />
               <Body muted style={{ marginTop: space.md, fontSize: 13 }}>
                 Each box is one of your chapter’s meetings; the outlined one is your next meeting. “No record” means nothing is on file for that meeting.
-              </Body>
-            </Card>
-          ) : data.monthGrid ? (
-            <Card title="Meeting fee — month by month" icon="calendar-outline">
-              <PaymentMonthGrid tiles={data.monthGrid} />
-              <Body muted style={{ marginTop: space.md, fontSize: 13 }}>
-                A month gets its tick once BWF approves the payment covering it. “No record” means nothing was submitted in the app or website for that month — payments made before the website aren’t shown.
               </Body>
             </Card>
           ) : null}

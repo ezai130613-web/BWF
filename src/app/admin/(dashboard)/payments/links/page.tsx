@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getPaymentsScope } from "@/lib/auth/rbac";
 import { getContent } from "@/lib/content";
-import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
+import { formatAnnualMembershipFee } from "@/lib/format";
+import { packagesSummary } from "@/lib/payments/fees";
+import { getMeetingPackages } from "@/lib/payments/packages";
 import { SITE_URL } from "@/lib/site";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { PaymentLinkCard } from "@/components/admin/payment-link-card";
@@ -14,8 +16,7 @@ import { PaymentLinkCard } from "@/components/admin/payment-link-card";
  */
 export default async function PaymentLinksPage() {
   await getPaymentsScope();
-  const content = await getContent(["fees.monthlyMeeting", "fees.annualMembership"]);
-  const monthly = formatInr(content["fees.monthlyMeeting"]);
+  const content = await getContent(["fees.annualMembership"]);
   const annual = formatAnnualMembershipFee(content["fees.annualMembership"]);
 
   return (
@@ -36,15 +37,15 @@ export default async function PaymentLinksPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PaymentLinkCard
-          title="Meeting payment (monthly)"
-          description={`Monthly meeting fee${monthly ? ` — ${withGst(monthly)} per month` : ""}. Members pick one or several months — the amount is worked out for them (months × fee + 18% GST) — and each approved month gets a tick on their Payments page.`}
+          title="Meeting payment"
+          description={`Meeting fee packages — ${packagesSummary(await getMeetingPackages())}. Members pick a package and the meetings it covers are shown; each approved meeting gets a tick on their Payments page.`}
           url={`${SITE_URL}/member/payments?type=meeting`}
-          defaultMessage="Dear BWF member, please pay your monthly meeting fee using the link below. Sign in to your member account, pay via the QR/bank details shown, and upload your payment screenshot."
+          defaultMessage="Dear BWF member, please pay your meeting fee using the link below. Sign in to your member account, pay via the QR/bank details shown, and upload your payment screenshot."
           qrFilename="BWF_Meeting_Payment_QR.png"
         />
         <PaymentLinkCard
           title="Annual membership (BWF subscription)"
-          description={`Yearly BWF membership${annual ? ` — ${annual.withGst} (${annual.total} incl. GST)` : ""}.`}
+          description={`Yearly BWF membership${annual ? ` — ${annual.base} + GST per year` : ""}.`}
           url={`${SITE_URL}/member/payments?type=membership`}
           defaultMessage="Dear BWF member, your annual BWF membership subscription is due. Please sign in using the link below, pay via the QR/bank details shown, and upload your payment screenshot."
           qrFilename="BWF_Membership_Payment_QR.png"

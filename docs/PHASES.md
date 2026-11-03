@@ -4810,3 +4810,33 @@ Razorpay built now but off until keys are added.
 
 **Not verified:** a real Razorpay payment (needs live or test keys), the webhook from Razorpay, and
 the app screens on a device.
+
+## 2026-11-03 — Meeting fee as meeting packages (no months)
+
+Client: drop month-wise payment; the meeting fee is sold only as fixed packages (prices before
+18% GST): **2 meetings ₹2,000 · 6 meetings ₹5,500 (save ₹500) · 12 meetings ₹11,000 (save
+₹1,000) · 24 meetings ₹21,000 (save ₹3,000)**. Totals incl. GST: ₹2,360 / ₹6,490 / ₹12,980 /
+₹24,780.
+
+- **Admin-editable:** Website Content → Fees has a "Meeting fee packages" table — one row per
+  package (2/6/12/24) with Fees and Discount inputs and live-calculated Final fees (fees −
+  discount, shown "₹X + GST") columns. Stored as JSON in `WebsiteContent` key `fees.meetingPackages`
+  (upserted on save; defaults above apply until saved). Logic: `parseMeetingPackages()` /
+  `quoteMeetings()` in `src/lib/payments/fees.ts`, `getMeetingPackages()` in
+  `src/lib/payments/packages.ts`. The old "Monthly meeting charge" field is hidden and unused.
+- Member form (web), Razorpay, app: pick a package → `meetingsToPay` (2/6/12/24); the server
+  picks the next unpaid meetings. There is no per-meeting price.
+- Accounts' offline entry: package picker auto-ticks dates; suggested amount = package price for
+  the package.
+- Public chapter page and Payment Links page show the packages.
+- **Packages only — no other way to pay.** The server accepts only `meetingsToPay` ∈ {2, 6, 12,
+  24} and only when that many unpaid meetings are scheduled; months (`monthsToPay`,
+  `numberOfMonths` + `month_i`) are refused with "please update the app" (affects app 1.0/1.1 and
+  the 1.0 check-in-with-payment path). UIs hide packages the chapter can't fully cover. Accounts
+  must tick exactly the package's number of meetings (dates can be swapped).
+- **Every price shown before GST as "₹X + GST"** (packages, pay buttons, membership fee lines,
+  public pages). The "amount paid" field for proof uploads is the transferred total (incl. GST)
+  and says so. `Payment.numberOfMonths` is derived from the meeting count (legacy column).
+- App 1.2.0 (version bumped in `mobile/app.json`; not built or submitted): package cards with strike-through original price.
+
+**Verification:** typecheck clean (web and app), lint clean (web). **Not verified:** in a browser or on a device.
