@@ -18,6 +18,8 @@ import {
 } from "@/lib/payments/coverage";
 import { hasApprovedMembership } from "@/lib/payments/member-payments";
 import { Prisma } from "@/generated/prisma/client";
+import { getBooleanSetting } from "@/lib/settings";
+import { sendInvoice } from "@/lib/invoices";
 
 /**
  * Razorpay online payments (2026-11-03, client request: "people directly
@@ -212,14 +214,22 @@ export async function finalizeRazorpayCheckout(linkId: string): Promise<Finalize
       },
     });
     await tx.razorpayCheckout.update({ where: { id: checkout.id }, data: { paymentId: payment.id } });
-    return "PAID" as const;
+    return payment.id;
   });
+
+  // Auto-invoice (setting off by default). Only the caller that created the
+  // payment gets here, so the member is emailed once. A failed send never
+  // fails the payment — the admin can still press "Send invoice".
+  if (outcome !== "ALREADY_PAID" && (await getBooleanSetting("invoices.autoSendRazorpay"))) {
+    const sent = await sendInvoice(outcome, "AUTO");
+    if (!sent.ok) console.error(`[invoice] auto-send for payment ${outcome} failed: ${sent.error}`);
+  }
 
   revalidatePath("/member/payments");
   revalidatePath("/admin/payments");
   revalidatePath("/admin/payments/members");
   revalidatePath("/admin/accounts");
-  return outcome;
+  return outcome === "ALREADY_PAID" ? outcome : "PAID";
 }
 
 /** Webhook signature: HMAC-SHA256 of the raw body with the webhook secret, hex, in X-Razorpay-Signature. */

@@ -9,6 +9,9 @@ import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
 import { getRemarksForMembers } from "@/lib/remarks";
 import { ExportButton } from "@/components/admin/export-button";
 import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
+import { InvoiceActions } from "@/components/admin/invoice-actions";
+import { InvoiceAutoSendSwitch } from "@/components/admin/invoice-auto-send-switch";
+import { getBooleanSetting } from "@/lib/settings";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const PAGE_LIMIT = 200;
@@ -32,10 +35,11 @@ export default async function AccountsPage({
   const params = await searchParams;
   const filters = parseLedgerFilters(params);
 
-  const [rows, summary, chapters] = await Promise.all([
+  const [rows, summary, chapters, autoSendInvoices] = await Promise.all([
     getLedgerRows(filters, PAGE_LIMIT),
     getLedgerSummary(filters),
     db.chapter.findMany({ orderBy: { name: "asc" } }),
+    getBooleanSetting("invoices.autoSendRazorpay"),
   ]);
 
   // Renewal context: annual membership rows show the member's admin remarks.
@@ -62,6 +66,8 @@ export default async function AccountsPage({
         </div>
         <ExportButton dataset="accounts" params={filters} />
       </div>
+
+      {canApprove ? <InvoiceAutoSendSwitch on={autoSendInvoices} /> : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total Submitted" value={money.format(totalSubmitted)} />
@@ -173,6 +179,9 @@ export default async function AccountsPage({
                     ) : (
                       <VisitorPaymentReviewActions visitorPaymentId={row.id} status={row.status} />
                     )
+                  ) : null}
+                  {canApprove && row.type === "MEMBER" && row.status === "APPROVED" ? (
+                    <InvoiceActions paymentId={row.id} invoice={row.invoice} />
                   ) : null}
                 </td>
                 <td className="px-4 py-3">

@@ -1396,6 +1396,11 @@ model Payment {
 
   adminRemarks AdminRemark[]
 
+  /// 2026-11-03 — the invoice for this payment, created the first time an
+  /// admin generates/sends it (or automatically after Razorpay when that
+  /// setting is on). Approved payments only.
+  invoice Invoice?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1404,6 +1409,50 @@ model Payment {
   @@index([status])
   @@index([type])
   @@map("payments")
+}
+
+/// 2026-11-03 — a member payment's invoice. The number is assigned once
+/// (BWF/<financial year>/<sequence>) and never changes, however many times
+/// the PDF is downloaded or re-sent. Amounts are frozen at issue time so a
+/// later edit to the payment can't silently change an invoice already sent.
+model Invoice {
+  id String @id @default(cuid())
+
+  paymentId String  @unique
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  /// e.g. "BWF/2026-27/0001".
+  number        String   @unique
+  financialYear String
+  sequence      Int
+  issuedAt      DateTime @default(now())
+
+  /// Before GST, GST, total (= the amount paid). Whole paise.
+  taxableInr Decimal @db.Decimal(10, 2)
+  gstInr     Decimal @db.Decimal(10, 2)
+  totalInr   Decimal @db.Decimal(10, 2)
+  gstPercent Int     @default(18)
+
+  /// Last time it was emailed, to which address, and how many times in all.
+  sentAt    DateTime?
+  sentTo    String?
+  sendCount Int       @default(0)
+  /// "MANUAL" (admin pressed Send invoice) or "AUTO" (sent after a Razorpay payment).
+  lastSentBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([financialYear, sequence])
+  @@map("invoices")
+}
+
+/// Running invoice number per financial year ("2026-27" → last used sequence).
+model InvoiceSequence {
+  financialYear String @id
+  last          Int    @default(0)
+
+  @@map("invoice_sequences")
 }
 
 enum PaymentMethod {

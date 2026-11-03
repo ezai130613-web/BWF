@@ -335,6 +335,17 @@ async function main() {
       value: "20000",
     },
     { key: "fees.monthlyMeeting", label: "Monthly meeting charge (₹)", section: "Fees", value: null },
+    // 2026-11-03 — invoice letterhead (Website Content → Invoice).
+    { key: "invoice.businessName", label: "Business name on invoices", section: "Invoice", value: "Builders World Forum" },
+    { key: "invoice.address", label: "Business address on invoices", section: "Invoice", value: null },
+    { key: "invoice.gstin", label: 'GSTIN (shown on invoices; when set the invoice is titled "Tax Invoice")', section: "Invoice", value: null },
+    { key: "invoice.contact", label: "Contact line on invoices (phone / email)", section: "Invoice", value: null },
+    {
+      key: "invoice.footerNote",
+      label: "Note at the bottom of invoices",
+      section: "Invoice",
+      value: "Thank you for your payment. This is a computer-generated invoice and needs no signature.",
+    },
     // 2026-11-03 — meeting fee packages (fees + discount each), edited as a table in Website Content → Fees.
     {
       key: "fees.meetingPackages",

@@ -4840,3 +4840,45 @@ Client: drop month-wise payment; the meeting fee is sold only as fixed packages 
 - App 1.2.0 (version bumped in `mobile/app.json`; not built or submitted): package cards with strike-through original price.
 
 **Verification:** typecheck clean (web and app), lint clean (web). **Not verified:** in a browser or on a device.
+
+## 2026-11-03 — Invoices for member payments (send in one click)
+
+Client: generate an invoice for a payment and email it to the member from the admin panel. Sending
+is manual for now. An option to send automatically after a Razorpay payment is built but switched off.
+
+- **Invoice** (`src/lib/invoices/`): one A4 PDF (pdfkit) per **approved** member payment. It has
+  the letterhead and logo, invoice no./date/payment date, billed-to (member, company, chapter,
+  address, phone, email), one line item (meeting package with its dates, or annual membership +
+  year), taxable value + GST @18% + total paid (the total is the amount actually paid, split back
+  to the paisa), amount in words (lakh/crore), payment method + reference, "PAID", and a footer
+  note. Titled **"Tax Invoice"** when a GSTIN is set, otherwise "Invoice". Uses "Rs." because the
+  built-in PDF font has no ₹ glyph.
+- **Numbering**: `BWF/<financial year>/<0001>`, a running number per Indian financial year (April–March,
+  IST) via `InvoiceSequence`. Assigned the first time an invoice is previewed, downloaded or sent,
+  and never changes; re-sending reuses it. Amounts are frozen on the `Invoice` row. If two admins
+  click at the same moment, the second roll back (`paymentId` is unique) and no number is skipped.
+- **Admin UI** (Super Admin + Accounts, `payments:approve`): on `/admin/accounts` and
+  `/admin/payments`, every approved member payment has a **Send invoice** button (one click emails
+  the PDF to `Member.email`, falling back to the login email). After sending, it shows
+  **Resend invoice**, "Sent <date> to <email>", and an "Invoice BWF/…" link to the PDF
+  (`GET /api/admin/invoices/[paymentId]`). If the member has no email, the admin sees an error
+  saying so. Logged as `invoice.sent`.
+- **Auto-send (future, OFF)**: setting `invoices.autoSendRazorpay` (default false), switch at the
+  top of `/admin/accounts`. When on, `finalizeRazorpayCheckout()` emails the invoice right after it
+  creates the Razorpay payment, once only, because only the caller that claimed the checkout gets
+  there. A failed send never fails the payment. Cash/bank/UPI/screenshot payments always stay manual.
+- **Letterhead editable** in Website Content → Invoice: business name, address, GSTIN, contact
+  line, footer note (migration inserts the rows; seed too). Blank = left off.
+- Migration `20261103140000_invoices` (additive: `invoices`, `invoice_sequences`, 5 content rows).
+
+**Verification** (isolated `prisma dev` DB, console email): 6-meeting cash payment
+(₹6,490 → ₹5,500 + ₹990) and Razorpay membership (₹23,600 → ₹20,000 + ₹3,600) invoiced as
+0001/0002; re-send kept 0001 (sendCount 2); pending payment refused; member without email gets the
+clear error; FY boundary (31 Mar 2026 IST → 2025-26, 1 Apr → 2026-27); PDFs rendered and checked
+(fixed a long-dates overlap). In the running app: the switch shows OFF, approved rows show
+Send/Resend + the invoice link, pending rows don't, the PDF downloads (200 application/pdf), and a
+logged-out request redirects to login. Typecheck + lint clean.
+
+**Not verified:** a real inbox delivery (no Resend key locally), and the auto-send path with a live
+Razorpay payment (the switch is off anyway). **Open:** GST is shown as a single "GST @ 18%" line.
+If the client needs CGST 9% + SGST 9% (same state) / IGST split, or a SAC code, add it to the PDF.

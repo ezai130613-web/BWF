@@ -10,6 +10,7 @@ import { AdminRemarksSummary } from "@/components/admin/admin-remarks";
 import { getRemarksForMembers } from "@/lib/remarks";
 import { ExportButton } from "@/components/admin/export-button";
 import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
+import { InvoiceActions } from "@/components/admin/invoice-actions";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -47,7 +48,11 @@ export default async function PaymentsPage({
   const [payments, summary, meetings] = await Promise.all([
     db.payment.findMany({
       where,
-      include: { member: { include: { chapter: true } }, meeting: true },
+      include: {
+        member: { include: { chapter: true } },
+        meeting: true,
+        invoice: { select: { number: true, sentAt: true, sentTo: true, lastSentBy: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
@@ -229,6 +234,7 @@ export default async function PaymentsPage({
             {payment.type === "MEMBERSHIP" ? <AdminRemarksSummary remarks={remarksByMember.get(payment.memberId) ?? []} /> : null}
 
             {canApprove ? <PaymentReviewActions paymentId={payment.id} status={payment.status} type={payment.type} /> : null}
+            {canApprove && payment.status === "APPROVED" ? <InvoiceActions paymentId={payment.id} invoice={payment.invoice} /> : null}
           </div>
         ))}
         {payments.length === 0 ? (

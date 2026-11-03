@@ -16,6 +16,10 @@ const SETTING_DEFAULTS = {
    * payments members already made; Super Admin / Accounts switch it on from
    * the Accounts page. */
   "attendance.requirePayment": false,
+  /** 2026-11-03 — email the invoice to the member automatically as soon as a
+   * Razorpay payment is confirmed. Off: admins send invoices themselves with
+   * the "Send invoice" button. Cash/bank/UPI/screenshot payments are always manual. */
+  "invoices.autoSendRazorpay": false,
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

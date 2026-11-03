@@ -1469,6 +1469,19 @@ brief says to remove it, and doing so would drop real, still-relevant functional
 correction's stated scope. Read literally, "reflects the revised page names and order" applies to
 the 7 pages actually named — `Connected Accounts` stays, appended after them.
 
+### Member payment invoices (2026-11-03)
+
+**An `Invoice` row per payment, created lazily, with its own per-financial-year counter.** The
+number (`BWF/<FY>/<seq>`) must never change after it's been sent, so it lives in its own row with
+frozen amounts, not derived from the payment on each render. `InvoiceSequence` is incremented in the
+same transaction as the insert, so a lost race (unique `paymentId`) rolls back without using up a
+number. Invoices exist only for APPROVED member payments. Visitor payments aren't invoiced (not asked for).
+
+**Sending is manual by default. Auto-send is one boolean setting hooked into the single place a
+Razorpay payment is created** (`finalizeRazorpayCheckout`, after the claim), so the webhook and the
+browser return can't both send it. Other methods aren't auto-sent: an admin entered or approved them
+and can press the button.
+
 ### Accounts workspace & vendor contact gate (2026-10-03 client request, Phase 29)
 
 **`ACCOUNTS` is a real fifth role, not a permission grant on an existing one.** Phase 22 deferred

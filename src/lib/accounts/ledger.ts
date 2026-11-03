@@ -48,6 +48,8 @@ export type LedgerRow = {
   /** Member payments only — null for visitor payments. */
   memberId: string | null;
   paymentType: "MEETING" | "MEMBERSHIP" | null;
+  /** Member payments with an invoice already made (2026-11-03). */
+  invoice: { number: string; sentAt: Date | null; sentTo: string | null; lastSentBy: string | null } | null;
 };
 
 const STATUSES: PaymentApprovalStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CLARIFICATION_REQUESTED"];
@@ -119,7 +121,11 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       ? []
       : db.payment.findMany({
           where: memberWhere(filters, true),
-          include: { member: { include: { chapter: true } }, meeting: true },
+          include: {
+            member: { include: { chapter: true } },
+            meeting: true,
+            invoice: { select: { number: true, sentAt: true, sentTo: true, lastSentBy: true } },
+          },
           orderBy: { createdAt: "desc" },
           take: limit,
         }),
@@ -168,6 +174,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       methodLabel: PAYMENT_METHOD_LABELS[p.method] ?? null,
       memberId: p.memberId,
       paymentType: p.type,
+      invoice: p.invoice,
     })),
     ...visitorPayments.map((p) => ({
       id: p.id,
@@ -189,6 +196,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       methodLabel: null,
       memberId: null,
       paymentType: null,
+      invoice: null,
     })),
   ];
 
