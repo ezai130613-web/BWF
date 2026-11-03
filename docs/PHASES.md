@@ -4869,7 +4869,7 @@ is manual for now. An option to send automatically after a Razorpay payment is b
   there. A failed send never fails the payment. Cash/bank/UPI/screenshot payments always stay manual.
 - **Letterhead editable** in Website Content → Invoice: business name, address, GSTIN, contact
   line, footer note (migration inserts the rows; seed too). Blank = left off.
-- Migration `20261103140000_invoices` (additive: `invoices`, `invoice_sequences`, 5 content rows).
+- Migration `20261103140000_invoices` (additive: `invoices`, `invoice_sequences`, 5 content rows) — applied to the live Neon DB with `prisma migrate deploy` on 2026-11-03; `migrate status` clean.
 
 **Verification** (isolated `prisma dev` DB, console email): 6-meeting cash payment
 (₹6,490 → ₹5,500 + ₹990) and Razorpay membership (₹23,600 → ₹20,000 + ₹3,600) invoiced as
