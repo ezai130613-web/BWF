@@ -18,8 +18,26 @@ import type { Session } from "next-auth";
  * to that redaction — see src/app/admin/(dashboard)/forbidden.tsx for the UI.
  */
 
-/** Cached per-request so repeated checks in one render don't repeat the query. */
+/**
+ * Cached per-request so repeated checks in one render don't repeat the query.
+ *
+ * 2026-11-03 — per-person access: a user with `customAccess` holds exactly
+ * their own UserPermission rows instead of their role's. Super Admin always
+ * gets their role's (complete) set, so nobody can lock a Super Admin out.
+ */
 export const getUserPermissionKeys = cache(async (userId: string) => {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      customAccess: true,
+      roles: { select: { role: { select: { key: true } } } },
+      customPermissions: { select: { permission: { select: { key: true } } } },
+    },
+  });
+  const isSuperAdmin = user?.roles.some((r) => r.role.key === "SUPER_ADMIN") ?? false;
+  if (user?.customAccess && !isSuperAdmin) {
+    return new Set(user.customPermissions.map((p) => p.permission.key));
+  }
   const rows = await db.rolePermission.findMany({
     where: { role: { users: { some: { userId } } } },
     select: { permission: { select: { key: true } } },

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PAYMENT_METHOD_LABELS, paymentCoverageLabel } from "@/lib/payments/dates";
 import { getPaymentsScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
@@ -226,13 +227,17 @@ export default async function PaymentMembersPage({
             </div>
             <p className="mt-1 text-neutral-600">
               {money.format(Number(p.amountPaidInr))}
-              {p.type === "MEETING" ? ` · ${formatMonthsCovered(p.monthsCovered)}` : ""} · paid{" "}
+              {p.type === "MEETING" ? ` · ${paymentCoverageLabel(p, formatMonthsCovered)}` : ""} · paid{" "}
               {p.actualPaymentDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
               <ExpectedAmountNote paid={Number(p.amountPaidInr)} expected={p.expectedAmountInr === null ? null : Number(p.expectedAmountInr)} />
             </p>
-            <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-neutral-500 underline">
-              View proof
-            </a>
+            {p.proofUrl ? (
+              <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-neutral-500 underline">
+                View proof
+              </a>
+            ) : (
+              <p className="mt-1 text-xs text-neutral-500">{PAYMENT_METHOD_LABELS[p.method]}</p>
+            )}
           </div>
         ))}
         {payments.length === 0 ? (

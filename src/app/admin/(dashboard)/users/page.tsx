@@ -11,6 +11,7 @@ import { ExportButton } from "@/components/admin/export-button";
 
 export default async function UsersPage() {
   const session = await requirePermission("users:manage");
+  const isSuperAdmin = session.user.roles.includes("SUPER_ADMIN");
 
   const [users, chapters] = await Promise.all([
     db.user.findMany({
@@ -43,13 +44,14 @@ export default async function UsersPage() {
       </div>
 
       <ReauthGuard>
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Access</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Last login</th>
                 <th className="px-4 py-3" />
@@ -72,6 +74,20 @@ export default async function UsersPage() {
                         currentChapterId={primaryRole?.chapter?.id ?? null}
                         chapters={chapters}
                       />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {primaryRole?.role.key === "SUPER_ADMIN" ? (
+                      "Full"
+                    ) : (
+                      <span className="flex flex-col gap-0.5">
+                        <span>{user.customAccess ? "Custom" : "Role default"}</span>
+                        {isSuperAdmin && user.id !== session.user.id ? (
+                          <Link href={`/admin/users/${user.id}/access`} className="whitespace-nowrap text-xs font-medium text-emerald-800 hover:underline">
+                            Edit access
+                          </Link>
+                        ) : null}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">

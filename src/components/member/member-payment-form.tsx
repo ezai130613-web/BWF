@@ -1,31 +1,54 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { submitMemberPayment, type MemberPaymentState } from "@/app/member/(portal)/payments/actions";
+import { useActionState, useEffect, useState } from "react";
+import {
+  startOnlinePayment,
+  submitMemberPayment,
+  type MemberPaymentState,
+  type OnlinePaymentState,
+} from "@/app/member/(portal)/payments/actions";
 import { MeetingPaymentFields, ProofFields } from "@/components/checkin/meeting-payment-fields";
 import { FormStatus, inputClass, primaryButtonClass } from "@/components/member/ui";
+import { formatRupees, quoteMeetingFee } from "@/lib/payments/fees";
 
 const initialState: MemberPaymentState = {};
+const initialOnline: OnlinePaymentState = {};
 
+/**
+ * Member payment form. 2026-11-03: the meeting fee is chosen as "how many
+ * months" and shows the exact meetings it covers. With Razorpay switched on
+ * (`online`), the member pays on Razorpay and it's approved automatically;
+ * otherwise they upload a screenshot for BWF to approve, as before.
+ */
 export function MemberPaymentForm({
   type,
-  startMonth,
+  upcoming,
+  perMonth,
   monthlyFee,
   membershipTotal,
   membershipYears,
   defaultMembershipYear,
+  online,
 }: {
   type: "MEETING" | "MEMBERSHIP";
-  startMonth: { month: number; year: number };
-  /** Phase 40 — the monthly fee (before GST) and annual total (incl. GST), for pre-filling the amount. */
+  upcoming: string[];
+  perMonth: number;
+  /** The monthly fee (before GST) and annual total (incl. GST). */
   monthlyFee: number | null;
   membershipTotal: number | null;
   membershipYears: number[];
   defaultMembershipYear: number;
+  online: boolean;
 }) {
   const [state, formAction, pending] = useActionState(submitMemberPayment.bind(null, type), initialState);
+  const [onlineState, onlineAction, onlinePending] = useActionState(startOnlinePayment.bind(null, type), initialOnline);
   // One key per form mount (same duplicate-submit protection as check-in).
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [months, setMonths] = useState(1);
+
+  useEffect(() => {
+    if (onlineState?.url) window.location.href = onlineState.url;
+  }, [onlineState?.url]);
 
   if (state?.success) {
     return (
@@ -33,17 +56,20 @@ export function MemberPaymentForm({
         <p className="text-sm font-semibold text-emerald-900">Payment submitted for review.</p>
         <p className="mt-1 text-sm text-emerald-700">
           It shows as awaiting approval until BWF verifies it.{" "}
-          {type === "MEETING" ? "Once approved, each month it covers gets a tick." : "Once approved, your membership shows as paid."}
+          {type === "MEETING" ? "Once approved, the meetings it covers are marked paid." : "Once approved, your membership shows as paid."}
         </p>
       </div>
     );
   }
 
+  const onlineTotal = type === "MEETING" ? (quoteMeetingFee(monthlyFee, months)?.total ?? null) : membershipTotal;
+  const busy = online ? onlinePending || Boolean(onlineState?.url) : pending;
+
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={online ? onlineAction : formAction} className="flex flex-col gap-4">
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {type === "MEETING" ? (
-        <MeetingPaymentFields startMonth={startMonth} monthlyFee={monthlyFee} />
+        <MeetingPaymentFields upcoming={upcoming} perMonth={perMonth} monthlyFee={monthlyFee} withProof={!online} onMonthsChange={setMonths} />
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -56,13 +82,32 @@ export function MemberPaymentForm({
               ))}
             </select>
           </label>
-          <ProofFields defaultAmount={membershipTotal} />
+          {online ? (
+            membershipTotal ? (
+              <p className="text-sm text-neutral-700">
+                Amount: <span className="font-semibold text-neutral-900">{formatRupees(membershipTotal)}</span> (incl. GST)
+              </p>
+            ) : null
+          ) : (
+            <ProofFields defaultAmount={membershipTotal} />
+          )}
         </>
       )}
-      <FormStatus error={state?.error} />
-      <button type="submit" disabled={pending} className={`${primaryButtonClass} self-start`}>
-        {pending ? "Submitting…" : "Submit payment"}
+      <FormStatus error={online ? onlineState?.error : state?.error} />
+      <button type="submit" disabled={busy} className={`${primaryButtonClass} self-start`}>
+        {online
+          ? busy
+            ? "Opening Razorpay…"
+            : `Pay ${onlineTotal ? formatRupees(onlineTotal) : ""} online`.replace("  ", " ")
+          : pending
+            ? "Submitting…"
+            : "Submit payment"}
       </button>
+      {online ? (
+        <p className="text-xs text-neutral-500">
+          You&apos;ll pay securely on Razorpay (UPI, card or net banking). It&apos;s marked paid as soon as Razorpay confirms — no screenshot needed.
+        </p>
+      ) : null}
     </form>
   );
 }

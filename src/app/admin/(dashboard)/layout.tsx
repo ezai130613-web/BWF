@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { availableWorkspaces } from "@/components/admin/nav-config";
 import { requireAdminSession, getUserPermissionKeys } from "@/lib/auth/rbac";
 import { Sidebar } from "@/components/admin/sidebar";
 import { fixedWorkspaceFor, type AdminWorkspace } from "@/lib/auth/constants";
@@ -18,6 +20,11 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
     : ADMIN_WORKSPACES.includes(workspaceCookie as AdminWorkspace)
       ? (workspaceCookie as AdminWorkspace)
       : null;
+  // A remembered workspace this admin no longer has access to (Super Admin
+  // changed their role's permissions) — send them back to choose again.
+  if (!fixedWorkspace && workspace && !session.user.roles.includes("CHAPTER_ADMIN") && !availableWorkspaces(permissions).includes(workspace)) {
+    redirect("/admin/workspace");
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f7f4] print:bg-white">

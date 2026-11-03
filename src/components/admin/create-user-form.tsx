@@ -29,7 +29,7 @@ export function CreateUserForm({ chapters }: { chapters: { id: string; name: str
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-        Temporary password
+        Password
         <input
           name="password"
           type="text"

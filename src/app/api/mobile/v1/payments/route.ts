@@ -7,6 +7,8 @@ import { fieldsFromJson } from "@/lib/payments/member-payments";
 import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
 import { MEETING_FEE_GST_PERCENT, parseFee, quoteMembershipFee } from "@/lib/payments/fees";
 import { submitMemberPaymentFor } from "@/lib/payments/submit";
+import { formatDateKey, getMemberPaymentContext, paymentCoverageLabel } from "@/lib/payments/coverage";
+import { isRazorpayConfigured } from "@/lib/payments/razorpay";
 import { isOwnStorageUrl, isStorageConfigured } from "@/lib/storage";
 import { invalid, json, mobileHandler, requireMobileMember } from "@/lib/mobile/api";
 import type { PaymentsResponse } from "@/lib/mobile/contract";
@@ -31,10 +33,17 @@ const PAYEE_KEYS = [
 /** The member's payments, standing, and where to pay — the data behind /member/payments. */
 export const GET = mobileHandler(async (request: Request) => {
   const { member } = await requireMobileMember(request);
-  const [payments, content] = await Promise.all([
+  const [payments, content, context] = await Promise.all([
     db.payment.findMany({ where: { memberId: member.id }, include: { meeting: { select: { title: true } } }, orderBy: { createdAt: "desc" } }),
     getContent(PAYEE_KEYS),
+    getMemberPaymentContext(member.id),
   ]);
+  const { dues } = context;
+  const dueItems: string[] = [];
+  if (dues.nextMeeting && dues.nextMeeting.status === null) {
+    dueItems.push(`Meeting fee — next meeting ${formatDateKey(dues.nextMeeting.date)}; pay by ${formatDateKey(dues.nextMeeting.payBy)}.`);
+  }
+  if (dues.membership.status === null) dueItems.push(`Annual BWF membership for ${dues.membership.year}.`);
   const summary = summarizeMemberPayments(payments);
   const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
@@ -46,7 +55,7 @@ export const GET = mobileHandler(async (request: Request) => {
       status: p.status,
       amountInr: p.amountPaidInr.toString(),
       actualPaymentDate: p.actualPaymentDate.toISOString(),
-      coverageLabel: p.type === "MEMBERSHIP" ? `Membership ${p.membershipYear ?? ""}`.trim() : formatMonthsCovered(p.monthsCovered),
+      coverageLabel: paymentCoverageLabel(p, formatMonthsCovered),
       meetingTitle: p.meeting?.title ?? null,
       reviewRemarks: p.reviewRemarks,
       createdAt: p.createdAt.toISOString(),
@@ -84,6 +93,11 @@ export const GET = mobileHandler(async (request: Request) => {
       gstPercent: MEETING_FEE_GST_PERCENT,
       membershipTotalInr: quoteMembershipFee(parseFee(content["fees.annualMembership"])),
     },
+    dues: dueItems.length ? { title: `Hi ${member.name.split(" ")[0]}, you're due for payment`, items: dueItems } : null,
+    meetingGrid: context.tiles,
+    upcomingUnpaid: context.upcoming,
+    meetingsPerMonth: context.perMonth,
+    onlinePayments: isRazorpayConfigured(),
   };
   return json(body);
 });

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { WORKSPACE_HOME, type AdminWorkspace } from "@/lib/auth/constants";
+import { availableWorkspaces } from "@/components/admin/nav-config";
 
 export type { AdminWorkspace } from "@/lib/auth/constants";
 /**
@@ -14,10 +15,8 @@ export type { AdminWorkspace } from "@/lib/auth/constants";
  */
 export async function selectWorkspace(workspace: AdminWorkspace) {
   const session = await requireAdminSession();
-  if (workspace === "accounts") {
-    const permissions = await getUserPermissionKeys(session.user.id);
-    if (!permissions.has("accounts:view")) redirect("/admin/workspace");
-  }
+  const permissions = await getUserPermissionKeys(session.user.id);
+  if (!availableWorkspaces(permissions).includes(workspace)) redirect("/admin/workspace");
 
   // No `secure` flag — unlike the session cookie, this carries no sensitive
   // value (just a UI preference), so there's nothing to protect by

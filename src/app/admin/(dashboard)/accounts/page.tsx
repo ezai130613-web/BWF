@@ -176,9 +176,13 @@ export default async function AccountsPage({
                   ) : null}
                 </td>
                 <td className="px-4 py-3">
-                  <a href={row.proofUrl} target="_blank" rel="noopener noreferrer" className="text-neutral-600 underline hover:text-emerald-800">
-                    View
-                  </a>
+                  {row.proofUrl ? (
+                    <a href={row.proofUrl} target="_blank" rel="noopener noreferrer" className="text-neutral-600 underline hover:text-emerald-800">
+                      View
+                    </a>
+                  ) : (
+                    <span className="text-xs text-neutral-500">{row.methodLabel ?? "—"}</span>
+                  )}
                 </td>
               </tr>
             ))}

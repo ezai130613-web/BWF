@@ -14,7 +14,9 @@ import { colors, space } from '@/theme';
 /**
  * Confirms attendance for the scanned meeting. Phase 40 (client, 2026-10-26):
  * payments happen only on the Payments screen — check-in shows whether this
- * month is paid and links there if it isn't.
+ * meeting is paid and links there if it isn't. 2026-11-03: when BWF requires
+ * payment for attendance, the server sends `paymentBlock` and the button is
+ * replaced by that message (the server refuses the check-in either way).
  */
 export default function CheckinScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -74,6 +76,8 @@ export default function CheckinScreen() {
             </>
           ) : !data.open ? (
             <Notice tone="warning" message="Check-in for this meeting isn't open right now." />
+          ) : data.paymentBlock ? (
+            <Notice tone="danger" message={data.paymentBlock} action={{ label: 'Go to Payments →', onPress: () => router.push('/payments') }} />
           ) : (
             <Card>
               {submitError ? <Notice tone="danger" message={submitError} /> : null}

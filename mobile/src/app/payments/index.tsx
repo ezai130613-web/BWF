@@ -5,7 +5,7 @@ import { Fragment, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import type { PayeeDetails, PaymentRow, PaymentsResponse } from '@contract';
-import { Badge, Body, Button, Card, Divider, EmptyState, ListRow, Screen, SectionTitle, Segmented, StatGrid, StatTile } from '@/components/ui';
+import { Badge, Body, Button, Card, Divider, EmptyState, ListRow, Notice, Screen, SectionTitle, Segmented, StatGrid, StatTile } from '@/components/ui';
 import { PaymentMonthGrid } from '@/components/payment-month-grid';
 import { formatDate, formatInr } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
@@ -28,13 +28,33 @@ export default function PaymentsScreen() {
     <Screen loading={loading} error={error} refreshing={refreshing} onRefresh={refresh}>
       {data ? (
         <>
+          {data.dues ? <Notice tone="danger" message={`${data.dues.title}\n• ${data.dues.items.join('\n• ')}\nYou need both paid to mark attendance.`} /> : null}
+
           <StatGrid>
-            <StatTile label={`Meeting fee · ${data.thisMonth.label}`} value={standing(data.thisMonth.status)} icon="calendar-outline" />
-            <StatTile label="Meeting fee paid through" value={data.paidThrough ?? '—'} icon="time-outline" />
+            {data.meetingGrid ? (
+              <StatTile
+                label={`Next meeting · ${data.meetingGrid.find((t) => t.next)?.label ?? '—'}`}
+                value={(() => {
+                  const next = data.meetingGrid.find((t) => t.next);
+                  return !next ? '—' : next.status === 'PAID' ? 'Paid' : next.status === 'PENDING' ? 'Pending' : 'Not paid';
+                })()}
+                icon="calendar-outline"
+              />
+            ) : (
+              <StatTile label={`Meeting fee · ${data.thisMonth.label}`} value={standing(data.thisMonth.status)} icon="calendar-outline" />
+            )}
+            {data.meetingGrid ? null : <StatTile label="Meeting fee paid through" value={data.paidThrough ?? '—'} icon="time-outline" />}
             <StatTile label={`Membership · ${data.membership.year}`} value={standing(data.membership.status)} icon="ribbon-outline" />
           </StatGrid>
 
-          {data.monthGrid ? (
+          {data.meetingGrid ? (
+            <Card title="Meeting fee — meeting by meeting" icon="calendar-outline">
+              <PaymentMonthGrid tiles={data.meetingGrid.map((t) => ({ month: 0, year: 0, label: t.label, status: t.status, current: t.next }))} />
+              <Body muted style={{ marginTop: space.md, fontSize: 13 }}>
+                Each box is one of your chapter’s meetings; the outlined one is your next meeting. “No record” means nothing is on file for that meeting.
+              </Body>
+            </Card>
+          ) : data.monthGrid ? (
             <Card title="Meeting fee — month by month" icon="calendar-outline">
               <PaymentMonthGrid tiles={data.monthGrid} />
               <Body muted style={{ marginTop: space.md, fontSize: 13 }}>
@@ -45,13 +65,29 @@ export default function PaymentsScreen() {
 
           <Segmented
             options={[
-              { value: 'MEETING', label: 'Meeting fee (monthly)' },
+              { value: 'MEETING', label: 'Meeting fee' },
               { value: 'MEMBERSHIP', label: 'Annual membership' },
             ]}
             value={type}
             onChange={setType}
           />
 
+          {data.onlinePayments ? (
+            <Card title="Pay online" icon="card-outline">
+              {(type === 'MEETING' ? data.fees.monthlyMeeting : data.fees.annualMembership) ? (
+                <Body>
+                  Fee: <Text style={{ fontWeight: '700' }}>{type === 'MEETING' ? data.fees.monthlyMeeting : data.fees.annualMembership}</Text>
+                </Body>
+              ) : null}
+              <Body muted>Pay with UPI, card or net banking on Razorpay — it’s marked paid as soon as Razorpay confirms.</Body>
+              <Button
+                label={type === 'MEETING' ? 'Choose meetings & pay' : 'Pay membership'}
+                icon="card-outline"
+                style={{ marginTop: space.lg }}
+                onPress={() => router.push({ pathname: '/payments/new', params: { type } })}
+              />
+            </Card>
+          ) : (
           <Card title="How to pay" icon="cash-outline">
             {(type === 'MEETING' ? data.fees.monthlyMeeting : data.fees.annualMembership) ? (
               <Body>
@@ -68,6 +104,7 @@ export default function PaymentsScreen() {
             />
             {!data.uploadsEnabled ? <Body muted>Uploads are switched off right now — BWF will confirm payments directly.</Body> : null}
           </Card>
+          )}
 
           <SectionTitle>Your payments</SectionTitle>
           <Card>

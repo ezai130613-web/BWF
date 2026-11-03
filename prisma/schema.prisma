@@ -63,7 +63,14 @@ model User {
 
   roles         UserRole[]
   otpChallenges OtpChallenge[]
-  auditLogs     AuditLog[]
+
+  /// 2026-11-03 — per-person access. False: permissions come from the
+  /// user's role (Roles & Permissions). True: exactly the permissions in
+  /// `customPermissions`, set by a Super Admin from Users → Access. Ignored
+  /// for Super Admin, whose access is always complete.
+  customAccess      Boolean          @default(false)
+  customPermissions UserPermission[]
+  auditLogs         AuditLog[]
 
   /// Set only for a User whose role is MEMBER (brief §12) — the Member
   /// profile this login account belongs to. Nullable because most Users
@@ -101,8 +108,22 @@ model Permission {
   description String?
 
   roles RolePermission[]
+  users UserPermission[]
 
   @@map("permissions")
+}
+
+/// Per-person permission set, used only while User.customAccess is true.
+model UserPermission {
+  userId       String
+  permissionId String
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@index([permissionId])
+  @@map("user_permissions")
 }
 
 model RolePermission {
@@ -493,8 +514,9 @@ model Member {
   chiefGuestsBrought    MemberChiefGuest[]
 
   // QR Code / Attendance / Payment system (2026-09-17)
-  attendances Attendance[]
-  payments    Payment[]
+  attendances       Attendance[]
+  payments          Payment[]
+  razorpayCheckouts RazorpayCheckout[]
 
   // Phase 29 — public "View contact details" pop-up requests for this member.
   contactRequests VendorContactRequest[]
@@ -1335,8 +1357,25 @@ model Payment {
   actualPaymentDate DateTime
 
   /// R2 URL — screenshot, receipt image, or PDF (see MEDIA_KINDS.paymentProof
-  /// in src/lib/storage.ts).
-  proofUrl String
+  /// in src/lib/storage.ts). Null for Razorpay payments and for cash/bank
+  /// payments entered by Accounts (2026-11-03).
+  proofUrl String?
+
+  /// 2026-11-03 — how the money came in. PROOF_UPLOAD = member uploaded a
+  /// screenshot (needs approval); RAZORPAY = paid online, approved
+  /// automatically; the rest are entered by Accounts / Super Admin.
+  method PaymentMethod @default(PROOF_UPLOAD)
+
+  /// MEETING only (2026-11-03) — the exact chapter meeting dates (IST calendar
+  /// dates) this payment covers. This, not monthsCovered, is what attendance
+  /// checks against; monthsCovered is kept (derived from these dates) for
+  /// the month-based screens and the older app.
+  meetingDates DateTime[] @db.Date
+
+  /// Razorpay payment id ("pay_…") for RAZORPAY payments.
+  razorpayPaymentId String? @unique
+  /// Reference number / note typed by Accounts for an offline payment.
+  reference         String?
 
   status           PaymentApprovalStatus @default(PENDING_APPROVAL)
   reviewedByUserId String?
@@ -1365,6 +1404,46 @@ model Payment {
   @@index([status])
   @@index([type])
   @@map("payments")
+}
+
+enum PaymentMethod {
+  PROOF_UPLOAD
+  RAZORPAY
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+}
+
+/// 2026-11-03 — a Razorpay Payment Link a member opened to pay. Kept apart
+/// from Payment so an unpaid/abandoned link never shows up as a payment
+/// anywhere; once Razorpay confirms it, finalizeRazorpayCheckout() creates
+/// the APPROVED Payment and links it here (exactly once).
+model RazorpayCheckout {
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  type           PaymentType
+  membershipYear Int?
+  meetingDates   DateTime[]  @db.Date
+  numberOfMonths Int         @default(0)
+  amountInr      Decimal     @db.Decimal(10, 2)
+
+  /// "plink_…" and its hosted short URL.
+  linkId  String @unique
+  linkUrl String
+  /// CREATED → PAID | EXPIRED | CANCELLED
+  status  String @default("CREATED")
+
+  paymentId         String? @unique
+  razorpayPaymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@map("razorpay_checkouts")
 }
 
 // ---------------------------------------------------------------------------

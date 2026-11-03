@@ -1,8 +1,16 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { isWithinCheckinWindow } from "@/lib/attendance/qr";
-import { hasApprovedOverlap } from "@/lib/attendance/manage";
-import { parseMeetingPaymentFields, type MeetingPaymentFields, type PaymentFieldSource } from "@/lib/payments/member-payments";
+import { parseProofFields, type ProofFields, type PaymentFieldSource } from "@/lib/payments/member-payments";
+import {
+  checkAttendancePayment,
+  keyToDbDate,
+  monthsOfDates,
+  overlapsApprovedDates,
+  resolveMemberMeetingSelection,
+  type MeetingSelection,
+} from "@/lib/payments/coverage";
+import { getBooleanSetting } from "@/lib/settings";
 import { expectedAmountFor } from "@/lib/payments/submit";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -37,14 +45,30 @@ export async function checkInMember(memberId: string, token: string, formData: P
   // so a member on the older app version (1.0) never loses a payment.
   const madePayment = formData.get("madePayment") === "yes";
 
-  let paymentInput: MeetingPaymentFields | null = null;
-  if (madePayment) {
-    const parsed = parseMeetingPaymentFields(formData);
-    if (parsed.error !== undefined) return { error: parsed.error };
-    paymentInput = parsed.data;
+  // 2026-11-03 — no payment, no attendance (when switched on). Checked
+  // before anything is written; a member already marked Present (e.g. by an
+  // admin) isn't blocked from re-scanning.
+  if (await getBooleanSetting("attendance.requirePayment")) {
+    const already = await db.attendance.findUnique({
+      where: { meetingId_memberId: { meetingId: meeting.id, memberId } },
+      select: { status: true },
+    });
+    if (already?.status !== "PRESENT") {
+      const check = await checkAttendancePayment(memberId, meeting.startsAt);
+      if (!check.ok) return { error: check.error };
+    }
   }
 
-  const overlapsApprovedCoverage = paymentInput ? await hasApprovedOverlap(memberId, paymentInput.monthsCovered) : false;
+  let paymentInput: (ProofFields & MeetingSelection) | null = null;
+  if (madePayment) {
+    const selection = await resolveMemberMeetingSelection(memberId, formData);
+    if (selection.error !== undefined) return { error: selection.error };
+    const proof = parseProofFields(formData);
+    if (proof.error !== undefined) return { error: proof.error };
+    paymentInput = { ...proof.data, ...selection.data };
+  }
+
+  const overlapsApprovedCoverage = paymentInput ? await overlapsApprovedDates(memberId, paymentInput.dates) : false;
   const expectedAmountInr = paymentInput ? await expectedAmountFor("MEETING", paymentInput.numberOfMonths) : null;
 
   await db.$transaction(async (tx) => {
@@ -81,7 +105,8 @@ export async function checkInMember(memberId: string, token: string, formData: P
             meetingId: meeting.id,
             attendanceId,
             numberOfMonths: paymentInput.numberOfMonths,
-            monthsCovered: paymentInput.monthsCovered,
+            meetingDates: paymentInput.dates.map(keyToDbDate),
+            monthsCovered: monthsOfDates(paymentInput.dates),
             amountPaidInr: new Prisma.Decimal(paymentInput.amountPaidInr),
             expectedAmountInr,
             actualPaymentDate: paymentInput.actualPaymentDate,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PAYMENT_METHOD_LABELS, paymentCoverageLabel } from "@/lib/payments/dates";
 import { getPaymentsScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatMonthsCovered } from "@/lib/attendance/manage";
@@ -179,7 +180,9 @@ export default async function PaymentsPage({
                   {" · "}
                   {payment.meeting
                     ? `At check-in: ${payment.meeting.title} — ${payment.meeting.startsAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`
-                    : "Paid from member portal"}
+                    : payment.method === "PROOF_UPLOAD" || payment.method === "RAZORPAY"
+                      ? `Paid from member portal · ${PAYMENT_METHOD_LABELS[payment.method]}`
+                      : `Entered by Accounts · ${PAYMENT_METHOD_LABELS[payment.method]}`}
                 </p>
               </div>
               <StatusBadge status={payment.status} overlap={payment.overlapsApprovedCoverage} />
@@ -194,13 +197,13 @@ export default async function PaymentsPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-neutral-500">Months</dt>
-                <dd className="text-neutral-900">{payment.type === "MEMBERSHIP" ? "—" : payment.numberOfMonths}</dd>
+                <dt className="text-xs text-neutral-500">{payment.meetingDates.length ? "Meetings" : "Months"}</dt>
+                <dd className="text-neutral-900">{payment.type === "MEMBERSHIP" ? "—" : payment.meetingDates.length || payment.numberOfMonths}</dd>
               </div>
               <div>
                 <dt className="text-xs text-neutral-500">Covered</dt>
                 <dd className="text-neutral-900">
-                  {payment.type === "MEMBERSHIP" ? `Membership year ${payment.membershipYear}` : formatMonthsCovered(payment.monthsCovered)}
+                  {paymentCoverageLabel(payment, formatMonthsCovered)}
                 </dd>
               </div>
               <div>
@@ -210,9 +213,16 @@ export default async function PaymentsPage({
             </dl>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-                View proof
-              </a>
+              {payment.proofUrl ? (
+                <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
+                  View proof
+                </a>
+              ) : (
+                <p className="text-sm text-neutral-600">
+                  {PAYMENT_METHOD_LABELS[payment.method]}
+                  {payment.reference ? ` · Ref: ${payment.reference}` : ""}
+                </p>
+              )}
               {payment.reviewRemarks ? <p className="text-xs text-neutral-500">Remarks: {payment.reviewRemarks}</p> : null}
             </div>
 

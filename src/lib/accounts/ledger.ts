@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { PAYMENT_METHOD_LABELS, formatMeetingDates } from "@/lib/payments/dates";
 import { formatMonthsCovered } from "@/lib/attendance/manage";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 
@@ -40,7 +41,10 @@ export type LedgerRow = {
   reviewedBy: string | null;
   reviewedAt: Date | null;
   reviewRemarks: string | null;
-  proofUrl: string;
+  /** Null for Razorpay payments and cash/bank entries made by Accounts. */
+  proofUrl: string | null;
+  /** How it was paid (member payments): screenshot, Razorpay, cash, bank transfer… */
+  methodLabel: string | null;
   /** Member payments only — null for visitor payments. */
   memberId: string | null;
   paymentType: "MEETING" | "MEMBERSHIP" | null;
@@ -151,7 +155,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       purpose:
         p.type === "MEMBERSHIP"
           ? `Annual membership — ${p.membershipYear}`
-          : `Meeting fee — ${formatMonthsCovered(p.monthsCovered) || `${p.numberOfMonths} month(s)`}`,
+          : `Meeting fee — ${p.meetingDates.length ? `${p.meetingDates.length} meeting(s): ${formatMeetingDates(p.meetingDates)}` : formatMonthsCovered(p.monthsCovered) || `${p.numberOfMonths} month(s)`}`,
       amountInr: Number(p.amountPaidInr),
       expectedAmountInr: p.expectedAmountInr === null ? null : Number(p.expectedAmountInr),
       paymentDate: p.actualPaymentDate,
@@ -161,6 +165,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       reviewedAt: p.reviewedAt,
       reviewRemarks: p.reviewRemarks,
       proofUrl: p.proofUrl,
+      methodLabel: PAYMENT_METHOD_LABELS[p.method] ?? null,
       memberId: p.memberId,
       paymentType: p.type,
     })),
@@ -181,6 +186,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       reviewedAt: p.reviewedAt,
       reviewRemarks: p.reviewRemarks,
       proofUrl: p.proofUrl,
+      methodLabel: null,
       memberId: null,
       paymentType: null,
     })),

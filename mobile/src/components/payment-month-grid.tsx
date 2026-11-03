@@ -12,7 +12,7 @@ export function PaymentMonthGrid({ tiles }: { tiles: PaymentMonthTile[] }) {
     <View style={styles.grid}>
       {tiles.map((t) => (
         <View
-          key={`${t.year}-${t.month}`}
+          key={t.label}
           accessible
           accessibilityLabel={`${t.label}: ${LABEL[t.status]}`}
           style={[

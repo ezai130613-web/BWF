@@ -4703,3 +4703,110 @@ inspected, plus cover variants (with/without founders, with a chief guest). Type
 clean. Add-category logic: 11 checks against a fresh private `prisma dev` (show hidden, already
 listed, occupied, deactivated, bad names, create, slug match). **Not verified:** a real roster
 download in the deployed app; the Add box in a browser.
+
+### Admin accounts reset + per-person access (2026-11-03)
+
+- Client reset the admin logins to six email accounts: three Super Admins, two Central Admins,
+  one Accounts. Applied to the live DB with `scripts/reset-admin-accounts.ts` (dry run by default,
+  `--apply` to write; the password is passed with `--password`, never stored in the repo). The
+  accounts are not forced to change the password: they can change it from "Change password" in
+  the admin sidebar, or reset it by email from the login page. All other admin logins (old
+  username-based Central/Accounting/Marketing/Membership/Website Admin, `arasubwf1@`,
+  `buildersworldforum1@`) are suspended, not deleted, so Users can reactivate them.
+- **Per-person access** (client: access "should stay per person" and stay editable). New
+  `User.customAccess` + `UserPermission` table (migration `20261103120000_per_user_access`).
+  `getUserPermissionKeys()` returns the person's own set when `customAccess` is on, otherwise
+  their role's set, so every existing permission check follows it. Super Admin always gets the
+  full role set, even if the flag is somehow set, so no one can lock them out.
+- Users → "Edit access" (`/admin/users/[id]/access`) is for Super Admins only, not
+  `users:manage`, because Website Admin holds that permission. It lists permissions as
+  checkboxes grouped by panel (`permissionPanels()` in `nav-config.ts`). Save stores a custom set;
+  "Use role defaults instead" clears it. You can't edit your own access or a Super Admin's. Both
+  actions need recent authentication and are written to the activity log. The Users table has a
+  new Access column (Full / Custom / Role default).
+- The two Central Admins get custom access with `scripts/set-central-admin-access.ts`: Website +
+  Membership panels, meaning the Central Admin defaults minus `marketing:manage` and
+  `accounts:view`. `payments:view` stays because the payment pages are in the Membership panel.
+  An earlier run the same day removed those two permissions from the whole Central Admin role.
+  The script adds them back, so the role's defaults (and `prisma/seed.ts`) are unchanged.
+- The workspace picker shows only panels the person's permissions unlock (`availableWorkspaces()`;
+  a shared page counts only toward its first panel, so payment pages alone don't open Accounts).
+  Before, it always offered Marketing. A remembered workspace they no longer have sends them back
+  to the picker. "Create user" labels the field "Password" (it was never a forced-change temporary
+  password).
+- Single-panel roles (Accounts, Website/Membership/Marketing Admin) stay in their one panel even
+  with custom access. The editor says so and suggests switching the role to Central Admin when
+  someone needs several panels.
+
+**Verification:** all six accounts checked in the live DB: correct role, password matches, no
+forced change. Per-person access was tested on a private `prisma dev` copy (all migrations plus
+seed). That covered the Central Admin script (they get Website + Membership only), a Super Admin
+with the flag set keeping full access, and a browser run as Super Admin: Users → Edit access →
+tick Marketing → Save, after which that Central Admin's picker showed Website, Membership and
+Marketing. Typecheck and lint clean.
+
+### Payments by meeting, attendance needs payment, offline entry, Razorpay (2026-11-03)
+
+Client spec: attendance only for members who have paid; the meeting fee pays for specific meetings,
+not calendar months; Accounts can enter cash/bank payments; members pay through Razorpay instead
+of uploading screenshots. Client decisions: attendance needs **both** the meeting's fee and that
+year's membership; ships behind an **off** switch; paying on the meeting day itself is fine;
+Razorpay built now but off until keys are added.
+
+- **Meeting-date coverage** (`src/lib/payments/coverage.ts`, pure helpers in `dates.ts`). New
+  `Payment.meetingDates` (`@db.Date[]`, IST days). "1 month" = the chapter's meetings per month (2
+  for every chapter), counted from the member's next unpaid meeting, or from their joining date if
+  later. So a mid-month joiner pays this month's second meeting plus next month's first. Meeting
+  days come from real `Meeting` rows when the month is generated (reschedules respected, cancelled
+  dropped), otherwise projected from `Chapter.meetingWeekday/meetingWeeksOfMonth`, so members can
+  pay up to 12 months ahead. `monthsCovered` is still written (derived from the dates) for
+  month-based screens and app 1.0/1.1. Old clients sending `month_i/year_i` are converted to that
+  month's meeting dates. The server always recomputes dates from `monthsToPay` and never trusts
+  dates from the browser.
+- **Check-in gate**: setting `attendance.requirePayment` (default off). When on, `checkInMember()`
+  refuses unless the meeting's date is covered by an APPROVED meeting payment AND that year's
+  membership is APPROVED. The error tells the member to go to Payments. The web check-in page and
+  `GET /api/mobile/v1/checkin/[token]` (`paymentBlock`) show the reason before the member tries.
+  Super Admin / Accounts switch it from Record Offline Payment.
+- **Dues reminder**: "Hi …, you're due for payment" banner on the member dashboard and Payments
+  page (`PaymentDuesBanner`), and `dues` in the app's `/payments` response. It shows when the next
+  meeting is unpaid (with "pay by" = the day before) or this year's membership is unpaid.
+- **Member Payments page / form**: meeting-by-meeting grid replaces the month grid. Dropdown "how
+  many months (1–12)" lists the exact meetings covered and the amount.
+- **Record Offline Payment** (`/admin/payments/record`, `payments:approve` = Super Admin +
+  Accounts): pick member, Cash / Bank transfer / UPI / Cheque, months → next unpaid meetings
+  auto-ticked, any date tickable/untickable, already-paid dates locked. Saved as APPROVED with
+  `method`, `reference`, reviewer. Server refuses dates that aren't the chapter's meeting days or
+  are already paid. New `Payment.method` enum; `proofUrl` is now nullable.
+- **Razorpay** (`src/lib/payments/razorpay.ts`): Payment Links API. `RazorpayCheckout` holds an
+  unpaid link, so abandoned links never appear as payments. Both the browser return
+  (`/api/payments/razorpay/return`) and the webhook (`/api/webhooks/razorpay`, HMAC-checked) call
+  `finalizeRazorpayCheckout()`. It re-reads the link's status from Razorpay's API, then creates
+  the APPROVED `RAZORPAY` payment exactly once (claim via conditional update, plus
+  `idempotencyKey = rzp:<linkId>`). Env: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+  `RAZORPAY_WEBHOOK_SECRET` (see `.env.example`). With keys set, the web page and app show "Pay
+  online" and hide the screenshot/bank details. App: `POST /api/mobile/v1/payments/online`.
+- **Mobile app** (next build, not submitted): payments screen shows dues, meeting grid, "Pay
+  online" (opens Razorpay in the browser); new-payment screen uses months → meeting list; check-in
+  shows `paymentBlock`. Installed 1.0/1.1 keep working against the new server.
+- Migration `20261103130000_meeting_date_payments` (additive). One-off
+  `scripts/backfill-payment-meeting-dates.ts` converts the existing month-based payments.
+
+**Verification:** on a private `prisma dev` copy (all migrations plus seed):
+- Joining 15 Nov and paying 1 month → 27 Nov (the rescheduled real meeting) + 10 Dec.
+- Older month-based payments convert to that month's meeting dates.
+- Gate: pending → blocked ("awaiting approval"); meeting paid but no membership → blocked;
+  both paid → allowed.
+- Razorpay, against a simulated API: one approved payment created, a second confirm doesn't
+  duplicate it, and the webhook signature check accepts a valid signature and rejects a forged
+  one.
+- In a browser: dues banner, meeting grid, 3 months → 6 dates and ₹7,080; Accounts recorded cash
+  for 2 months (4 dates auto-ticked, ₹4,720) and a bank-transfer membership; check-in was blocked,
+  then allowed after, and attendance was saved.
+- With fake keys, the online mode reached Razorpay's real API (it answered "Authentication
+  failed").
+- A bug found in testing was fixed: Accounts' membership year defaulted to last year.
+- Typecheck and lint clean (web and app).
+
+**Not verified:** a real Razorpay payment (needs live or test keys), the webhook from Razorpay, and
+the app screens on a device.

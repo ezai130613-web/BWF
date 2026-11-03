@@ -1,12 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { hasApprovedOverlap } from "@/lib/attendance/manage";
-import {
-  hasApprovedMembership,
-  parseMeetingPaymentFields,
-  parseProofFields,
-  type PaymentFieldSource,
-} from "@/lib/payments/member-payments";
+import { hasApprovedMembership, parseProofFields, type PaymentFieldSource } from "@/lib/payments/member-payments";
+import { keyToDbDate, monthsOfDates, overlapsApprovedDates, resolveMemberMeetingSelection } from "@/lib/payments/coverage";
 import { getContent } from "@/lib/content";
 import { parseFee, quoteMeetingFee, quoteMembershipFee } from "@/lib/payments/fees";
 import { Prisma } from "@/generated/prisma/client";
@@ -42,19 +37,22 @@ export async function submitMemberPaymentFor(
 
   let data: Prisma.PaymentUncheckedCreateInput;
   if (type === "MEETING") {
-    const parsed = parseMeetingPaymentFields(formData);
-    if (parsed.error !== undefined) return { error: parsed.error };
-    const p = parsed.data;
+    const selection = await resolveMemberMeetingSelection(memberId, formData);
+    if (selection.error !== undefined) return { error: selection.error };
+    const proof = parseProofFields(formData);
+    if (proof.error !== undefined) return { error: proof.error };
+    const { dates, numberOfMonths } = selection.data;
     data = {
       memberId: memberId,
       type: "MEETING",
-      numberOfMonths: p.numberOfMonths,
-      monthsCovered: p.monthsCovered,
-      amountPaidInr: new Prisma.Decimal(p.amountPaidInr),
-      expectedAmountInr: await expectedAmountFor("MEETING", p.numberOfMonths),
-      actualPaymentDate: p.actualPaymentDate,
-      proofUrl: p.proofUrl,
-      overlapsApprovedCoverage: await hasApprovedOverlap(memberId, p.monthsCovered),
+      numberOfMonths,
+      meetingDates: dates.map(keyToDbDate),
+      monthsCovered: monthsOfDates(dates),
+      amountPaidInr: new Prisma.Decimal(proof.data.amountPaidInr),
+      expectedAmountInr: await expectedAmountFor("MEETING", numberOfMonths),
+      actualPaymentDate: proof.data.actualPaymentDate,
+      proofUrl: proof.data.proofUrl,
+      overlapsApprovedCoverage: await overlapsApprovedDates(memberId, dates),
       idempotencyKey,
     };
   } else {

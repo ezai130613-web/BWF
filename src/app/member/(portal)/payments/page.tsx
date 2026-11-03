@@ -3,11 +3,14 @@ import { BadgeCheck, CalendarCheck, CalendarDays, Clock, IndianRupee, Wallet } f
 import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getContent } from "@/lib/content";
-import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
+import { summarizeMemberPayments } from "@/lib/payments/overview";
 import { parseFee, quoteMembershipFee } from "@/lib/payments/fees";
-import { PaymentMonthGrid } from "@/components/member/payment-month-grid";
+import { PaymentMeetingGrid } from "@/components/member/payment-meeting-grid";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
-import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
+import { formatMonthsCovered } from "@/lib/attendance/manage";
+import { formatDateKey, getMemberPaymentContext, paymentCoverageLabel } from "@/lib/payments/coverage";
+import { isRazorpayConfigured } from "@/lib/payments/razorpay";
+import { PaymentDuesBanner } from "@/components/member/payment-dues-banner";
 import { Card, DataTable, PageHeader, StatTile, formatShortDate, tdClass } from "@/components/member/ui";
 import { MemberPaymentForm } from "@/components/member/member-payment-form";
 import { cn } from "@/lib/utils";
@@ -31,12 +34,12 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
  * share /member/payments?type=meeting|membership links (Admin → Payment
  * Links); a signed-out member goes through login and lands back here.
  */
-export default async function MemberPaymentsPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
+export default async function MemberPaymentsPage({ searchParams }: { searchParams: Promise<{ type?: string; online?: string }> }) {
   const { member } = await requireMemberProfile();
-  const { type: typeParam } = await searchParams;
+  const { type: typeParam, online: onlineResult } = await searchParams;
   const type = typeParam === "membership" ? "MEMBERSHIP" : "MEETING";
 
-  const [payments, content] = await Promise.all([
+  const [payments, content, context] = await Promise.all([
     db.payment.findMany({
       where: { memberId: member.id },
       include: { meeting: { select: { title: true } } },
@@ -59,12 +62,12 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
       "payment.membershipUpiId",
       "payment.membershipBankName",
     ]),
+    getMemberPaymentContext(member.id),
   ]);
+  const online = isRazorpayConfigured();
+  const { dues } = context;
 
-  const { today, thisMonth, thisMonthStatus, paidThrough, startMonth, membershipThisYear, membershipYears, defaultMembershipYear } =
-    summarizeMemberPayments(payments);
-
-  const monthGrid = buildMonthGrid(payments, member.joinedAt);
+  const { membershipYears, defaultMembershipYear } = summarizeMemberPayments(payments);
   const monthlyFeeValue = parseFee(content["fees.monthlyMeeting"]);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
   const monthlyFee = formatInr(content["fees.monthlyMeeting"]);
@@ -72,7 +75,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
   const details =
     type === "MEETING"
       ? {
-          title: "Meeting payment (monthly)",
+          title: "Meeting payment",
           fee: monthlyFee ? `${withGst(monthlyFee)} per month` : null,
           qr: content["payment.qrCodeUrl"],
           upiId: content["payment.upiId"],
@@ -107,38 +110,60 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
       <PageHeader
         icon={Wallet}
         title="Payments"
-        description="Pay your monthly meeting fee or your annual BWF membership here. Upload the screenshot — once BWF approves it, every month it covers gets a tick below."
+        description={
+          online
+            ? "Pay your meeting fee (by meeting) or your annual BWF membership online with Razorpay. You need both paid to check in at a meeting."
+            : "Pay your meeting fee (by meeting) or your annual BWF membership here. Upload the screenshot — once BWF approves it, the meetings it covers get a tick below. You need both paid to check in at a meeting."
+        }
       />
+
+      {onlineResult === "paid" ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">✓ Payment received — thank you. It&apos;s marked paid below.</p>
+      ) : onlineResult === "pending" ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          We&apos;re waiting for Razorpay to confirm your payment. If you completed it, refresh this page in a minute.
+        </p>
+      ) : onlineResult === "expired" || onlineResult === "error" ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">That payment link wasn&apos;t completed. Please start the payment again.</p>
+      ) : null}
+
+      <PaymentDuesBanner name={member.name} dues={dues} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatTile
-          label={`Meeting fee · ${formatMonthYear(thisMonth)}`}
+          label={dues.nextMeeting ? `Next meeting · ${formatDateKey(dues.nextMeeting.date)}` : "Next meeting"}
           icon={CalendarDays}
-          value={thisMonthStatus === "APPROVED" ? "Paid" : thisMonthStatus === "PENDING" ? "Pending" : "Not paid"}
-          hint={thisMonthStatus === "PENDING" ? "Awaiting BWF approval" : thisMonthStatus === null ? "No approved payment recorded" : undefined}
+          value={!dues.nextMeeting ? "—" : dues.nextMeeting.status === "APPROVED" ? "Paid" : dues.nextMeeting.status === "PENDING" ? "Pending" : "Not paid"}
+          hint={
+            dues.nextMeeting?.status === "PENDING"
+              ? "Awaiting BWF approval"
+              : dues.nextMeeting?.status === null
+                ? `Pay by ${formatDateKey(dues.nextMeeting.payBy)}`
+                : undefined
+          }
         />
         <StatTile
           label="Meeting fee paid through"
           icon={Clock}
-          value={paidThrough ? formatMonthYear(paidThrough) : "—"}
-          hint={paidThrough ? "Approved months, continuous from this month" : "Nothing approved from this month on yet"}
+          value={dues.paidThrough ? formatDateKey(dues.paidThrough) : "—"}
+          hint={dues.paidThrough ? "Paid meetings, continuous from the next one" : "The next meeting isn't paid yet"}
         />
         <StatTile
-          label={`Membership · ${today.year}`}
+          label={`Membership · ${dues.membership.year}`}
           icon={BadgeCheck}
-          value={membershipThisYear === "APPROVED" ? "Paid" : membershipThisYear === "PENDING" ? "Pending" : "Not paid"}
-          hint={membershipThisYear === "PENDING" ? "Awaiting BWF approval" : membershipThisYear === null ? "No approved payment recorded" : undefined}
+          value={dues.membership.status === "APPROVED" ? "Paid" : dues.membership.status === "PENDING" ? "Pending" : "Not paid"}
+          hint={dues.membership.status === "PENDING" ? "Awaiting BWF approval" : dues.membership.status === null ? "Needed to check in at meetings" : undefined}
         />
       </div>
 
-      <Card title="Meeting fee — month by month" icon={CalendarCheck}>
-        <PaymentMonthGrid tiles={monthGrid} />
+      <Card title="Meeting fee — meeting by meeting" icon={CalendarCheck}>
+        <PaymentMeetingGrid tiles={context.tiles} />
       </Card>
 
       <div className="flex gap-2" role="tablist" aria-label="Payment type">
         {(
           [
-            ["MEETING", "meeting", "Meeting payment (monthly)"],
+            ["MEETING", "meeting", "Meeting fee"],
             ["MEMBERSHIP", "membership", "Annual membership"],
           ] as const
         ).map(([value, slug, label]) => (
@@ -157,33 +182,39 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card title={`How to pay — ${details.title}`} icon={IndianRupee}>
-          {details.fee ? (
-            <p className="text-sm text-neutral-700">
-              Fee: <span className="font-semibold text-neutral-900">{details.fee}</span>
-            </p>
-          ) : null}
-          {details.qr ? <QrPaymentBlock qrCodeUrl={details.qr} upiId={details.upiId} payeeName={details.payeeName} tone="light" /> : null}
-          {bankRows.length ? (
-            <dl className="mt-4 flex flex-col gap-1.5 border-t border-neutral-100 pt-4 text-sm">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Or transfer directly</p>
-              {bankRows.map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4">
-                  <dt className="text-neutral-500">{label}</dt>
-                  <dd className="text-right font-medium text-neutral-900">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-          {!details.qr && !bankRows.length ? <p className="text-sm text-neutral-500">Payment details will be shared by BWF.</p> : null}
-        </Card>
-
-        <Card title="Submit your payment" description="Upload the screenshot or receipt — BWF verifies it before it counts.">
+      <div className={cn("grid gap-6", !online && "lg:grid-cols-2")}>
+        {online ? null : (
+          <Card title={`How to pay — ${details.title}`} icon={IndianRupee}>
+            {details.fee ? (
+              <p className="text-sm text-neutral-700">
+                Fee: <span className="font-semibold text-neutral-900">{details.fee}</span>
+              </p>
+            ) : null}
+            {details.qr ? <QrPaymentBlock qrCodeUrl={details.qr} upiId={details.upiId} payeeName={details.payeeName} tone="light" /> : null}
+            {bankRows.length ? (
+              <dl className="mt-4 flex flex-col gap-1.5 border-t border-neutral-100 pt-4 text-sm">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Or transfer directly</p>
+                {bankRows.map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4">
+                    <dt className="text-neutral-500">{label}</dt>
+                    <dd className="text-right font-medium text-neutral-900">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            {!details.qr && !bankRows.length ? <p className="text-sm text-neutral-500">Payment details will be shared by BWF.</p> : null}
+          </Card>
+        )}
+        <Card
+          title={online ? "Pay online" : "Submit your payment"}
+          description={online ? "Paid instantly through Razorpay — no screenshot needed." : "Upload the screenshot or receipt — BWF verifies it before it counts."}
+        >
           <MemberPaymentForm
             key={type}
             type={type}
-            startMonth={startMonth}
+            online={online}
+            upcoming={context.upcoming}
+            perMonth={context.perMonth}
             monthlyFee={monthlyFeeValue}
             membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
             membershipYears={membershipYears}
@@ -204,7 +235,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
                   {p.meeting ? <p className="text-xs text-neutral-500">At check-in: {p.meeting.title}</p> : null}
                 </td>
                 <td className={cn(tdClass, "text-neutral-700")}>
-                  {p.type === "MEMBERSHIP" ? `Year ${p.membershipYear}` : formatMonthsCovered(p.monthsCovered)}
+                  {p.type === "MEMBERSHIP" ? `Year ${p.membershipYear}` : paymentCoverageLabel(p, formatMonthsCovered)}
                 </td>
                 <td className={cn(tdClass, "whitespace-nowrap font-medium text-neutral-900")}>{money.format(Number(p.amountPaidInr))}</td>
                 <td className={tdClass}>

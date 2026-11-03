@@ -18,6 +18,7 @@ import {
   Wallet,
   IndianRupee,
   Receipt,
+  HandCoins,
   CreditCard,
   Trophy,
   Activity,
@@ -110,6 +111,8 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/payments", label: "Payments", icon: IndianRupee, permission: "payments:view", workspace: ["performance", "accounts"] },
       { href: "/admin/payments/members", label: "Member-wise Payments", icon: Receipt, permission: "accounts:view", workspace: "accounts" },
       { href: "/admin/payments/links", label: "Payment Links", icon: Link2, permission: "payments:view", workspace: ["performance", "accounts"] },
+      // 2026-11-03 — cash / bank transfer entry + the "attendance requires payment" switch.
+      { href: "/admin/payments/record", label: "Record Offline Payment", icon: HandCoins, permission: "payments:approve", workspace: ["accounts", "performance"] },
       { href: "/admin/visitors-payment", label: "Visitors Payment", icon: CreditCard, permission: "payments:view", workspace: ["performance", "accounts"] },
     ],
   },
@@ -178,6 +181,49 @@ export const WORKSPACE_LABELS: Record<Workspace, string> = {
 };
 
 const ALL_ITEMS = ADMIN_NAV_GROUPS.flatMap((g) => g.items);
+
+/**
+ * Permission keys grouped by the panel their pages live in, for the
+ * per-person Access editor. A key used in several panels is listed under the
+ * first; keys no nav item uses go in a trailing "other" group so saving a
+ * custom set never silently drops them.
+ */
+export function permissionPanels(allKeys: string[]): { title: string; keys: string[] }[] {
+  const seen = new Set<string>();
+  const groups: { title: string; keys: string[] }[] = (["website", "performance", "marketing", "accounts"] as Workspace[]).map((ws) => {
+    const keys: string[] = [];
+    for (const item of ALL_ITEMS) {
+      const inWs = Array.isArray(item.workspace) ? item.workspace[0] === ws : item.workspace === ws;
+      if (inWs && item.permission && !seen.has(item.permission) && allKeys.includes(item.permission)) {
+        seen.add(item.permission);
+        keys.push(item.permission);
+      }
+    }
+    return { title: WORKSPACE_LABELS[ws], keys };
+  });
+  const other = allKeys.filter((k) => !seen.has(k));
+  if (other.length) groups.push({ title: "Other", keys: other });
+  return groups.filter((g) => g.keys.length);
+}
+
+/**
+ * Workspaces this admin can actually work in: those with at least one nav
+ * item their permissions unlock (2026-11-03 — Central Admin's panels follow
+ * what Super Admin grants in Roles & Permissions, e.g. Website + Membership
+ * only, instead of always offering all of them).
+ */
+export function availableWorkspaces(permissions: Set<string>): Workspace[] {
+  const order: Workspace[] = ["website", "performance", "marketing", "accounts"];
+  return order.filter((ws) =>
+    ALL_ITEMS.some((item) => {
+      if (item.permission === null || !permissions.has(item.permission)) return false;
+      // Only an item's home (first) panel counts — the shared payment pages
+      // (performance + accounts) must not open the Accounts panel on their
+      // own; that takes accounts:view, as it always has.
+      return (Array.isArray(item.workspace) ? item.workspace[0] : item.workspace) === ws;
+    }),
+  );
+}
 
 /**
  * The nav item a path belongs to — longest matching href wins, so

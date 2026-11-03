@@ -18,6 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { requireMemberProfile } from "@/lib/auth/rbac";
+import { getMemberDues, loadMemberForCoverage } from "@/lib/payments/coverage";
+import { PaymentDuesBanner } from "@/components/member/payment-dues-banner";
 import { getMemberDashboard } from "@/lib/members/dashboard";
 import { getVisibleBirthdays } from "@/lib/members/birthdays";
 import { formatInr } from "@/lib/format";
@@ -39,9 +41,10 @@ const QUICK_ACTIONS: { href: string; label: string; hint: string; icon: LucideIc
 export default async function MemberDashboardPage() {
   const { member } = await requireMemberProfile();
 
-  const [{ now, chapter, category, company, pendingRevision, nextMeeting, score, thisMonth }, birthdays] = await Promise.all([
+  const [{ now, chapter, category, company, pendingRevision, nextMeeting, score, thisMonth }, birthdays, dues] = await Promise.all([
     getMemberDashboard(member),
     getVisibleBirthdays(member.id),
+    loadMemberForCoverage(member.id).then((m) => getMemberDues(m)),
   ]);
   const birthdaysToday = birthdays.filter((b) => b.daysAway === 0);
 
@@ -49,6 +52,7 @@ export default async function MemberDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <PaymentDuesBanner name={member.name} dues={dues} showLink />
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 p-6 text-ivory-100 shadow-md sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-gold-500/10 blur-2xl" aria-hidden />

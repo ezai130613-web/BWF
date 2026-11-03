@@ -3,8 +3,8 @@ import { requireMemberProfile } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { isWithinCheckinWindow } from "@/lib/attendance/qr";
 import { CheckinForm } from "@/components/checkin/checkin-form";
-import { formatMonthYear } from "@/lib/attendance/manage";
-import { getMonthCoverage, meetingMonth } from "@/lib/payments/member-payments";
+import { checkAttendancePayment, formatDateKey, istDateKey, meetingCoverageFor } from "@/lib/payments/coverage";
+import { getBooleanSetting } from "@/lib/settings";
 import Link from "next/link";
 
 /**
@@ -34,11 +34,14 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
     where: { meetingId_memberId: { meetingId: meeting.id, memberId: member.id } },
   });
 
-  // The meeting's month already paid for (e.g. a 6-month payment made
-  // earlier) — skip the payment question once BWF has approved it.
-  const month = meetingMonth(meeting.startsAt);
-  const coverage = await getMonthCoverage(member.id, month);
-  const monthLabel = formatMonthYear(month);
+  // 2026-11-03 — payments cover specific meeting dates. With "attendance
+  // requires payment" on, an unpaid member is told why before trying.
+  const coverage = await meetingCoverageFor(member.id, meeting.startsAt);
+  const monthLabel = `the meeting on ${formatDateKey(istDateKey(meeting.startsAt))}`;
+  const paymentBlock =
+    existingAttendance?.status !== "PRESENT" && (await getBooleanSetting("attendance.requirePayment"))
+      ? await checkAttendancePayment(member.id, meeting.startsAt)
+      : null;
 
   const withinWindow = isWithinCheckinWindow(meeting);
   const registrationClosed = !meeting.attendanceRegistrationOpen || !withinWindow;
@@ -93,6 +96,14 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
       {registrationClosed ? (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-600">
           Check-in for this meeting isn&rsquo;t open right now. Please check with your chapter admin.
+        </div>
+      ) : paymentBlock && !paymentBlock.ok ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+          <p className="font-semibold">You can&rsquo;t check in yet.</p>
+          <p className="mt-1">{paymentBlock.error}</p>
+          <Link href="/member/payments" className="mt-3 inline-block rounded-lg bg-emerald-800 px-4 py-2 font-medium text-white hover:bg-emerald-700">
+            Go to Payments
+          </Link>
         </div>
       ) : existingAttendance?.status === "PRESENT" ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">

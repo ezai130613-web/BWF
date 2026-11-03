@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
 import { isWithinCheckinWindow } from "@/lib/attendance/qr";
-import { formatMonthYear } from "@/lib/attendance/manage";
 import { checkInMember } from "@/lib/attendance/checkin";
-import { fieldsFromJson, getMonthCoverage, meetingMonth } from "@/lib/payments/member-payments";
+import { fieldsFromJson } from "@/lib/payments/member-payments";
+import { checkAttendancePayment, formatDateKey, istDateKey, meetingCoverageFor } from "@/lib/payments/coverage";
+import { getBooleanSetting } from "@/lib/settings";
 import { isOwnStorageUrl } from "@/lib/storage";
 import { invalid, json, MobileApiError, mobileHandler, requireMobileMember } from "@/lib/mobile/api";
 import type { CheckinPreviewResponse } from "@/lib/mobile/contract";
@@ -23,15 +24,22 @@ export const GET = mobileHandler(async (request: Request, { params }: Ctx) => {
     db.member.findUniqueOrThrow({ where: { id: member.id }, include: { category: true, chapter: true } }),
     db.attendance.findUnique({ where: { meetingId_memberId: { meetingId: meeting.id, memberId: member.id } } }),
   ]);
-  const month = meetingMonth(meeting.startsAt);
+  const alreadyCheckedIn = existing?.status === "PRESENT";
+  const block =
+    !alreadyCheckedIn && (await getBooleanSetting("attendance.requirePayment"))
+      ? await checkAttendancePayment(member.id, meeting.startsAt)
+      : null;
 
   const body: CheckinPreviewResponse = {
     meeting: { id: meeting.id, title: meeting.title, chapter: meeting.chapter.name, startsAt: meeting.startsAt.toISOString() },
     member: { name: me.name, category: me.category.name, chapter: me.chapter.name },
     open: meeting.attendanceRegistrationOpen && isWithinCheckinWindow(meeting),
-    alreadyCheckedIn: existing?.status === "PRESENT",
-    monthCoverage: await getMonthCoverage(member.id, month),
-    monthLabel: formatMonthYear(month),
+    alreadyCheckedIn,
+    // Kept under the old names so app 1.0/1.1 keep working: "month" now
+    // means this meeting's date (2026-11-03 — payments cover meeting dates).
+    monthCoverage: await meetingCoverageFor(member.id, meeting.startsAt),
+    monthLabel: formatDateKey(istDateKey(meeting.startsAt)),
+    paymentBlock: block && !block.ok ? block.error : null,
   };
   return json(body);
 });

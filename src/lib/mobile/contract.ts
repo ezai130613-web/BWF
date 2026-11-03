@@ -283,7 +283,31 @@ export type PaymentsResponse = {
   monthGrid?: PaymentMonthTile[];
   /** Phase 40 — numbers for pre-filling the amount: monthly fee before GST, GST %, annual membership total incl. GST. */
   feeQuote?: { monthlyMeetingInr: number | null; gstPercent: number; membershipTotalInr: number | null };
+  // --- 2026-11-03: meeting-date payments. Optional: older servers don't send them. ---
+  /** "You're due for payment" — null when nothing is due. */
+  dues?: { title: string; items: string[] } | null;
+  /** Meeting-by-meeting status (replaces monthGrid in newer app builds). */
+  meetingGrid?: PaymentMeetingTile[];
+  /** The member's next unpaid meeting dates ("YYYY-MM-DD"), 12 months' worth — the preview for "N months". */
+  upcomingUnpaid?: string[];
+  /** Meetings in one month for this chapter (2 today). */
+  meetingsPerMonth?: number;
+  /** True when Razorpay is switched on: pay with POST /payments/online instead of uploading proof. */
+  onlinePayments?: boolean;
 };
+
+export type PaymentMeetingTile = {
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** "12 Nov 2026" */
+  label: string;
+  status: "PAID" | "PENDING" | "DUE" | "NO_RECORD" | "UPCOMING";
+  /** The member's next meeting. */
+  next: boolean;
+};
+
+/** POST /payments/online → the Razorpay page to open. */
+export type OnlinePaymentResponse = { url: string };
 
 export type PaymentMonthTile = {
   month: number;
@@ -302,9 +326,12 @@ export type CheckinPreviewResponse = {
   member: { name: string; category: string; chapter: string };
   open: boolean;
   alreadyCheckedIn: boolean;
-  /** The meeting's month is already paid (or awaiting approval). */
+  /** This meeting's date is already paid (or awaiting approval). Named "month" for app 1.0/1.1. */
   monthCoverage: "APPROVED" | "PENDING" | null;
+  /** The meeting's date, e.g. "Thu, 12 Nov 2026". */
   monthLabel: string;
+  /** 2026-11-03 — set when "attendance requires payment" is on and this member can't check in yet: the reason to show. */
+  paymentBlock?: string | null;
 };
 
 // --- Socials / birthdays (Phase 37) ---

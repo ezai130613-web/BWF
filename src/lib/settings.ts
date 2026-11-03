@@ -11,6 +11,11 @@ const SETTING_DEFAULTS = {
   "memberActivation.requireEmailCode": true,
   /** Visitor feedback emails go to every active Super Admin by default. */
   "feedback.notifySuperAdmins": true,
+  /** 2026-11-03 — members can check in only when this meeting's fee and the
+   * year's membership are paid (approved). Off until Accounts has entered the
+   * payments members already made; Super Admin / Accounts switch it on from
+   * the Accounts page. */
+  "attendance.requirePayment": false,
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

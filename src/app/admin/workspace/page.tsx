@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
 import { selectWorkspace } from "./actions";
 import { WORKSPACE_HOME, fixedWorkspaceFor } from "@/lib/auth/constants";
+import { availableWorkspaces } from "@/components/admin/nav-config";
 
 /**
  * Phase 20 Batch 4 — "Select Admin Workspace." Only reachable meaningfully
@@ -24,10 +25,12 @@ export default async function WorkspaceSelectPage() {
   const selectPerformance = selectWorkspace.bind(null, "performance");
   const selectMarketing = selectWorkspace.bind(null, "marketing");
   const selectAccounts = selectWorkspace.bind(null, "accounts");
-  // Accounts workspace for holders of accounts:view — Accounts Department and
-  // Super Admin by default; grantable to others from Roles & Permissions.
+  // Only the workspaces this login's permissions unlock (2026-11-03) — e.g.
+  // Accounts for holders of accounts:view, Marketing for marketing:manage.
+  // Super Admin changes these per role from Roles & Permissions.
   const permissions = await getUserPermissionKeys(session.user.id);
-  const canSeeAccounts = permissions.has("accounts:view");
+  const available = availableWorkspaces(permissions);
+  const canSeeAccounts = available.includes("accounts");
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f5f7f4] px-4 py-10">
@@ -43,53 +46,59 @@ export default async function WorkspaceSelectPage() {
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {available.includes("website") ? (
           <form action={selectWebsite}>
-            <button
-              type="submit"
-              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
-                <Globe className="h-5 w-5" aria-hidden />
-              </span>
-              <p className="mt-3 text-base font-semibold text-neutral-900">Website Admin</p>
-              <p className="mt-1.5 text-sm text-neutral-600">
-                Chapters, Members, Companies, Categories, Applications, Meetings, Visitors, Blog,
-                Testimonials, Chief Guests, Website Content, Users &amp; Roles.
-              </p>
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                  <Globe className="h-5 w-5" aria-hidden />
+                </span>
+                <p className="mt-3 text-base font-semibold text-neutral-900">Website Admin</p>
+                <p className="mt-1.5 text-sm text-neutral-600">
+                  Chapters, Members, Companies, Categories, Applications, Meetings, Visitors, Blog,
+                  Testimonials, Chief Guests, Website Content, Users &amp; Roles.
+                </p>
+              </button>
+            </form>
+          ) : null}
 
+          {available.includes("performance") ? (
           <form action={selectPerformance}>
-            <button
-              type="submit"
-              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
-                <Trophy className="h-5 w-5" aria-hidden />
-              </span>
-              <p className="mt-3 text-base font-semibold text-neutral-900">Member Performance Admin</p>
-              <p className="mt-1.5 text-sm text-neutral-600">
-                App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
-                Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Visitors QR &amp; Visitors Attendance.
-              </p>
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                  <Trophy className="h-5 w-5" aria-hidden />
+                </span>
+                <p className="mt-3 text-base font-semibold text-neutral-900">Member Performance Admin</p>
+                <p className="mt-1.5 text-sm text-neutral-600">
+                  App Points &amp; Scoring, BWF App Activity (referrals, Thank You Slips, One-to-Ones,
+                  Power Dates, Conclaves), Roster Sheets, QR Codes, Attendance, Visitors QR &amp; Visitors Attendance.
+                </p>
+              </button>
+            </form>
+          ) : null}
 
+          {available.includes("marketing") ? (
           <form action={selectMarketing}>
-            <button
-              type="submit"
-              className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
-                <Megaphone className="h-5 w-5" aria-hidden />
-              </span>
-              <p className="mt-3 text-base font-semibold text-neutral-900">Marketing Admin</p>
-              <p className="mt-1.5 text-sm text-neutral-600">
-                Content Calendar, Content Creation, Scheduling, Script Writing, Content Library,
-                Publishing History &amp; Connected Accounts.
-              </p>
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full rounded-2xl border border-neutral-200/80 bg-white shadow-sm p-6 text-left transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-800 text-gold-300">
+                  <Megaphone className="h-5 w-5" aria-hidden />
+                </span>
+                <p className="mt-3 text-base font-semibold text-neutral-900">Marketing Admin</p>
+                <p className="mt-1.5 text-sm text-neutral-600">
+                  Content Calendar, Content Creation, Scheduling, Script Writing, Content Library,
+                  Publishing History &amp; Connected Accounts.
+                </p>
+              </button>
+            </form>
+          ) : null}
 
           {canSeeAccounts ? (
             <form action={selectAccounts}>
