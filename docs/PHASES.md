@@ -4882,3 +4882,36 @@ logged-out request redirects to login. Typecheck + lint clean.
 **Not verified:** a real inbox delivery (no Resend key locally), and the auto-send path with a live
 Razorpay payment (the switch is off anyway). **Open:** GST is shown as a single "GST @ 18%" line.
 If the client needs CGST 9% + SGST 9% (same state) / IGST split, or a SAC code, add it to the PDF.
+
+## 2026-11-09 — Thank-you-slip points to the giver, editable points, homepage calendar
+
+Client: (1) Thank You Slip points should reward the member who **gave the business**, not the one
+who wrote the slip; (2) admins must be able to change points after the system awards them; (3) a
+homepage calendar of all meetings plus admin-added events/activities, editable from the admin panel.
+
+- **Slip points** (`src/lib/points/score.ts`): Thank You Slips are now counted/valued by the slip's
+  `toMember` (the giver) in both `getMemberActivityCounts` and the leaderboard query. Recorded data
+  is unchanged — only who is credited. **Existing slips re-score retroactively** (points are computed
+  on read), so current totals will shift from the writers to the givers.
+- **Points adjustments**: table `points_adjustments` (signed points + reason + admin). On
+  `/admin/app-activity/[memberId]`, anyone with `points_config:manage` (Super, Central, Membership
+  Admin) can add a +/- adjustment or remove one. The total = rule points + adjustments; it shows as an
+  "Admin adjustments" row in the member's My Points page and the app (only when present), feeds the
+  leaderboard and roster scores, and has its own column in the activity export. Logged as
+  `points_adjustment.created/deleted`.
+- **Calendar**: table `calendar_events`. `/admin/calendar` (permission `content:manage`; sidebar →
+  Website → Calendar) shows the same month grid plus add/edit/delete for events (title, IST time or
+  all-day, multi-day, chapter or all, location, link, show/hide). Homepage section "Calendar"
+  (`CalendarSection`, after Chapters) shows non-cancelled meetings of ACTIVE/COMING_SOON chapters
+  (read from `Meeting`, never copied) + published events, previous month to +12 months. Meeting
+  and event saves revalidate `/`; the homepage's 1h ISR is the ceiling.
+- Migration `20261109120000_points_adjustments_calendar_events` (additive). **Applied to the
+  live Neon DB** — run `prisma migrate deploy` before/with deploying, or the homepage calendar and the
+  member points pages will error.
+
+**Verification** (isolated `prisma dev` DB): ₹2,000 slip at ₹500/pt → giver 4, writer 0; +7/−2
+adjustments → 5; hidden events and cancelled meetings absent from the public calendar, present in
+admin; homepage screenshots at desktop/mobile; in the browser as Super Admin: added an event and
+applied a −3 adjustment (total updated). Typecheck + lint clean.
+**Not verified:** event edit/delete buttons and the Remove-adjustment button in a browser; the mobile
+app screens (they render the new row generically, no app change needed).

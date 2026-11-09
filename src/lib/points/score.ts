@@ -3,7 +3,7 @@ import type { ActivityType } from "@/generated/prisma/client";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   REFERRAL: "Referrals",
-  THANK_YOU_SLIP: "Thank You Slips",
+  THANK_YOU_SLIP: "Thank You Slips (business given)",
   ONE_TO_ONE: "One-to-Ones",
   POWER_DATE: "Power Dates",
   CONCLAVE: "Conclaves",
@@ -21,7 +21,7 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
  */
 export const ACTIVITY_UNITS: Record<ActivityType, { one: string; many: string }> = {
   REFERRAL: { one: "referral", many: "referrals" },
-  THANK_YOU_SLIP: { one: "rupee of business value", many: "rupees of business value" },
+  THANK_YOU_SLIP: { one: "rupee of business given", many: "rupees of business given" },
   ONE_TO_ONE: { one: "one-to-one", many: "one-to-ones" },
   POWER_DATE: { one: "person brought on a Power Date", many: "people brought on Power Dates" },
   CONCLAVE: { one: "conclave", many: "conclaves" },
@@ -59,6 +59,11 @@ const pointsFor = (quantity: number, rule: PointsRule) => Math.floor(quantity / 
  * picker) — see the PointsConfig schema comment for the full history.
  * ATTENDANCE counts meetings marked PRESENT. Thank You Slips also carry
  * their rupee total, which is what they're scored on.
+ *
+ * Thank You Slips score the member who GAVE the business (the slip's
+ * `toMember`), not the one who wrote the slip (client, 2026-11-09) — so
+ * members are rewarded for passing business on. Admin point adjustments
+ * (PointsAdjustment) are added on top.
  */
 export async function getMemberActivityCounts(memberId: string): Promise<MemberActivity> {
   const [
@@ -72,9 +77,10 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
     chiefGuests,
     inductions,
     attendances,
+    adjustments,
   ] = await Promise.all([
     db.referral.count({ where: { fromMemberId: memberId } }),
-    db.thankYouSlip.aggregate({ where: { fromMemberId: memberId }, _count: { _all: true }, _sum: { amountInr: true } }),
+    db.thankYouSlip.aggregate({ where: { toMemberId: memberId }, _count: { _all: true }, _sum: { amountInr: true } }),
     db.oneToOne.count({ where: { OR: [{ memberId }, { withMemberId: memberId }] } }),
     db.powerDate.count({ where: { hostMemberId: memberId } }),
     db.conclave.count({
@@ -87,6 +93,7 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
     db.memberChiefGuest.count({ where: { memberId } }),
     db.member.count({ where: { referredByMemberId: memberId } }),
     db.attendance.count({ where: { memberId, status: "PRESENT" } }),
+    db.pointsAdjustment.aggregate({ where: { memberId }, _count: { _all: true }, _sum: { points: true } }),
   ]);
 
   return {
@@ -103,6 +110,8 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
       ATTENDANCE: attendances,
     },
     thankYouValueInr: thankYouSlips._sum.amountInr ?? 0,
+    adjustmentCount: adjustments._count._all,
+    adjustmentPoints: adjustments._sum.points ?? 0,
   };
 }
 
@@ -116,7 +125,8 @@ export async function getPointsConfig(): Promise<Record<ActivityType, PointsRule
 }
 
 export type ScoreBreakdownRow = {
-  type: ActivityType;
+  /** An activity, or "ADJUSTMENT" for manual admin corrections (only present when there are some). */
+  type: ActivityType | "ADJUSTMENT";
   label: string;
   /** How many were recorded (slips, Power Dates, meetings attended, …). */
   count: number;
@@ -129,10 +139,16 @@ export type ScoreBreakdownRow = {
   subtotal: number;
 };
 
-type MemberActivity = { counts: Record<ActivityType, number>; thankYouValueInr: number };
+type MemberActivity = {
+  counts: Record<ActivityType, number>;
+  thankYouValueInr: number;
+  /** Manual admin corrections: how many, and their signed sum. */
+  adjustmentCount: number;
+  adjustmentPoints: number;
+};
 
 function buildBreakdown(activity: MemberActivity, config: Record<ActivityType, PointsRule>): ScoreBreakdownRow[] {
-  return ACTIVITY_TYPES.map((type) => {
+  const rows: ScoreBreakdownRow[] = ACTIVITY_TYPES.map((type) => {
     const count = activity.counts[type];
     const quantity = type === "THANK_YOU_SLIP" ? activity.thankYouValueInr : count;
     const rule = config[type];
@@ -147,10 +163,24 @@ function buildBreakdown(activity: MemberActivity, config: Record<ActivityType, P
       subtotal: pointsFor(quantity, rule),
     };
   });
+  if (activity.adjustmentCount > 0) {
+    rows.push({
+      type: "ADJUSTMENT",
+      label: "Admin adjustments",
+      count: activity.adjustmentCount,
+      quantity: activity.adjustmentPoints,
+      pointsEach: 0,
+      perUnit: 1,
+      rule: "Set by the BWF admin team",
+      subtotal: activity.adjustmentPoints,
+    });
+  }
+  return rows;
 }
 
 /** The breakdown's "Recorded" cell — "3 slips · ₹2,500" for Thank You Slips, else the count. */
 export function recordedLabel(row: Pick<ScoreBreakdownRow, "type" | "count" | "quantity">): string {
+  if (row.type === "ADJUSTMENT") return `${row.count} ${row.count === 1 ? "change" : "changes"}`;
   return row.type === "THANK_YOU_SLIP" ? `${row.count} ${row.count === 1 ? "slip" : "slips"} · ${inr(row.quantity)}` : String(row.count);
 }
 
@@ -184,6 +214,8 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
       {
         counts: Object.fromEntries(ACTIVITY_TYPES.map((type) => [type, 0])) as Record<ActivityType, number>,
         thankYouValueInr: 0,
+        adjustmentCount: 0,
+        adjustmentPoints: 0,
       },
     ]),
   );
@@ -208,11 +240,12 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
     chiefGuests,
     inductions,
     attendances,
+    adjustments,
   ] = await Promise.all([
     db.referral.groupBy({ by: ["fromMemberId"], where: { fromMemberId: inScope }, _count: { _all: true } }),
     db.thankYouSlip.groupBy({
-      by: ["fromMemberId"],
-      where: { fromMemberId: inScope },
+      by: ["toMemberId"],
+      where: { toMemberId: inScope },
       _count: { _all: true },
       _sum: { amountInr: true },
     }),
@@ -230,12 +263,13 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
     db.memberChiefGuest.groupBy({ by: ["memberId"], where: { memberId: inScope }, _count: { _all: true } }),
     db.member.groupBy({ by: ["referredByMemberId"], where: { referredByMemberId: inScope }, _count: { _all: true } }),
     db.attendance.groupBy({ by: ["memberId"], where: { memberId: inScope, status: "PRESENT" }, _count: { _all: true } }),
+    db.pointsAdjustment.groupBy({ by: ["memberId"], where: { memberId: inScope }, _count: { _all: true }, _sum: { points: true } }),
   ]);
 
   referrals.forEach((r) => add("REFERRAL", r.fromMemberId, r._count._all));
   thankYouSlips.forEach((r) => {
-    add("THANK_YOU_SLIP", r.fromMemberId, r._count._all);
-    const row = counts.get(r.fromMemberId);
+    add("THANK_YOU_SLIP", r.toMemberId, r._count._all);
+    const row = counts.get(r.toMemberId);
     if (row) row.thankYouValueInr += r._sum.amountInr ?? 0;
   });
   oneToOnesAsMember.forEach((r) => add("ONE_TO_ONE", r.memberId, r._count._all));
@@ -248,6 +282,12 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
   chiefGuests.forEach((r) => add("CHIEF_GUEST", r.memberId, r._count._all));
   inductions.forEach((r) => r.referredByMemberId && add("INDUCTION", r.referredByMemberId, r._count._all));
   attendances.forEach((r) => add("ATTENDANCE", r.memberId, r._count._all));
+  adjustments.forEach((r) => {
+    const row = counts.get(r.memberId);
+    if (!row) return;
+    row.adjustmentCount += r._count._all;
+    row.adjustmentPoints += r._sum.points ?? 0;
+  });
 
   return counts;
 }

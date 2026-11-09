@@ -82,7 +82,7 @@ const appActivity: ExportDataset = {
 
     const leaderboard = await getLeaderboard(members.map((m) => m.id));
     const memberById = new Map(members.map((m) => [m.id, m]));
-    const breakdownColumns = leaderboard[0]?.breakdown ?? [];
+    const breakdownColumns = (leaderboard[0]?.breakdown ?? []).filter((b) => b.type !== "ADJUSTMENT");
 
     return [
       {
@@ -94,6 +94,7 @@ const appActivity: ExportDataset = {
           { header: "Status", key: "status" },
           { header: "Total Points", key: "total", type: "number" },
           ...breakdownColumns.map((b) => ({ header: b.label, key: b.type, type: "number" as const })),
+          { header: "Admin point adjustments", key: "adjustment", type: "number" as const },
         ],
         rows: leaderboard.map((row, i) => {
           const m = memberById.get(row.memberId);
@@ -103,7 +104,8 @@ const appActivity: ExportDataset = {
             chapter: m?.chapter.name,
             status: m?.status,
             total: row.total,
-            ...Object.fromEntries(row.breakdown.map((b) => [b.type, b.count])),
+            ...Object.fromEntries(row.breakdown.filter((b) => b.type !== "ADJUSTMENT").map((b) => [b.type, b.count])),
+            adjustment: row.breakdown.find((b) => b.type === "ADJUSTMENT")?.subtotal ?? 0,
           };
         }),
       },

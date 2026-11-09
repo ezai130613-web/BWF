@@ -293,6 +293,7 @@ model Chapter {
   feedback           Feedback[]
   applications       MembershipApplication[]
   meetings           Meeting[]
+  calendarEvents     CalendarEvent[]
   visitors           Visitor[]
   chiefGuests        ChiefGuest[]
   rosterAssignments  RosterAssignment[]
@@ -502,6 +503,7 @@ model Member {
   referralsReceived     Referral[]            @relation("ReferralReceived")
   thankYouSlipsGiven    ThankYouSlip[]        @relation("ThankYouSlipGiven")
   thankYouSlipsReceived ThankYouSlip[]        @relation("ThankYouSlipReceived")
+  pointsAdjustments     PointsAdjustment[]
   oneToOnesRecorded     OneToOne[]            @relation("OneToOneRecordedBy")
   oneToOnesWith         OneToOne[]            @relation("OneToOneWith")
   powerDatesHosted      PowerDate[]           @relation("PowerDateHost")
@@ -1434,9 +1436,9 @@ model Invoice {
   gstPercent Int     @default(18)
 
   /// Last time it was emailed, to which address, and how many times in all.
-  sentAt    DateTime?
-  sentTo    String?
-  sendCount Int       @default(0)
+  sentAt     DateTime?
+  sentTo     String?
+  sendCount  Int       @default(0)
   /// "MANUAL" (admin pressed Send invoice) or "AUTO" (sent after a Razorpay payment).
   lastSentBy String?
 
@@ -1980,6 +1982,59 @@ model PointsConfig {
   updatedAt DateTime @updatedAt
 
   @@map("points_config")
+}
+
+/// 2026-11-09 client request — the admin team can correct a member's points
+/// after the system has awarded them. Each row is a signed manual change
+/// (+10 / -5) with a reason, added on top of the points the activity rules
+/// give; the member's total is activity points + the sum of these. Kept as a
+/// log (not an overwrite) so every correction is visible and reversible.
+model PointsAdjustment {
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Signed whole points; never 0.
+  points Int
+  reason String
+
+  /// The admin login that made the change (no relation: kept even if the
+  /// admin account is later removed).
+  createdByUserId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@map("points_adjustments")
+}
+
+/// 2026-11-09 client request — events/activities the admin team adds to the
+/// homepage calendar, alongside the chapter meetings (which come from the
+/// Meeting table and are not duplicated here). `chapterId` null = BWF-wide.
+model CalendarEvent {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  /// Optional link for more info / registration.
+  linkUrl     String?
+
+  startsAt DateTime
+  endsAt   DateTime?
+  /// All-day events ignore the time of day.
+  allDay   Boolean   @default(false)
+
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  /// Hidden events stay in the admin list but are not on the public calendar.
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startsAt])
+  @@map("calendar_events")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { requireChapterAccess } from "@/lib/auth/rbac";
+import { getUserPermissionKeys, requireChapterAccess, requireAdminSession } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { computeMemberScore, recordedLabel } from "@/lib/points/score";
 import { referralContact } from "@/lib/member-activities/record";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { ExportButton } from "@/components/admin/export-button";
+import { PointsAdjustmentPanel } from "@/components/admin/points-adjustment-panel";
 
 /**
  * Phase 20 Batch 5 — per-member drill-down, reached from the Leaderboard
@@ -22,6 +23,8 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
   if (!member) notFound();
 
   await requireChapterAccess(member.chapterId, "app_activity:view");
+  const session = await requireAdminSession();
+  const canAdjust = (await getUserPermissionKeys(session.user.id)).has("points_config:manage");
 
   const [
     { total, breakdown },
@@ -36,6 +39,7 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
     consumers,
     chiefGuests,
     inducted,
+    adjustments,
   ] = await Promise.all([
     computeMemberScore(memberId),
     db.referral.findMany({ where: { fromMemberId: memberId }, include: { toMember: true }, orderBy: { createdAt: "desc" } }),
@@ -57,6 +61,7 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
     db.consumer.findMany({ where: { memberId }, orderBy: { metAt: "desc" } }),
     db.memberChiefGuest.findMany({ where: { memberId }, orderBy: { metAt: "desc" } }),
     db.member.findMany({ where: { referredByMemberId: memberId }, orderBy: { createdAt: "desc" } }),
+    db.pointsAdjustment.findMany({ where: { memberId }, orderBy: { createdAt: "desc" } }),
   ]);
 
   return (
@@ -107,6 +112,18 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
         </div>
       </div>
 
+      {canAdjust ? (
+        <PointsAdjustmentPanel
+          memberId={memberId}
+          adjustments={adjustments.map((a) => ({
+            id: a.id,
+            points: a.points,
+            reason: a.reason,
+            date: a.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+          }))}
+        />
+      ) : null}
+
       <ActivitySection title="Referrals given" empty="No referrals given yet.">
         {referralsGiven.map((r) => (
           <Row key={r.id} left={withReferralDetails(r.toMember.name, r)} right={r.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
@@ -119,13 +136,13 @@ export default async function MemberActivityDrilldownPage({ params }: { params: 
         ))}
       </ActivitySection>
 
-      <ActivitySection title="Thank You Slips given" empty="No Thank You Slips given yet.">
+      <ActivitySection title="Thank You Slips written (business received)" empty="No Thank You Slips written yet.">
         {thankYouSlipsGiven.map((s) => (
           <Row key={s.id} left={s.toMember.name} right={s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}
       </ActivitySection>
 
-      <ActivitySection title="Thank You Slips received" empty="No Thank You Slips received yet.">
+      <ActivitySection title="Thank You Slips received (business given — earns points)" empty="No Thank You Slips received yet.">
         {thankYouSlipsReceived.map((s) => (
           <Row key={s.id} left={s.fromMember.name} right={s.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         ))}

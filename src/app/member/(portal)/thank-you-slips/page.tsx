@@ -59,7 +59,7 @@ export default async function MemberThankYouSlipsPage() {
       <PageHeader
         icon={Receipt}
         title="Thank You Slips"
-        description="Records business you actually received through a BWF referral — Referral = opportunity given, Thank You Slip = business successfully generated."
+        description="Records business you actually received through a BWF referral — Referral = opportunity given, Thank You Slip = business successfully generated. The points go to the member who gave you the business."
       />
       <div className="grid grid-cols-2 gap-3 md:max-w-xl">
         <StatTile label="Business you received" value={formatInr(String(totalGiven)) ?? "₹0"} hint={`${given.length} slip(s) you recorded`} />

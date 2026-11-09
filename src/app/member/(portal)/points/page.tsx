@@ -47,7 +47,8 @@ export default async function MemberPointsPage() {
         </div>
         <p className="mt-2 text-xs text-neutral-500">
           Point values are set by BWF and may change — see your admin for the current scoring
-          policy.
+          policy. Thank You Slip points go to the member who gave the business, and the BWF admin
+          team can correct points where needed.
         </p>
       </div>
     </div>

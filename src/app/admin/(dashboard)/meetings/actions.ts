@@ -55,6 +55,8 @@ export async function createMeeting(_prevState: { error?: string } | undefined, 
 
   revalidatePath("/admin/meetings");
   revalidatePath("/chapters");
+  revalidatePath("/");
+  revalidatePath("/admin/calendar");
   revalidatePath("/chapters/[slug]", "page");
   return { error: undefined };
 }
@@ -112,6 +114,8 @@ export async function updateMeeting(_prevState: { error?: string } | undefined, 
   revalidatePath("/admin/meetings");
   revalidatePath(`/admin/meetings/${meetingId}`);
   revalidatePath("/chapters");
+  revalidatePath("/");
+  revalidatePath("/admin/calendar");
   revalidatePath("/chapters/[slug]", "page");
   return { error: undefined };
 }
@@ -185,6 +189,8 @@ export async function createNextMonthMeetings(target: { year: number; month: num
 
   revalidatePath("/admin/meetings");
   revalidatePath("/chapters");
+  revalidatePath("/");
+  revalidatePath("/admin/calendar");
   revalidatePath("/chapters/[slug]", "page");
   return { created, skipped };
 }

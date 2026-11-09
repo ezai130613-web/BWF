@@ -9,6 +9,7 @@ import { ChiefGuestsSection } from "@/components/marketing/chief-guests-section"
 import { StatementBanner } from "@/components/marketing/statement-banner";
 import { LatestInsights } from "@/components/marketing/latest-insights";
 import { TestimonialsSection } from "@/components/marketing/testimonials-section";
+import { CalendarSection } from "@/components/marketing/calendar-section";
 import { MembershipCta } from "@/components/marketing/membership-cta";
 
 // Phase 14 (brief §60 — caching) — ceiling on top of the existing
@@ -25,6 +26,7 @@ export default function Home() {
       <Introduction />
       <WhyBwf />
       <Chapters />
+      <CalendarSection />
       <FindProfessional />
       <InsideBwf />
       <ChiefGuestsSection />
