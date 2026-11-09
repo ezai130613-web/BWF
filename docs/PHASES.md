@@ -4906,8 +4906,7 @@ homepage calendar of all meetings plus admin-added events/activities, editable f
   (read from `Meeting`, never copied) + published events, previous month to +12 months. Meeting
   and event saves revalidate `/`; the homepage's 1h ISR is the ceiling.
 - Migration `20261109120000_points_adjustments_calendar_events` (additive). **Applied to the
-  live Neon DB** — run `prisma migrate deploy` before/with deploying, or the homepage calendar and the
-  member points pages will error.
+  live Neon DB** on 2026-11-09, ahead of the deploy.
 
 **Verification** (isolated `prisma dev` DB): ₹2,000 slip at ₹500/pt → giver 4, writer 0; +7/−2
 adjustments → 5; hidden events and cancelled meetings absent from the public calendar, present in
