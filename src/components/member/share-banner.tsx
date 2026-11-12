@@ -71,29 +71,6 @@ export function BusinessReceivedBanner({
   );
 }
 
-export function ReferralGivenBanner({
-  giver,
-  receiver,
-  typeLabel,
-  date,
-  chapter,
-}: {
-  giver: Party;
-  receiver: Party;
-  typeLabel: string;
-  date: Date;
-  chapter?: string | null;
-}) {
-  return (
-    <BannerFrame eyebrow="Referral given" date={date} chapter={chapter}>
-      <PartyName party={giver} />
-      <span className="text-sm text-ivory-200/80">passed a business referral to</span>
-      <PartyName party={receiver} />
-      <span className="rounded-full border border-gold-400/40 px-3 py-1 text-xs font-medium text-gold-300">{typeLabel}</span>
-    </BannerFrame>
-  );
-}
-
 /** Latest few banners up front, the rest behind "Show all" so the page stays short. */
 export function ShareBannerGallery({ items, emptyText }: { items: { key: string; node: React.ReactNode }[]; emptyText: string }) {
   const VISIBLE = 4;
