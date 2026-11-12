@@ -232,6 +232,35 @@ export async function finalizeRazorpayCheckout(linkId: string): Promise<Finalize
   return outcome === "ALREADY_PAID" ? outcome : "PAID";
 }
 
+/**
+ * Safety net (2026-11-12): finds checkouts still CREATED and asks Razorpay
+ * about each one. A UPI payer often never returns to the browser, and if the
+ * webhook is missing or misconfigured nothing else would ever record the
+ * payment (11 paid in Razorpay, 6 on the site). Idempotent — finalize only
+ * creates a Payment once. Looks back 7 days (links expire after 24h).
+ */
+export async function reconcileRazorpayCheckouts(): Promise<{ checked: number; recorded: number; failed: number }> {
+  if (!isRazorpayConfigured()) return { checked: 0, recorded: 0, failed: 0 };
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const open = await db.razorpayCheckout.findMany({
+    where: { status: "CREATED", createdAt: { gte: since } },
+    select: { linkId: true },
+    orderBy: { createdAt: "asc" },
+    take: 200,
+  });
+  let recorded = 0;
+  let failed = 0;
+  for (const { linkId } of open) {
+    try {
+      if ((await finalizeRazorpayCheckout(linkId)) === "PAID") recorded++;
+    } catch (err) {
+      failed++;
+      console.error(`[razorpay] reconcile ${linkId} failed`, err);
+    }
+  }
+  return { checked: open.length, recorded, failed };
+}
+
 /** Webhook signature: HMAC-SHA256 of the raw body with the webhook secret, hex, in X-Razorpay-Signature. */
 export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;

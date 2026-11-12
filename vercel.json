@@ -6,6 +6,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/razorpay-sync",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/attendance",
       "schedule": "30 * * * *"
     }

@@ -10,6 +10,7 @@ import { getRemarksForMembers } from "@/lib/remarks";
 import { ExportButton } from "@/components/admin/export-button";
 import { ExpectedAmountNote } from "@/components/admin/expected-amount-note";
 import { InvoiceActions } from "@/components/admin/invoice-actions";
+import { RazorpaySyncButton } from "@/components/admin/razorpay-sync-button";
 import { InvoiceAutoSendSwitch } from "@/components/admin/invoice-auto-send-switch";
 import { getBooleanSetting } from "@/lib/settings";
 
@@ -66,6 +67,8 @@ export default async function AccountsPage({
         </div>
         <ExportButton dataset="accounts" params={filters} />
       </div>
+
+      {canApprove ? <RazorpaySyncButton /> : null}
 
       {canApprove ? <InvoiceAutoSendSwitch on={autoSendInvoices} /> : null}
 

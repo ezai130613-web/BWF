@@ -4914,3 +4914,20 @@ admin; homepage screenshots at desktop/mobile; in the browser as Super Admin: ad
 applied a −3 adjustment (total updated). Typecheck + lint clean.
 **Not verified:** event edit/delete buttons and the Remove-adjustment button in a browser; the mobile
 app screens (they render the new row generically, no app change needed).
+
+## 2026-11-12 — Razorpay payments missing on the site (reconcile safety net)
+
+Bug: 11 members paid the ₹2,360 meeting fee on Razorpay, only 6 appeared in Accounts. Live DB
+(read-only check): the other checkouts were stuck at `CREATED` with no Payment. Nothing ever called
+`finalizeRazorpayCheckout` for them — UPI payers don't always return to the browser, and the webhook
+backstop evidently isn't delivering (not configured, wrong secret, or events not subscribed).
+
+- `reconcileRazorpayCheckouts()` (`src/lib/payments/razorpay.ts`): re-checks every `CREATED` checkout
+  from the last 7 days against Razorpay's API; idempotent.
+- Cron `/api/cron/razorpay-sync` every 10 min (`vercel.json`), and a **Sync with Razorpay** button on
+  `/admin/accounts` (`payments:approve`), logged as `razorpay.synced`.
+- **Needs deploy**, then press the button once to backfill the missed payments.
+- **Still to check in the Razorpay dashboard:** Settings → Webhooks → URL `<site>/api/webhooks/razorpay`,
+  events `payment_link.paid/expired/cancelled`, secret = `RAZORPAY_WEBHOOK_SECRET` in Vercel.
+
+**Not verified:** end-to-end against live Razorpay (no keys locally). Typecheck + lint clean.
