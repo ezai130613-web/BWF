@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import {
   startOnlinePayment,
   submitMemberPayment,
@@ -28,7 +28,8 @@ export function MemberPaymentForm({
   membershipTotal,
   membershipYears,
   defaultMembershipYear,
-  online,
+  online: razorpayOn,
+  howToPay,
 }: {
   type: "MEETING" | "MEMBERSHIP";
   upcoming: string[];
@@ -38,8 +39,14 @@ export function MemberPaymentForm({
   membershipTotal: number | null;
   membershipYears: number[];
   defaultMembershipYear: number;
+  /** Razorpay is switched on — the member can still choose to pay by cash / QR / bank and upload proof. */
   online: boolean;
+  /** QR + bank details, shown when the member picks the cash / QR option. */
+  howToPay?: ReactNode;
 }) {
+  // With Razorpay on, the member picks: pay online, or pay cash / QR / bank and upload proof.
+  const [method, setMethod] = useState<"online" | "manual">("online");
+  const online = razorpayOn && method === "online";
   const [state, formAction, pending] = useActionState(submitMemberPayment.bind(null, type), initialState);
   const [onlineState, onlineAction, onlinePending] = useActionState(startOnlinePayment.bind(null, type), initialOnline);
   // One key per form mount (same duplicate-submit protection as check-in).
@@ -71,9 +78,40 @@ export function MemberPaymentForm({
 
   return (
     <form action={online ? onlineAction : formAction} className="flex flex-col gap-4">
+      {razorpayOn ? (
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1 text-sm font-medium" role="tablist" aria-label="How are you paying?">
+          {(
+            [
+              ["online", "Pay online"],
+              ["manual", "Cash / QR / transfer"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={method === value}
+              onClick={() => setMethod(value)}
+              className={
+                method === value ? "rounded-md bg-white px-3 py-2 text-emerald-900 shadow-sm" : "rounded-md px-3 py-2 text-neutral-600 hover:text-neutral-900"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {razorpayOn && !online ? (
+        <>
+          <p className="text-xs text-neutral-500">
+            Paid in cash, by QR/UPI or bank transfer? Upload the screenshot or receipt if you have one (optional for cash) — it counts once BWF approves it.
+          </p>
+          {howToPay}
+        </>
+      ) : null}
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {type === "MEETING" ? (
-        <MeetingPaymentFields upcoming={upcoming} packages={available} withProof={!online} onMeetingsChange={setMeetings} />
+        <MeetingPaymentFields upcoming={upcoming} packages={available} withProof={!online} optionalProof onMeetingsChange={setMeetings} />
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
@@ -93,7 +131,7 @@ export function MemberPaymentForm({
               </p>
             ) : null
           ) : (
-            <ProofFields defaultAmount={membershipTotal} />
+            <ProofFields defaultAmount={membershipTotal} optionalProof />
           )}
         </>
       )}

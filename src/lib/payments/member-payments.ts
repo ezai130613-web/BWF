@@ -7,7 +7,7 @@ import { parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
  * portal's Payments page, so both validate a submission the same way.
  */
 
-export type ProofFields = { amountPaidInr: string; actualPaymentDate: Date; proofUrl: string };
+export type ProofFields = { amountPaidInr: string; actualPaymentDate: Date; proofUrl: string | null };
 export type MeetingPaymentFields = ProofFields & { numberOfMonths: number; monthsCovered: MonthYear[] };
 
 type Parsed<T> = { data: T; error?: undefined } | { data?: undefined; error: string };
@@ -26,7 +26,7 @@ export function fieldsFromJson(body: unknown): PaymentFieldSource {
   };
 }
 
-export function parseProofFields(formData: PaymentFieldSource): Parsed<ProofFields> {
+export function parseProofFields(formData: PaymentFieldSource, opts: { proofOptional?: boolean } = {}): Parsed<ProofFields> {
   const amountPaidInr = formData.get("amountPaidInr");
   const actualPaymentDateRaw = formData.get("actualPaymentDate");
   const proofUrl = formData.get("proofUrl");
@@ -37,10 +37,10 @@ export function parseProofFields(formData: PaymentFieldSource): Parsed<ProofFiel
   if (typeof actualPaymentDateRaw !== "string" || !actualPaymentDateRaw || Number.isNaN(new Date(actualPaymentDateRaw).getTime())) {
     return { error: "Enter the date the payment was made." };
   }
-  if (typeof proofUrl !== "string" || !proofUrl) {
+  if (!opts.proofOptional && (typeof proofUrl !== "string" || !proofUrl)) {
     return { error: "Upload payment proof (screenshot, receipt, or PDF)." };
   }
-  return { data: { amountPaidInr, actualPaymentDate: new Date(actualPaymentDateRaw), proofUrl } };
+  return { data: { amountPaidInr, actualPaymentDate: new Date(actualPaymentDateRaw), proofUrl: typeof proofUrl === "string" && proofUrl ? proofUrl : null } };
 }
 
 /** numberOfMonths + month_i/year_i pairs + the proof fields. */

@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
  * signed-out /api/uploads/public-payment route. Accepts image or PDF
  * (kind: "paymentProof") per the spec's "screenshot, receipt or PDF."
  */
-export function PaymentProofField({ name }: { name: string }) {
+export function PaymentProofField({ name, optional = false }: { name: string; optional?: boolean }) {
   const [value, setValue] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function PaymentProofField({ name }: { name: string }) {
 
   return (
     <div className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-      <span>Payment proof (screenshot, receipt, or PDF)</span>
+      <span>Payment proof (screenshot, receipt, or PDF){optional ? " — optional for cash" : ""}</span>
       <input type="hidden" name={name} value={value} />
 
       {value ? <p className="text-xs font-normal text-emerald-700">Uploaded ✓</p> : null}

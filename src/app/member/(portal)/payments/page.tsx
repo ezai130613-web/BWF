@@ -104,6 +104,29 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
         };
   const bankRows = details.rows.filter((r): r is [string, string] => Boolean(r[1]));
 
+  const howToPay = (
+    <Card title={`How to pay — ${details.title}`} icon={IndianRupee}>
+      {details.fee ? (
+        <p className="text-sm text-neutral-700">
+          Fee: <span className="font-semibold text-neutral-900">{details.fee}</span>
+        </p>
+      ) : null}
+      {details.qr ? <QrPaymentBlock qrCodeUrl={details.qr} upiId={details.upiId} payeeName={details.payeeName} tone="light" /> : null}
+      {bankRows.length ? (
+        <dl className="mt-4 flex flex-col gap-1.5 border-t border-neutral-100 pt-4 text-sm">
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Or transfer directly</p>
+          {bankRows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-4">
+              <dt className="text-neutral-500">{label}</dt>
+              <dd className="text-right font-medium text-neutral-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {!details.qr && !bankRows.length ? <p className="text-sm text-neutral-500">Payment details will be shared by BWF.</p> : null}
+    </Card>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -111,7 +134,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
         title="Payments"
         description={
           online
-            ? "Pay your meeting fee (by meeting) or your annual BWF membership online with Razorpay. You need both paid to check in at a meeting."
+            ? "Pay your meeting fee (by meeting) or your annual BWF membership online with Razorpay, or by cash / QR / transfer with a screenshot. You need both paid to check in at a meeting."
             : "Pay your meeting fee (by meeting) or your annual BWF membership here. Upload the screenshot — once BWF approves it, the meetings it covers get a tick below. You need both paid to check in at a meeting."
         }
       />
@@ -182,36 +205,16 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
       </div>
 
       <div className={cn("grid gap-6", !online && "lg:grid-cols-2")}>
-        {online ? null : (
-          <Card title={`How to pay — ${details.title}`} icon={IndianRupee}>
-            {details.fee ? (
-              <p className="text-sm text-neutral-700">
-                Fee: <span className="font-semibold text-neutral-900">{details.fee}</span>
-              </p>
-            ) : null}
-            {details.qr ? <QrPaymentBlock qrCodeUrl={details.qr} upiId={details.upiId} payeeName={details.payeeName} tone="light" /> : null}
-            {bankRows.length ? (
-              <dl className="mt-4 flex flex-col gap-1.5 border-t border-neutral-100 pt-4 text-sm">
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">Or transfer directly</p>
-                {bankRows.map(([label, value]) => (
-                  <div key={label} className="flex justify-between gap-4">
-                    <dt className="text-neutral-500">{label}</dt>
-                    <dd className="text-right font-medium text-neutral-900">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : null}
-            {!details.qr && !bankRows.length ? <p className="text-sm text-neutral-500">Payment details will be shared by BWF.</p> : null}
-          </Card>
-        )}
+        {online ? null : howToPay}
         <Card
-          title={online ? "Pay online" : "Submit your payment"}
-          description={online ? "Paid instantly through Razorpay — no screenshot needed." : "Upload the screenshot or receipt — BWF verifies it before it counts."}
+          title={online ? "Pay" : "Submit your payment"}
+          description={online ? "Pay online through Razorpay, or pay by cash / QR / transfer and upload proof." : "Upload the screenshot or receipt — BWF verifies it before it counts."}
         >
           <MemberPaymentForm
             key={type}
             type={type}
             online={online}
+            howToPay={howToPay}
             upcoming={context.upcoming}
             packages={packages}
             membershipFee={parseFee(content["fees.annualMembership"])}

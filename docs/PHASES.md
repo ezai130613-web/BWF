@@ -4931,3 +4931,17 @@ backstop evidently isn't delivering (not configured, wrong secret, or events not
   events `payment_link.paid/expired/cancelled`, secret = `RAZORPAY_WEBHOOK_SECRET` in Vercel.
 
 **Not verified:** end-to-end against live Razorpay (no keys locally). Typecheck + lint clean.
+
+## 2026-11-12 — Cash / QR / transfer option alongside Razorpay
+
+Client: members who don't want to pay through Razorpay (cash, QR/UPI, bank transfer) need the
+screenshot-upload route back while Razorpay is on.
+
+- `MemberPaymentForm`: with Razorpay on, a **Pay online | Cash / QR / transfer** switch appears. The
+  second option shows the QR + bank details (`howToPay`, previously hidden when online) and the
+  existing amount/date/proof form → `submitMemberPayment`, which lands as PENDING_APPROVAL for
+  Accounts. Applies to both meeting fee and annual membership. Proof is optional on this portal form
+  (cash has no screenshot): `parseProofFields(..., { proofOptional: true })` in `submitMemberPaymentFor`;
+  check-in and the mobile API still require it. `Payment.proofUrl` was already nullable.
+
+**Not verified:** in a browser (typecheck + lint only).

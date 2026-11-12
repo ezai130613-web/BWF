@@ -39,7 +39,7 @@ export async function submitMemberPaymentFor(
   if (type === "MEETING") {
     const selection = await resolveMemberMeetingSelection(memberId, formData);
     if (selection.error !== undefined) return { error: selection.error };
-    const proof = parseProofFields(formData);
+    const proof = parseProofFields(formData, { proofOptional: true });
     if (proof.error !== undefined) return { error: proof.error };
     const { dates, numberOfMonths } = selection.data;
     data = {
@@ -60,7 +60,7 @@ export async function submitMemberPaymentFor(
     if (!Number.isInteger(membershipYear) || membershipYear < 2000 || membershipYear > 2100) {
       return { error: "Select the membership year this payment is for." };
     }
-    const parsed = parseProofFields(formData);
+    const parsed = parseProofFields(formData, { proofOptional: true });
     if (parsed.error !== undefined) return { error: parsed.error };
     const p = parsed.data;
     data = {

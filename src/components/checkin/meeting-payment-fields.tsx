@@ -20,6 +20,7 @@ export function MeetingPaymentFields({
   upcoming,
   packages,
   withProof = true,
+  optionalProof = false,
   onMeetingsChange,
 }: {
   /** The packages the member can choose — only those with enough scheduled meetings (see availablePackages). */
@@ -27,6 +28,7 @@ export function MeetingPaymentFields({
   /** Unpaid meeting days, "YYYY-MM-DD", soonest first (at least 24). */
   upcoming: string[];
   withProof?: boolean;
+  optionalProof?: boolean;
   onMeetingsChange?: (meetings: number) => void;
 }) {
   const [meetings, setMeetings] = useState<number>(packages[0]?.meetings ?? 0);
@@ -83,6 +85,7 @@ export function MeetingPaymentFields({
 
       {withProof ? (
         <ProofFields
+          optionalProof={optionalProof}
           amount={amount}
           onAmountChange={setTypedAmount}
           amountNote={
@@ -106,11 +109,14 @@ export function ProofFields({
   onAmountChange,
   defaultAmount,
   amountNote,
+  optionalProof = false,
 }: {
   amount?: string;
   onAmountChange?: (value: string) => void;
   defaultAmount?: number | null;
   amountNote?: string | null;
+  /** Member portal: proof can be left out (e.g. cash) — Accounts confirms it by hand. */
+  optionalProof?: boolean;
 } = {}) {
   return (
     <>
@@ -138,7 +144,7 @@ export function ProofFields({
         <input type="date" name="actualPaymentDate" required className={inputClass} />
       </label>
 
-      <PaymentProofField name="proofUrl" />
+      <PaymentProofField name="proofUrl" optional={optionalProof} />
     </>
   );
 }
