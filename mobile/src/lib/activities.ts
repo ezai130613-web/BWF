@@ -24,7 +24,14 @@ export type FieldDef =
   | { name: string; label: string; type: 'choice'; options: { value: string; label: string }[]; required?: boolean; hint?: string }
   | { name: string; label: string; type: 'referral'; hint?: string };
 
-export type ListRowData = { key: string; title: string; subtitle?: string | null; meta?: string | null };
+export type ListRowData = {
+  key: string;
+  title: string;
+  subtitle?: string | null;
+  meta?: string | null;
+  /** Thank You Slip id — shows a "Download image" button for its badge. */
+  badgeSlipId?: string;
+};
 export type ListSection = { title: string; rows: ListRowData[]; summary?: string };
 
 export type ActivityKind = {
@@ -103,6 +110,7 @@ export const ACTIVITY_KINDS: ActivityKind[] = [
         title: `${formatInr(s.amountInr)} · ${dir} ${s.other.name}`,
         subtitle: [s.other.company, ref(s.description)].filter(Boolean).join(' · '),
         meta: formatDate(s.createdAt),
+        badgeSlipId: s.id,
       });
       return [
         { title: `Business received (${d.given.length})`, summary: `Total ${formatInr(d.totalGivenInr)}`, rows: d.given.map((s) => row(s, 'thanked')) },

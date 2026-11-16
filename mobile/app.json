@@ -69,7 +69,8 @@
           "photosPermission": "BWF lets you choose a payment screenshot to upload as proof of payment.",
           "cameraPermission": false
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

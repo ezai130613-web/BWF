@@ -4,6 +4,7 @@ import { PAYMENT_DATASETS } from "./payments";
 import { VISITOR_DATASETS } from "./visitors";
 import { ACTIVITY_DATASETS } from "./activity";
 import { WEBSITE_DATASETS } from "./website";
+import { ACCOUNTS_REPORT_DATASETS } from "./accounts-reports";
 import type { ExportDataset } from "./types";
 
 export type { ExportDataset } from "./types";
@@ -16,6 +17,7 @@ export const EXPORT_DATASETS: ExportDataset[] = [
   ...VISITOR_DATASETS,
   ...ACTIVITY_DATASETS,
   ...WEBSITE_DATASETS,
+  ...ACCOUNTS_REPORT_DATASETS,
 ];
 
 export function findExportDataset(key: string): ExportDataset | undefined {

@@ -111,6 +111,9 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       // Shown only to holders of payments:view (Accounts + Super Admin by default, 2026-10-03).
       { href: "/admin/payments", label: "Payments", icon: IndianRupee, permission: "payments:view", workspace: ["performance", "accounts"] },
       { href: "/admin/payments/members", label: "Member-wise Payments", icon: Receipt, permission: "accounts:view", workspace: "accounts" },
+      // 2026-11-17 — unpaid-members summary and the Pending Points tracker (both downloadable).
+      { href: "/admin/accounts/unpaid", label: "Unpaid Members", icon: UserX, permission: "accounts:view", workspace: "accounts" },
+      { href: "/admin/accounts/pending-items", label: "Pending Points", icon: ClipboardList, permission: "accounts:view", workspace: "accounts" },
       { href: "/admin/payments/links", label: "Payment Links", icon: Link2, permission: "payments:view", workspace: ["performance", "accounts"] },
       // 2026-11-03 — cash / bank transfer entry + the "attendance requires payment" switch.
       { href: "/admin/payments/record", label: "Record Offline Payment", icon: HandCoins, permission: "payments:approve", workspace: ["accounts", "performance"] },

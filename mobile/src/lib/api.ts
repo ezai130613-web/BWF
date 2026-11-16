@@ -71,3 +71,24 @@ export const api = {
 export function errorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : 'Something went wrong. Please try again.';
 }
+
+/**
+ * Downloads an authenticated image from the API into the app cache and opens
+ * the share sheet ("Save Image", WhatsApp, …). Used for the Thank You Slip
+ * badge (2026-11-17). Returns false if sharing isn't available on the device.
+ */
+export async function downloadAndShareImage(path: string, filename: string): Promise<boolean> {
+  const [{ File, Paths }, Sharing] = await Promise.all([import('expo-file-system'), import('expo-sharing')]);
+  const target = new File(Paths.cache, filename);
+  try {
+    await File.downloadFileAsync(API_URL + path, target, {
+      idempotent: true,
+      headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', "Couldn't download the image. Check your internet connection and try again.");
+  }
+  if (!(await Sharing.isAvailableAsync())) return false;
+  await Sharing.shareAsync(target.uri, { mimeType: 'image/png', dialogTitle: 'Share thank you badge', UTI: 'public.png' });
+  return true;
+}

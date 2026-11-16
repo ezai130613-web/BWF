@@ -4945,3 +4945,41 @@ screenshot-upload route back while Razorpay is on.
   check-in and the mobile API still require it. `Payment.proofUrl` was already nullable.
 
 **Not verified:** in a browser (typecheck + lint only).
+
+## 2026-11-17 — Thank-you banner redesign, Unpaid Members report, Pending Points
+
+Client requests:
+
+1. **Thank-you banner** now celebrates the giver: giver's photo, "Big thanks to {giver} for giving me business
+   worth ₹X", giver's company; the receiver signs off at the bottom ("With gratitude"). `share-banner.tsx`,
+   `thank-you-slips/page.tsx` (loads `Member.photoUrl`).
+2. **Members who have not paid** — `/admin/accounts/unpaid` (`accounts:view`): chapter + from/to date filters,
+   per-chapter counts, one row per member per unpaid month (meeting fee) / year (annual membership). Unpaid =
+   no APPROVED payment covering the period; "Include payments awaiting approval" shows pending ones too.
+   Months before the member was added to the system and future months are skipped (same "don't infer
+   nonpayment" caution as the member-wise grid). Logic in `src/lib/accounts/unpaid.ts`.
+3. **Pending Points** — `/admin/accounts/pending-items`: admin-kept tracker (point, chapter, status
+   Open/In progress/Done, raised-on "as on" date, expected completion date, remarks) with add/edit/delete and
+   chapter/status/from–to (raised date) filters. New table `pending_items` — migration
+   `20261117120000_pending_items` (**not yet applied to the live DB**).
+4. Both reports download as **Excel** (`/api/admin/exports/unpaid-members|pending-items`, registered in
+   `datasets/accounts-reports.ts`) and **PDF** (`/api/admin/exports/pdf?report=…`), honouring the page filters;
+   both are audit-logged. Shared definitions in `src/lib/accounts/reports.ts`.
+
+Verified against an isolated local DB (migration applied; report rows, Excel and PDF generated; unpaid logic
+checked with an approved vs missing payment). **Not verified:** in a browser; PDF long text is truncated with an
+ellipsis per cell (Excel has the full text).
+
+### 2026-11-17 (later) — badge image download, month filter, assignee filter
+
+- **Download badge as image** — server-rendered 1080×1350 PNG (`src/lib/thank-you-badge.tsx`, `next/og`) so web
+  and app get the identical image and member photos load without browser CORS issues (photo falls back to the
+  giver's initial). Only the two members on a slip can fetch it. Web: "Download as image" under each banner
+  (`/api/member/thank-you-slips/[id]/image`). Mobile: "Download badge image" button on each Thank You Slip row →
+  `/api/mobile/v1/thank-you-slips/[id]/image` → `expo-file-system` + `expo-sharing` share sheet (Save Image /
+  WhatsApp). **Needs a new native build** (two new native modules added to `mobile/package.json`, `expo-sharing`
+  plugin in `app.json`) — not built or submitted.
+- **Unpaid Members** — added a **Month** filter (whole month; replaces from/to); chapter + from/to date kept.
+- **Pending Points** — new **Assigned to** (admin user) field on each point, with an "Assigned to" filter
+  (incl. "Unassigned") on the page, Excel and PDF. Migration `20261117120000_pending_items` extended with
+  `assignedToUserId` (still not applied to the live DB).

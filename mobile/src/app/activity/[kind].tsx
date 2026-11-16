@@ -1,9 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Fragment } from 'react';
-import { Text } from 'react-native';
+import { Fragment, useState } from 'react';
+import { Alert, Text } from 'react-native';
 
 import { Body, Button, Card, Divider, EmptyState, ListRow, Screen, SectionTitle, styles } from '@/components/ui';
 import { findActivityKind } from '@/lib/activities';
+import { downloadAndShareImage } from '@/lib/api';
 import { useApi } from '@/lib/use-api';
 import { colors } from '@/theme';
 
@@ -12,6 +13,19 @@ export default function ActivityListScreen() {
   const { kind: key } = useLocalSearchParams<{ kind: string }>();
   const kind = findActivityKind(key);
   const { data, error, loading, refreshing, refresh } = useApi<unknown>(kind ? kind.endpoint : null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  async function downloadBadge(slipId: string) {
+    setDownloading(slipId);
+    try {
+      const shared = await downloadAndShareImage(`/thank-you-slips/${slipId}/image`, `bwf-thank-you-${slipId}.png`);
+      if (!shared) Alert.alert('Not available', "Sharing isn't available on this device.");
+    } catch (e) {
+      Alert.alert('Download failed', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   if (!kind) return <Screen error="Unknown activity." />;
   const sections = data ? kind.sections(data) : [];
@@ -41,6 +55,16 @@ export default function ActivityListScreen() {
                   <Fragment key={row.key}>
                     {i > 0 ? <Divider /> : null}
                     <ListRow title={row.title} subtitle={row.subtitle} meta={row.meta} />
+                    {row.badgeSlipId ? (
+                      <Button
+                        label="Download badge image"
+                        variant="secondary"
+                        loading={downloading === row.badgeSlipId}
+                        icon="download-outline"
+                        onPress={() => downloadBadge(row.badgeSlipId!)}
+                        style={{ marginBottom: 8 }}
+                      />
+                    ) : null}
                   </Fragment>
                 ))
               )}

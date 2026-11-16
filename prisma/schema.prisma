@@ -29,6 +29,7 @@ enum UserStatus {
 
 model User {
   id       String     @id @default(cuid())
+  assignedPendingItems PendingItem[] @relation("PendingItemAssignee")
   /// Optional since the 2026-10-03 member-credentials correction: a member
   /// issued bulk temporary credentials signs in with `username` and only
   /// supplies (and verifies) an email on first login. Every admin account
@@ -294,6 +295,7 @@ model Chapter {
   applications       MembershipApplication[]
   meetings           Meeting[]
   calendarEvents     CalendarEvent[]
+  pendingItems       PendingItem[]
   visitors           Visitor[]
   chiefGuests        ChiefGuest[]
   rosterAssignments  RosterAssignment[]
@@ -2670,4 +2672,44 @@ model AbsenceReview {
   @@index([status])
   @@index([memberId])
   @@map("absence_reviews")
+}
+
+// ---------------------------------------------------------------------------
+// 2026-11-17 client request — "Pending Points": a tracker the admin team keeps
+// of everything still open (what is pending, as on date, expected completion
+// date, remarks), filterable by chapter and date range and downloadable as
+// Excel/PDF. `chapterId` null = applies to all chapters.
+// ---------------------------------------------------------------------------
+enum PendingItemStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+model PendingItem {
+  id          String            @id @default(cuid())
+  title       String
+  details     String?
+  status      PendingItemStatus @default(OPEN)
+  /// The date the point was raised (as-on date); editable so older items can be back-filled.
+  raisedOn    DateTime          @default(now())
+  expectedOn  DateTime?
+  completedOn DateTime?
+  remarks     String?
+
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  /// The admin user this point is assigned to — filterable on the page and in the downloads.
+  assignedToUserId String?
+  assignedTo       User?   @relation("PendingItemAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([raisedOn])
+  @@index([chapterId])
+  @@index([assignedToUserId])
+  @@map("pending_items")
 }

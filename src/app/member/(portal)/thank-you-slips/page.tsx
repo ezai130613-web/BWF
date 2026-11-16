@@ -11,15 +11,15 @@ export default async function MemberThankYouSlipsPage() {
   const { member } = await requireMemberProfile();
 
   const [me, given, received, members, receivedReferrals] = await Promise.all([
-    db.member.findUniqueOrThrow({ where: { id: member.id }, select: { name: true, company: { select: { name: true } }, chapter: { select: { name: true } } } }),
+    db.member.findUniqueOrThrow({ where: { id: member.id }, select: { name: true, photoUrl: true, company: { select: { name: true } }, chapter: { select: { name: true } } } }),
     db.thankYouSlip.findMany({
       where: { fromMemberId: member.id },
-      include: { toMember: { select: { name: true, company: { select: { name: true } } } } },
+      include: { toMember: { select: { name: true, photoUrl: true, company: { select: { name: true } } } } },
       orderBy: { createdAt: "desc" },
     }),
     db.thankYouSlip.findMany({
       where: { toMemberId: member.id },
-      include: { fromMember: { select: { name: true, company: { select: { name: true } } } } },
+      include: { fromMember: { select: { name: true, photoUrl: true, company: { select: { name: true } } } } },
       orderBy: { createdAt: "desc" },
     }),
     getPickerMembers(member.id),
@@ -35,16 +35,17 @@ export default async function MemberThankYouSlipsPage() {
 
   // A slip is recorded by the member who received the business (fromMember),
   // thanking the member who passed it (toMember).
-  const self = { name: me.name, company: me.company.name };
+  const self = { name: me.name, company: me.company.name, photoUrl: me.photoUrl };
   const banners = [
-    ...given.map((s) => ({ slip: s, receiver: self, giver: { name: s.toMember.name, company: s.toMember.company.name } })),
-    ...received.map((s) => ({ slip: s, receiver: { name: s.fromMember.name, company: s.fromMember.company.name }, giver: self })),
+    ...given.map((s) => ({ slip: s, receiver: self, giver: { name: s.toMember.name, company: s.toMember.company.name, photoUrl: s.toMember.photoUrl } })),
+    ...received.map((s) => ({ slip: s, receiver: { name: s.fromMember.name, company: s.fromMember.company.name, photoUrl: s.fromMember.photoUrl }, giver: self })),
   ]
     .sort((a, b) => b.slip.createdAt.getTime() - a.slip.createdAt.getTime())
     .map(({ slip, receiver, giver }) => ({
       key: slip.id,
       node: (
         <BusinessReceivedBanner
+          slipId={slip.id}
           receiver={receiver}
           giver={giver}
           amountInr={formatInr(String(slip.amountInr)) ?? ""}
@@ -68,7 +69,7 @@ export default async function MemberThankYouSlipsPage() {
       <Card
         title="Share on WhatsApp"
         icon={Megaphone}
-        description="Take a screenshot of a banner and post it in your chapter WhatsApp group."
+        description="Download a banner as an image and post it in your chapter WhatsApp group."
         bodyClassName="px-5 pt-5 sm:px-6"
       >
         <ShareBannerGallery items={banners} emptyText="Banners appear here once a Thank You Slip is recorded." />
