@@ -134,7 +134,7 @@ export default async function PaymentMembersPage({
   const [payments, remarks] = await Promise.all([
     db.payment.findMany({
       where: { memberId: member.id },
-      include: { meeting: true },
+      include: { meeting: true, invoice: { select: { number: true, sentTo: true } } },
       orderBy: { createdAt: "desc" },
     }),
     getMemberRemarks(member.id),
@@ -244,7 +244,7 @@ export default async function PaymentMembersPage({
             )}
             {canDelete && isManualMethod(p.method) ? (
               <div className="mt-2">
-                <DeletePaymentButton kind="member" id={p.id} />
+                <DeletePaymentButton kind="member" id={p.id} invoice={p.invoice} />
               </div>
             ) : null}
           </div>

@@ -5035,3 +5035,11 @@ Client correction: the annual membership year is **not** the calendar year. Join
   (Razorpay, screenshot — reject those instead), and refused when an invoice was issued. Logged as
   `payment.deleted` / `visitor_payment.deleted` with a full snapshot. Deleting a visitor payment keeps the visitor's check-in.
   Action: `payments/delete-actions.ts`.
+
+### 2026-11-18 (late) — void an invoice when deleting a manual payment
+
+- Deleting an Accounts-recorded payment that already has an invoice now **voids the invoice** (tick box + reason): the invoice
+  number stays in `invoices` marked VOID (`voidedAt`, `voidReason`, `voidedByUserId`, `voidSnapshot` of who/what it was for), so
+  numbers never leave a gap, and the payment is deleted. If the invoice was emailed, the form shows the address to inform.
+  Migration `20261118150000_invoice_void` (`invoices.paymentId` nullable, FK `ON DELETE SET NULL`, four new columns) —
+  **not yet applied to the live DB**. No credit-note document is generated.

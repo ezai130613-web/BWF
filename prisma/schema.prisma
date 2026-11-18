@@ -28,16 +28,16 @@ enum UserStatus {
 }
 
 model User {
-  id       String     @id @default(cuid())
+  id                   String        @id @default(cuid())
   assignedPendingItems PendingItem[] @relation("PendingItemAssignee")
   /// Optional since the 2026-10-03 member-credentials correction: a member
   /// issued bulk temporary credentials signs in with `username` and only
   /// supplies (and verifies) an email on first login. Every admin account
   /// still has one. Postgres unique treats NULLs as distinct.
-  email    String?    @unique
-  name     String
-  password String
-  status   UserStatus @default(ACTIVE)
+  email                String?       @unique
+  name                 String
+  password             String
+  status               UserStatus    @default(ACTIVE)
 
   /// Member temporary login id (e.g. "BWF001"), stored upper-case. Null for
   /// admins and for members granted access by email the old way.
@@ -488,12 +488,12 @@ model Member {
   /// 2024-01-15 → terms 15 Jan 2024–14 Jan 2025, 15 Jan 2025–14 Jan 2026, …
   /// A term is identified by the calendar year it STARTS in (what
   /// Payment.membershipYear stores). See src/lib/payments/membership-term.ts.
-  joinedAt  DateTime @default(now())
+  joinedAt            DateTime @default(now())
   /// Terms (start years) an admin has marked as paid outside this system —
   /// the company started in 2024, so earlier payments were never recorded here.
-  membershipPaidTerms Int[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  membershipPaidTerms Int[]    @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   leadershipRoles   ChapterLeadership[]
   authorProfile     Author?
@@ -1431,8 +1431,16 @@ model Payment {
 model Invoice {
   id String @id @default(cuid())
 
-  paymentId String  @unique
-  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  /// Null once the payment was deleted and this invoice voided (2026-11-18) —
+  /// the number stays on record (marked VOID) so invoice numbers never leave a gap.
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  voidedAt       DateTime?
+  voidReason     String?
+  voidedByUserId String?
+  /// Who/what the invoice was for, kept because the payment row is gone.
+  voidSnapshot   Json?
 
   /// e.g. "BWF/2026-27/0001".
   number        String   @unique
@@ -1631,7 +1639,7 @@ model VisitorPayment {
 
   /// R2 URL — screenshot, receipt image, or PDF (MEDIA_KINDS.paymentProof).
   /// Null when Accounts recorded a cash/transfer/UPI/cheque payment by hand.
-  proofUrl String?
+  proofUrl  String?
   /// How it was paid; PROOF_UPLOAD for the visitor's own QR-form submission.
   method    PaymentMethod @default(PROOF_UPLOAD)
   reference String?

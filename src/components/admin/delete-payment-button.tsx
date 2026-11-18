@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { deleteRecordedPayment } from "@/app/admin/(dashboard)/payments/delete-actions";
 
 /** "Delete" for a payment Accounts recorded by hand — asks for a reason first. */
-export function DeletePaymentButton({ kind, id }: { kind: "member" | "visitor"; id: string }) {
+export function DeletePaymentButton({ kind, id, invoice }: { kind: "member" | "visitor"; id: string; /** Set when an invoice was issued for this payment. */ invoice?: { number: string; sentTo: string | null } | null }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(deleteRecordedPayment.bind(null, kind, id), {});
 
@@ -21,6 +21,15 @@ export function DeletePaymentButton({ kind, id }: { kind: "member" | "visitor"; 
         Why is this being deleted? (required)
         <input type="text" name="reason" required minLength={3} maxLength={300} placeholder="e.g. entered against the wrong member" className="rounded-lg border border-red-300 bg-white px-2 py-1.5 text-sm font-normal text-neutral-900" />
       </label>
+      {invoice ? (
+        <label className="flex w-full items-start gap-2 text-sm text-red-900">
+          <input type="checkbox" name="voidInvoice" required className="mt-0.5 h-4 w-4 accent-red-700" />
+          <span>
+            Void invoice <strong>{invoice.number}</strong>. The number stays on record as VOID.
+            {invoice.sentTo ? ` It was already emailed to ${invoice.sentTo} — let them know.` : ""}
+          </span>
+        </label>
+      ) : null}
       <button type="submit" disabled={pending} className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50">
         {pending ? "Deleting…" : "Delete payment"}
       </button>

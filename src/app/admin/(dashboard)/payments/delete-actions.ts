@@ -13,7 +13,8 @@ export type DeletePaymentState = { error?: string; deleted?: boolean };
  * transfer / cheque) — e.g. entered against the wrong member or amount.
  * Payments members paid or submitted themselves (Razorpay, screenshot) are
  * never deleted — reject them instead. A payment that already has an invoice
- * can't be deleted either (invoice numbers must not leave gaps). Every delete
+ * is deleted together with VOIDING the invoice (its number stays, marked VOID,
+ * so numbers never leave a gap). Every delete
  * needs a reason and is written to the activity log with a full snapshot.
  */
 export async function deleteRecordedPayment(kind: "member" | "visitor", id: string, _prev: DeletePaymentState | undefined, formData: FormData): Promise<DeletePaymentState> {
@@ -22,11 +23,29 @@ export async function deleteRecordedPayment(kind: "member" | "visitor", id: stri
   if (reason.length < 3) return { error: "Enter a reason for deleting." };
 
   if (kind === "member") {
-    const p = await db.payment.findUnique({ where: { id }, include: { invoice: { select: { number: true } }, member: { select: { name: true } } } });
+    const p = await db.payment.findUnique({ where: { id }, include: { invoice: { select: { number: true, sentTo: true } }, member: { select: { name: true } } } });
     if (!p) return { error: "Payment not found (it may already be deleted)." };
     if (!isManualMethod(p.method)) return { error: "Only payments recorded by Accounts can be deleted. Reject member-submitted payments instead." };
-    if (p.invoice) return { error: `Invoice ${p.invoice.number} was issued for this payment, so it can't be deleted.` };
-    await db.payment.delete({ where: { id } });
+    // An invoice number can't be erased (numbers must run without gaps): it is voided — kept on record, marked VOID — and the payment is deleted.
+    if (p.invoice && formData.get("voidInvoice") !== "on") {
+      return { error: `Invoice ${p.invoice.number} was issued for this payment. Tick "Void the invoice" to cancel it and delete the payment.` };
+    }
+    const snapshot = {
+      member: p.member.name,
+      memberId: p.memberId,
+      type: p.type,
+      membershipYear: p.membershipYear,
+      meetingDates: p.meetingDates.map((d) => d.toISOString().slice(0, 10)),
+      method: p.method,
+      amountInr: p.amountPaidInr.toString(),
+      paymentDate: p.actualPaymentDate.toISOString(),
+    };
+    await db.$transaction([
+      ...(p.invoice
+        ? [db.invoice.update({ where: { paymentId: id }, data: { voidedAt: new Date(), voidReason: reason, voidedByUserId: session.user.id, voidSnapshot: snapshot } })]
+        : []),
+      db.payment.delete({ where: { id } }),
+    ]);
     await logActivity({
       userId: session.user.id,
       action: "payment.deleted",
@@ -43,6 +62,7 @@ export async function deleteRecordedPayment(kind: "member" | "visitor", id: stri
         membershipYear: p.membershipYear,
         meetingDates: p.meetingDates.map((d) => d.toISOString().slice(0, 10)),
         reference: p.reference,
+        voidedInvoice: p.invoice?.number ?? null,
       },
     });
     revalidatePath("/admin/payments/members");
