@@ -36,6 +36,7 @@ export function RecordPaymentForm({
   membershipTotal: number | null;
 }) {
   const [query, setQuery] = useState("");
+  const [listOpen, setListOpen] = useState(false);
   const [memberId, setMemberId] = useState("");
   const [options, setOptions] = useState<MemberPaymentOptions | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function RecordPaymentForm({
   const [typedAmount, setTypedAmount] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
+  const pickedMember = members.find((m) => m.id === memberId) ?? null;
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (q ? members.filter((m) => m.label.toLowerCase().includes(q)) : members).slice(0, 80);
@@ -103,21 +105,67 @@ export function RecordPaymentForm({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className={label}>
           Member
-          <input type="search" placeholder="Search name, chapter or phone…" value={query} onChange={(e) => setQuery(e.target.value)} className={input} />
-          <select size={6} value={memberId} onChange={(e) => pickMember(e.target.value)} className={cn(input, "font-normal")}>
-            {matches.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+          {pickedMember ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-emerald-800 py-1.5 pl-4 pr-2 text-sm font-medium text-white shadow-sm">
+                <span className="truncate">{pickedMember.label}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    pickMember("");
+                    setQuery("");
+                  }}
+                  aria-label="Remove selected member"
+                  className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-base leading-none hover:bg-white/30"
+                >
+                  ×
+                </button>
+              </span>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                type="search"
+                autoComplete="off"
+                placeholder="Type a name, chapter or phone number…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setListOpen(true)}
+                onBlur={() => setTimeout(() => setListOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (matches[0]) pickMember(matches[0].id);
+                  }
+                }}
+                className={input}
+              />
+              {listOpen || query ? (
+                <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
+                  {matches.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          pickMember(m.id);
+                          setQuery("");
+                          setListOpen(false);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm font-normal text-neutral-900 hover:bg-emerald-50"
+                      >
+                        {m.label}
+                      </button>
+                    </li>
+                  ))}
+                  {matches.length === 0 ? <li className="px-3 py-2 text-sm font-normal text-neutral-500">No member found.</li> : null}
+                </ul>
+              ) : null}
+            </div>
+          )}
+          {!pickedMember ? <span className="text-xs font-normal text-neutral-500">Pick a member from the list — they will appear here as a tag.</span> : null}
           {loading ? <span className="text-xs font-normal text-neutral-500">Loading…</span> : null}
           {loadError ? <span className="text-xs font-normal text-red-600">{loadError}</span> : null}
-          {options ? (
-            <span className="text-xs font-normal text-neutral-600">
-              {options.name} · {options.chapterName}
-            </span>
-          ) : null}
         </div>
 
         <div className="flex flex-col gap-4">
