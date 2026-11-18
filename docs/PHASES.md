@@ -5027,3 +5027,11 @@ Client correction: the annual membership year is **not** the calendar year. Join
   lists ranges from the joining year on. Mobile API only **adds** optional fields (`membership.label`, `membershipTerms`) so
   the build now in App Store review keeps working; app source (`mobile/src/app/payments/*`) updated — **needs the next
   native build, not built or submitted**; app TypeScript not type-checked here (mobile deps not installed).
+
+### 2026-11-18 (night) — delete a manually recorded payment
+
+- **Delete** button (with a required reason) on payments Accounts recorded by hand (cash / UPI / bank transfer / cheque):
+  member-wise payment history and Visitors Payment. `payments:approve` only. Not offered for member-submitted payments
+  (Razorpay, screenshot — reject those instead), and refused when an invoice was issued. Logged as
+  `payment.deleted` / `visitor_payment.deleted` with a full snapshot. Deleting a visitor payment keeps the visitor's check-in.
+  Action: `payments/delete-actions.ts`.

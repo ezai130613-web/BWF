@@ -4,6 +4,8 @@ import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payments/dates";
+import { DeletePaymentButton } from "@/components/admin/delete-payment-button";
+import { isManualMethod } from "@/lib/payments/manual";
 import { ExportButton } from "@/components/admin/export-button";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -172,6 +174,7 @@ export default async function VisitorsPaymentPage({
               {payment.reviewRemarks ? <p className="text-xs text-neutral-500">Remarks: {payment.reviewRemarks}</p> : null}
             </div>
 
+            {canApprove && isManualMethod(payment.method) ? <DeletePaymentButton kind="visitor" id={payment.id} /> : null}
             {canApprove ? <VisitorPaymentReviewActions visitorPaymentId={payment.id} status={payment.status} /> : null}
           </div>
         ))}

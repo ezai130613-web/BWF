@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PAYMENT_METHOD_LABELS, paymentCoverageLabel } from "@/lib/payments/dates";
-import { getPaymentsScope } from "@/lib/auth/rbac";
+import { getPaymentsScope, getUserPermissionKeys, requireAdminSession } from "@/lib/auth/rbac";
+import { DeletePaymentButton } from "@/components/admin/delete-payment-button";
+import { isManualMethod } from "@/lib/payments/manual";
 import { db } from "@/lib/db";
 import { formatMonthYear, formatMonthsCovered, parseMonthsCovered, type MonthYear } from "@/lib/attendance/manage";
 import { AdminPageIcon } from "@/components/admin/page-icon";
@@ -127,6 +129,8 @@ export default async function PaymentMembersPage({
     return <p className="text-sm text-red-600">You don&rsquo;t have access to this member.</p>;
   }
 
+  const adminSession = await requireAdminSession();
+  const canDelete = (await getUserPermissionKeys(adminSession.user.id)).has("payments:approve");
   const [payments, remarks] = await Promise.all([
     db.payment.findMany({
       where: { memberId: member.id },
@@ -238,6 +242,11 @@ export default async function PaymentMembersPage({
             ) : (
               <p className="mt-1 text-xs text-neutral-500">{PAYMENT_METHOD_LABELS[p.method]}</p>
             )}
+            {canDelete && isManualMethod(p.method) ? (
+              <div className="mt-2">
+                <DeletePaymentButton kind="member" id={p.id} />
+              </div>
+            ) : null}
           </div>
         ))}
         {payments.length === 0 ? (
