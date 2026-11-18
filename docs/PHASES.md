@@ -4983,3 +4983,47 @@ ellipsis per cell (Excel has the full text).
 - **Pending Points** — new **Assigned to** (admin user) field on each point, with an "Assigned to" filter
   (incl. "Unassigned") on the page, Excel and PDF. Migration `20261117120000_pending_items` extended with
   `assignedToUserId` (still not applied to the live DB).
+
+## 2026-11-18 — Annual membership runs from the joining date
+
+Client correction: the annual membership year is **not** the calendar year. Joined 15 Jan 2024 → terms
+15 Jan 2024–14 Jan 2025, 15 Jan 2025–14 Jan 2026, …; the next fee is due on each anniversary.
+
+- **Term model** (`src/lib/payments/membership-term.ts`): a term is named by the calendar year it *starts* in — the
+  value `Payment.membershipYear` already stores, so existing payments line up with no data change.
+- **Admin → Member page → "Membership term"** (`member-membership-form.tsx`, `updateMemberMembership`): edit the real
+  joining date (`Member.joinedAt`) and tick terms paid outside the website (new `Member.membershipPaidTerms Int[]` —
+  the company started in 2024, earlier payments were never recorded). Terms paid on the site show automatically.
+- **Unpaid Members report** now lists each membership *term* (e.g. "15 Jan 2026 – 14 Jan 2027") that has started and has no
+  approved payment and isn't ticked as paid. Meeting-fee months still skip months before `createdAt`.
+- Same term rule used for check-in ("attendance requires payment"), member dues, member Payments page, mobile payments
+  API, and the admin Record Payment form (year picker now shows term dates).
+- Migration `20261118120000_member_membership_terms` (**not yet applied to the live DB**).
+- **Caveats:** existing members' `joinedAt` is their system-add date until an admin corrects it, so terms are
+  wrong until then. Changing `joinedAt` also changes attendance (meetings before it stop counting).
+  Pre-join year in the Record Payment picker isn't blocked. Typecheck + lint + date-logic check only; not run in a browser.
+
+### 2026-11-18 (later) — unpaid report detail, fee filter, visitor manual payments
+
+- **Unpaid Members**: new **Fee** filter (annual + meeting / annual only / meeting only — also applied to Excel and PDF);
+  each member's name opens `/admin/accounts/unpaid/[memberId]` — annual years (paid / marked paid / awaiting / not paid),
+  last 12 months of meeting fee, and payments on record, with shortcuts to record a payment or edit the joining date.
+- **Record Visitor Payment** (`/admin/visitors-payment/record`, `payments:approve`): Accounts picks a meeting and a checked-in
+  visitor (or adds a walk-in by name + mobile) and records cash / UPI / bank transfer / cheque; approved immediately.
+  `VisitorPayment.proofUrl` is now optional and gains `method` + `reference`. Migration
+  `20261118130000_visitor_manual_payments` (**not applied to the live DB**).
+- Member manual payments (`/admin/payments/record`) already handle both meeting fee and annual membership.
+- Copy on the unpaid report, Record Offline Payment and the member Membership box shortened.
+
+### 2026-11-18 (evening) — due date setting, bulk joining dates, app
+
+- **Fee due date**: new setting `membership.dueDaysBefore` (default **30**) — the annual fee falls due that many days
+  *before* a member's year starts (0 = on the anniversary). Edited on Admin → Members → *Joining Dates & Paid Years*
+  (Super Admin / Accounts). Drives the Unpaid Members report, the member's "due" banner, the Payments page and the app.
+- **Joining Dates & Paid Years** (`/admin/members/membership`, menu: Members group): table of members with a date input
+  each and "Year 1 / Year 2 … paid" ticks; "all / none" per column for bulk ticking; paste "name, date" lines from Excel to
+  fill dates; one **Save all changes**. Chapter Admins see only their chapter. Single member: Members → member → *Annual membership*.
+- **Member web + mobile app**: payments screens show the year's date range ("15 Jan 2026 – 14 Jan 2027") and the year picker
+  lists ranges from the joining year on. Mobile API only **adds** optional fields (`membership.label`, `membershipTerms`) so
+  the build now in App Store review keeps working; app source (`mobile/src/app/payments/*`) updated — **needs the next
+  native build, not built or submitted**; app TypeScript not type-checked here (mobile deps not installed).

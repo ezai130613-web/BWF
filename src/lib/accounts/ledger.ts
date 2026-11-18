@@ -193,7 +193,7 @@ export async function getLedgerRows(filters: LedgerFilters, limit?: number): Pro
       reviewedAt: p.reviewedAt,
       reviewRemarks: p.reviewRemarks,
       proofUrl: p.proofUrl,
-      methodLabel: null,
+      methodLabel: p.method === "PROOF_UPLOAD" ? null : (PAYMENT_METHOD_LABELS[p.method] ?? null),
       memberId: null,
       paymentType: null,
       invoice: null,

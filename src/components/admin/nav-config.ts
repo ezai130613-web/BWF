@@ -78,6 +78,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
     title: "Membership",
     items: [
       { href: "/admin/members", label: "Members", icon: Users, permission: "members:manage", workspace: "website" },
+      { href: "/admin/members/membership", label: "Joining Dates & Paid Years", icon: CalendarRange, permission: "members:manage", workspace: "website" },
       { href: "/admin/applications", label: "Applications", icon: FileText, permission: "applications:manage", workspace: "website" },
       { href: "/admin/chapters", label: "Chapters", icon: Building2, permission: "chapters:manage", workspace: "website" },
       { href: "/admin/categories", label: "Categories", icon: Tags, permission: "categories:manage", workspace: "website" },
@@ -118,6 +119,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       // 2026-11-03 — cash / bank transfer entry + the "attendance requires payment" switch.
       { href: "/admin/payments/record", label: "Record Offline Payment", icon: HandCoins, permission: "payments:approve", workspace: ["accounts", "performance"] },
       { href: "/admin/visitors-payment", label: "Visitors Payment", icon: CreditCard, permission: "payments:view", workspace: ["performance", "accounts"] },
+      { href: "/admin/visitors-payment/record", label: "Record Visitor Payment", icon: HandCoins, permission: "payments:approve", workspace: ["accounts", "performance"] },
     ],
   },
   {

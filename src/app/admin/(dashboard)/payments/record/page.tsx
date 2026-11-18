@@ -32,9 +32,7 @@ export default async function RecordPaymentPage() {
           <AdminPageIcon />Record Offline Payment
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          For members who paid by cash, bank transfer, UPI or cheque. Pick the member and a meeting package (2, 6, 12 or 24
-          meetings) — their next unpaid meetings are ticked for you; untick or tick extra dates if needed. It&apos;s approved straight away and
-          counts for attendance.
+          For members who paid by cash, bank transfer, UPI or cheque — meeting fee or annual membership. It is approved straight away.
         </p>
       </div>
 

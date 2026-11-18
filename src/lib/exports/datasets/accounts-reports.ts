@@ -10,7 +10,7 @@ const unpaidMembers: ExportDataset = {
   scope: (a) => blanket(a, "accounts:view"),
   async load(_scope, params) {
     const r = await unpaidReport(
-      parseUnpaidFilters({ chapterId: params.get("chapterId"), month: params.get("month"), from: params.get("from"), to: params.get("to"), pending: params.get("pending") }),
+      parseUnpaidFilters({ chapterId: params.get("chapterId"), month: params.get("month"), from: params.get("from"), to: params.get("to"), pending: params.get("pending"), fee: params.get("fee") }),
     );
     return [{ name: r.sheetName, columns: r.columns, rows: r.rows }];
   },

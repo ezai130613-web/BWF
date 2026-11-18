@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
-import { istParts } from "@/lib/ist";
 import { nthWeekdayOfMonth } from "@/lib/meetings/generate";
 import type { MonthYear } from "@/lib/attendance/manage";
 import { addMonthsKey, dayBefore, dbDateKey, istDateKey, keyToDbDate, meetingsPerMonth, pad } from "@/lib/payments/dates";
+import { dueFrom, formatTerm, termFor, termYearAt } from "@/lib/payments/membership-term";
+import { getNumberSetting } from "@/lib/settings";
 import { isMeetingPackage, MAX_PACKAGE_MEETINGS, MEETING_PACKAGE_SIZES } from "@/lib/payments/fees";
 
 export * from "@/lib/payments/dates";
@@ -103,7 +104,13 @@ export async function memberMeetingCoverage(memberId: string): Promise<CoverageS
 
 export type MembershipStanding = "APPROVED" | "PENDING" | null;
 
-export async function membershipStanding(memberId: string, year: number): Promise<MembershipStanding> {
+/**
+ * Standing of one membership TERM (named by the calendar year it starts in —
+ * see membership-term.ts). `paidTerms` = Member.membershipPaidTerms, terms an
+ * admin marked as paid outside the system; they count as APPROVED.
+ */
+export async function membershipStanding(memberId: string, year: number, paidTerms: number[] = []): Promise<MembershipStanding> {
+  if (paidTerms.includes(year)) return "APPROVED";
   const rows = await db.payment.findMany({
     where: { memberId, type: "MEMBERSHIP", membershipYear: year, status: { in: ["APPROVED", ...COUNTED_PENDING] } },
     select: { status: true },
@@ -156,22 +163,33 @@ export type MemberDues = {
   unpaidSoon: string[];
   /** Approved meetings, continuous from the next meeting. */
   paidThrough: string | null;
-  membership: { year: number; status: MembershipStanding };
+  /** The year to pay now: the current one, or the next once its fee is due (see setting membership.dueDaysBefore). */
+  membership: { year: number; status: MembershipStanding; /** "15 Jan 2026 – 14 Jan 2027" */ label: string; /** Joining year — earlier years don't exist for this member. */ firstYear: number };
   /** Anything to pay right now: the next meeting or this year's membership. */
   isDue: boolean;
 };
 
 /** "You're due for payment" — shown on the member's Payments page, dashboard and app. */
 export async function getMemberDues(
-  member: { id: string; joinedAt: Date; chapter: ChapterSchedule },
+  member: { id: string; joinedAt: Date; membershipPaidTerms?: number[]; chapter: ChapterSchedule },
   now = new Date(),
 ): Promise<MemberDues> {
   const fromKey = startKeyFor(member.joinedAt, now);
-  const [coverage, days, membership] = await Promise.all([
+  const joinedKey = istDateKey(member.joinedAt);
+  const todayKey = istDateKey(now);
+  const [coverage, days, currentStanding, dueDays] = await Promise.all([
     memberMeetingCoverage(member.id),
     chapterMeetingDays(member.chapter, fromKey, addMonthsKey(fromKey, 14)),
-    membershipStanding(member.id, istParts(now).year),
+    membershipStanding(member.id, termYearAt(joinedKey, todayKey), member.membershipPaidTerms),
+    getNumberSetting("membership.dueDaysBefore"),
   ]);
+  let termYear = termYearAt(joinedKey, todayKey);
+  let membership = currentStanding;
+  // Current year paid and the next year's fee is now due → that's what to pay.
+  if (currentStanding === "APPROVED" && dueFrom(termFor(joinedKey, termYear + 1), dueDays) <= todayKey) {
+    termYear += 1;
+    membership = await membershipStanding(member.id, termYear, member.membershipPaidTerms);
+  }
   const status = (k: string): "APPROVED" | "PENDING" | null =>
     coverage.approved.has(k) ? "APPROVED" : coverage.pending.has(k) ? "PENDING" : null;
   const next = days[0];
@@ -187,7 +205,7 @@ export async function getMemberDues(
     nextMeeting,
     unpaidSoon,
     paidThrough,
-    membership: { year: istParts(now).year, status: membership },
+    membership: { year: termYear, status: membership, label: formatTerm(termFor(joinedKey, termYear)), firstYear: Number(joinedKey.slice(0, 4)) },
     isDue: (nextMeeting !== null && nextMeeting.status === null) || membership === null,
   };
 }
@@ -202,15 +220,17 @@ export type AttendancePaymentCheck = { ok: true } | { ok: false; error: string }
  */
 export async function checkAttendancePayment(memberId: string, meetingStartsAt: Date): Promise<AttendancePaymentCheck> {
   const key = istDateKey(meetingStartsAt);
-  const year = Number(key.slice(0, 4));
-  const [coverage, membership] = await Promise.all([memberMeetingCoverage(memberId), membershipStanding(memberId, year)]);
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId }, select: { joinedAt: true, membershipPaidTerms: true } });
+  // The membership that must be paid is the term the meeting falls in, not the calendar year.
+  const year = termYearAt(istDateKey(member.joinedAt), key);
+  const [coverage, membership] = await Promise.all([memberMeetingCoverage(memberId), membershipStanding(memberId, year, member.membershipPaidTerms)]);
   const meetingOk = coverage.approved.has(key);
   const membershipOk = membership === "APPROVED";
   if (meetingOk && membershipOk) return { ok: true };
 
   const missing: string[] = [];
   if (!meetingOk) missing.push(coverage.pending.has(key) ? "this meeting's fee (your payment is awaiting approval)" : "this meeting's fee");
-  if (!membershipOk) missing.push(membership === "PENDING" ? `your ${year} membership (awaiting approval)` : `your ${year} membership`);
+  if (!membershipOk) missing.push(membership === "PENDING" ? `your membership term starting ${year} (awaiting approval)` : `your membership term starting ${year}`);
   return {
     ok: false,
     error: `Your payment is not yet made for ${missing.join(" and ")}. Go to Payments and make the payment, then check in again.`,
@@ -222,6 +242,7 @@ export type MeetingSelection = { dates: string[]; numberOfMonths: number };
 const MEMBER_FOR_COVERAGE = {
   id: true,
   joinedAt: true,
+  membershipPaidTerms: true,
   chapter: { select: { id: true, meetingWeekday: true, meetingWeeksOfMonth: true } },
 } as const;
 

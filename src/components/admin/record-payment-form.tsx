@@ -240,11 +240,11 @@ export function RecordPaymentForm({
 
       {options && type === "MEMBERSHIP" ? (
         <label className={cn(label, "max-w-xs")}>
-          Membership year
+          Membership term
           <select name="membershipYear" key={options.memberId} defaultValue={defaultYear} className={input}>
             {options.membership.map((m) => (
               <option key={m.year} value={m.year} disabled={m.status === "APPROVED"}>
-                {m.year}
+                {m.term}
                 {m.status === "APPROVED" ? " — already paid" : m.status === "PENDING" ? " — awaiting approval" : ""}
               </option>
             ))}

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import type { Prisma, PaymentApprovalStatus } from "@/generated/prisma/client";
 import { VisitorPaymentReviewActions } from "@/components/admin/visitor-payment-review-actions";
 import { AdminPageIcon } from "@/components/admin/page-icon";
+import { PAYMENT_METHOD_LABELS } from "@/lib/payments/dates";
 import { ExportButton } from "@/components/admin/export-button";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -161,9 +162,13 @@ export default async function VisitorsPaymentPage({
             </dl>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
-                View proof
-              </a>
+              {payment.proofUrl ? (
+                <a href={payment.proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-600 underline hover:text-emerald-800">
+                  View proof
+                </a>
+              ) : (
+                <span className="text-sm text-neutral-500">Recorded by Accounts ({PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}){payment.reference ? ` · Ref ${payment.reference}` : ""}</span>
+              )}
               {payment.reviewRemarks ? <p className="text-xs text-neutral-500">Remarks: {payment.reviewRemarks}</p> : null}
             </div>
 

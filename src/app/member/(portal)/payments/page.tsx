@@ -15,6 +15,8 @@ import { PaymentDuesBanner } from "@/components/member/payment-dues-banner";
 import { Card, DataTable, PageHeader, StatTile, formatShortDate, tdClass } from "@/components/member/ui";
 import { MemberPaymentForm } from "@/components/member/member-payment-form";
 import { cn } from "@/lib/utils";
+import { formatTerm, termFor } from "@/lib/payments/membership-term";
+import { istDateKey } from "@/lib/payments/dates";
 import { QrPaymentBlock } from "@/components/ui/qr-payment-block";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -68,7 +70,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
   const online = isRazorpayConfigured();
   const { dues } = context;
 
-  const { membershipYears, defaultMembershipYear } = summarizeMemberPayments(payments);
+  const { membershipYears, defaultMembershipYear } = summarizeMemberPayments(payments, new Date(), dues.membership);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
 
   const details =
@@ -171,7 +173,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
           hint={dues.paidThrough ? "Paid meetings, continuous from the next one" : "The next meeting isn't paid yet"}
         />
         <StatTile
-          label={`Membership · ${dues.membership.year}`}
+          label={`Membership · ${dues.membership.label}`}
           icon={BadgeCheck}
           value={dues.membership.status === "APPROVED" ? "Paid" : dues.membership.status === "PENDING" ? "Pending" : "Not paid"}
           hint={dues.membership.status === "PENDING" ? "Awaiting BWF approval" : dues.membership.status === null ? "Needed to check in at meetings" : undefined}
@@ -220,6 +222,7 @@ export default async function MemberPaymentsPage({ searchParams }: { searchParam
             membershipFee={parseFee(content["fees.annualMembership"])}
             membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
             membershipYears={membershipYears}
+            membershipYearLabels={Object.fromEntries(membershipYears.map((y) => [y, formatTerm(termFor(istDateKey(member.joinedAt), y))]))}
             defaultMembershipYear={defaultMembershipYear}
           />
         </Card>

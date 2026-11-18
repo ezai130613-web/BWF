@@ -483,7 +483,15 @@ model Member {
   birthMonth Int?
   birthYear  Int?
 
+  /// The member's real joining date — editable by an admin (Member page ›
+  /// Membership term). Annual membership terms run from this date: join
+  /// 2024-01-15 → terms 15 Jan 2024–14 Jan 2025, 15 Jan 2025–14 Jan 2026, …
+  /// A term is identified by the calendar year it STARTS in (what
+  /// Payment.membershipYear stores). See src/lib/payments/membership-term.ts.
   joinedAt  DateTime @default(now())
+  /// Terms (start years) an admin has marked as paid outside this system —
+  /// the company started in 2024, so earlier payments were never recorded here.
+  membershipPaidTerms Int[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1334,8 +1342,9 @@ model Payment {
   meetingId String?
   meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
-  /// MEMBERSHIP only — the membership year this annual subscription is for
-  /// (e.g. 2026). Null for MEETING payments, which use monthsCovered.
+  /// MEMBERSHIP only — the membership TERM this annual subscription is for,
+  /// identified by the calendar year the term starts in (member joined Feb
+  /// 2025 → 2025 = Feb 2025–Jan 2026, 2026 = Feb 2026–Jan 2027). Null for MEETING payments, which use monthsCovered.
   membershipYear Int?
 
   /// The Attendance row this was submitted alongside, when known — nullable
@@ -1621,7 +1630,11 @@ model VisitorPayment {
   actualPaymentDate DateTime
 
   /// R2 URL — screenshot, receipt image, or PDF (MEDIA_KINDS.paymentProof).
-  proofUrl String
+  /// Null when Accounts recorded a cash/transfer/UPI/cheque payment by hand.
+  proofUrl String?
+  /// How it was paid; PROOF_UPLOAD for the visitor's own QR-form submission.
+  method    PaymentMethod @default(PROOF_UPLOAD)
+  reference String?
 
   status           PaymentApprovalStatus @default(PENDING_APPROVAL)
   reviewedByUserId String?

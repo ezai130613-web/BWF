@@ -22,7 +22,12 @@ type PaymentForSummary = {
   membershipYear: number | null;
 };
 
-export function summarizeMemberPayments(payments: PaymentForSummary[], now = new Date()) {
+export function summarizeMemberPayments(
+  payments: PaymentForSummary[],
+  now = new Date(),
+  /** The member's current membership term (from getMemberDues) — terms run from the joining date, not the calendar year. */
+  term?: { year: number; status: Standing; firstYear?: number },
+) {
   // Meeting-fee coverage by month (approved beats pending; rejected never counts).
   const approved = new Set<string>();
   const pending = new Set<string>();
@@ -51,9 +56,10 @@ export function summarizeMemberPayments(payments: PaymentForSummary[], now = new
       : payments.some((p) => p.type === "MEMBERSHIP" && p.membershipYear === year && (p.status === "PENDING_APPROVAL" || p.status === "CLARIFICATION_REQUESTED"))
         ? "PENDING"
         : null;
-  const membershipThisYear = membershipFor(today.year);
-  const membershipYears = [today.year - 1, today.year, today.year + 1];
-  const defaultMembershipYear = membershipThisYear === null ? today.year : today.year + 1;
+  const termYear = term?.year ?? today.year;
+  const membershipThisYear = term ? term.status : membershipFor(today.year);
+  const membershipYears = [termYear - 1, termYear, termYear + 1].filter((y) => y >= (term?.firstYear ?? 0));
+  const defaultMembershipYear = membershipThisYear === null ? termYear : termYear + 1;
 
 
   return { today, thisMonth, thisMonthStatus, paidThrough, startMonth, membershipThisYear, membershipYears, defaultMembershipYear };

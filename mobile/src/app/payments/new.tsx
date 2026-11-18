@@ -162,8 +162,8 @@ export default function NewPaymentScreen() {
         </>
       ) : (
         <>
-          <Text style={ui.label}>Membership year</Text>
-          <Segmented options={(data?.membershipYears ?? []).map((y) => ({ value: String(y), label: String(y) }))} value={membershipYear} onChange={setYear} />
+          <Text style={ui.label}>Membership year (starts on your joining date)</Text>
+          <Segmented options={(data?.membershipTerms ?? (data?.membershipYears ?? []).map((y) => ({ year: y, label: String(y) }))).map((t) => ({ value: String(t.year), label: `From ${t.label.split(' – ')[0]}` }))} value={membershipYear} onChange={setYear} />
         </>
       )}
 

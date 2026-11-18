@@ -5,7 +5,6 @@ import { z } from "zod";
 import { requirePermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/audit";
-import { istParts } from "@/lib/ist";
 import { setBooleanSetting } from "@/lib/settings";
 import { Prisma } from "@/generated/prisma/client";
 import {
@@ -23,6 +22,7 @@ import {
   nextUnpaidMeetingDays,
   PACKAGE_ONLY_ERROR,
 } from "@/lib/payments/coverage";
+import { formatTerm, termFor, termYearAt } from "@/lib/payments/membership-term";
 import { isMeetingPackage, MAX_PACKAGE_MEETINGS } from "@/lib/payments/fees";
 
 /**
@@ -40,7 +40,7 @@ export type MemberPaymentOptions = {
   days: { date: string; status: "APPROVED" | "PENDING" | null }[];
   /** Next unpaid meetings (enough for the biggest package) — the auto-selection for a package. */
   nextUnpaid: string[];
-  membership: { year: number; status: "APPROVED" | "PENDING" | null }[];
+  membership: { year: number; /** "15 Jan 2025 – 14 Jan 2026" */ term: string; status: "APPROVED" | "PENDING" | null }[];
 };
 
 export async function loadMemberPaymentOptions(memberId: string): Promise<MemberPaymentOptions | { error: string }> {
@@ -49,13 +49,14 @@ export async function loadMemberPaymentOptions(memberId: string): Promise<Member
   if (!profile) return { error: "Member not found." };
   const member = await loadMemberForCoverage(memberId);
   const today = istDateKey(new Date());
-  const year = istParts(new Date()).year;
+  // Membership terms run from the joining date: offer the member's current term and its neighbours.
+  const year = termYearAt(istDateKey(member.joinedAt), today);
   const [days, coverage, nextUnpaid, ...membership] = await Promise.all([
     chapterMeetingDays(member.chapter, addMonthsKey(today, -3), addMonthsKey(today, 15)),
     memberMeetingCoverage(memberId),
     // "Next unpaid" for Accounts starts from today too — a back-dated entry can tick earlier meetings by hand.
     nextUnpaidMeetingDays(member, MAX_PACKAGE_MEETINGS),
-    ...[year - 1, year, year + 1].map((y) => membershipStanding(memberId, y)),
+    ...[year - 1, year, year + 1].map((y) => membershipStanding(memberId, y, member.membershipPaidTerms)),
   ]);
   return {
     memberId,
@@ -67,7 +68,7 @@ export async function loadMemberPaymentOptions(memberId: string): Promise<Member
       status: coverage.approved.has(d.date) ? "APPROVED" : coverage.pending.has(d.date) ? "PENDING" : null,
     })),
     nextUnpaid: nextUnpaid.map((d) => d.date),
-    membership: [year - 1, year, year + 1].map((y, i) => ({ year: y, status: membership[i] })),
+    membership: [year - 1, year, year + 1].map((y, i) => ({ year: y, term: formatTerm(termFor(istDateKey(member.joinedAt), y)), status: membership[i] })),
   };
 }
 
@@ -145,7 +146,8 @@ export async function recordOfflinePayment(_prev: RecordPaymentState | undefined
   } else {
     const year = input.membershipYear;
     if (!year || year < 2000 || year > 2100) return { error: "Select the membership year." };
-    if ((await membershipStanding(member.id, year)) === "APPROVED") return { error: `${member.name}'s ${year} membership is already paid.` };
+    const termMember = await db.member.findUniqueOrThrow({ where: { id: member.id }, select: { membershipPaidTerms: true } });
+    if ((await membershipStanding(member.id, year, termMember.membershipPaidTerms)) === "APPROVED") return { error: `${member.name}'s membership term starting ${year} is already paid.` };
     data = { ...base, membershipYear: year, numberOfMonths: 0, monthsCovered: [] };
     summary = `membership ${year}`;
   }

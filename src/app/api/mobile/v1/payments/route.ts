@@ -4,6 +4,8 @@ import { getContent } from "@/lib/content";
 import { formatAnnualMembershipFee } from "@/lib/format";
 import { formatMonthYear, formatMonthsCovered } from "@/lib/attendance/manage";
 import { fieldsFromJson } from "@/lib/payments/member-payments";
+import { formatTerm, termFor } from "@/lib/payments/membership-term";
+import { istDateKey } from "@/lib/payments/dates";
 import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
 import { MEETING_FEE_GST_PERCENT, packagesSummary, parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
 import { getMeetingPackages } from "@/lib/payments/packages";
@@ -44,8 +46,9 @@ export const GET = mobileHandler(async (request: Request) => {
   if (dues.nextMeeting && dues.nextMeeting.status === null) {
     dueItems.push(`Meeting fee — next meeting ${formatDateKey(dues.nextMeeting.date)}; pay by ${formatDateKey(dues.nextMeeting.payBy)}.`);
   }
-  if (dues.membership.status === null) dueItems.push(`Annual BWF membership for ${dues.membership.year}.`);
-  const summary = summarizeMemberPayments(payments);
+  if (dues.membership.status === null) dueItems.push(`Annual BWF membership (${dues.membership.label}).`);
+  const joinedKey = istDateKey(member.joinedAt);
+  const summary = summarizeMemberPayments(payments, new Date(), dues.membership);
   const annualFee = formatAnnualMembershipFee(content["fees.annualMembership"]);
 
   const body: PaymentsResponse = {
@@ -63,8 +66,10 @@ export const GET = mobileHandler(async (request: Request) => {
     thisMonth: { label: formatMonthYear(summary.thisMonth), status: summary.thisMonthStatus },
     paidThrough: summary.paidThrough ? formatMonthYear(summary.paidThrough) : null,
     nextUnpaidMonth: summary.startMonth,
-    membership: { year: summary.today.year, status: summary.membershipThisYear },
+    membership: { year: dues.membership.year, status: summary.membershipThisYear, label: dues.membership.label },
     membershipYears: summary.membershipYears,
+    // Added 2026-11-18 (membership runs from the joining date). Optional in the app contract so older app builds keep working.
+    membershipTerms: summary.membershipYears.map((y) => ({ year: y, label: formatTerm(termFor(joinedKey, y)) })),
     defaultMembershipYear: summary.defaultMembershipYear,
     fees: {
       monthlyMeeting: packagesSummary(packages),

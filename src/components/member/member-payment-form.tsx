@@ -27,6 +27,7 @@ export function MemberPaymentForm({
   membershipFee,
   membershipTotal,
   membershipYears,
+  membershipYearLabels,
   defaultMembershipYear,
   online: razorpayOn,
   howToPay,
@@ -38,6 +39,8 @@ export function MemberPaymentForm({
   membershipFee: number | null;
   membershipTotal: number | null;
   membershipYears: number[];
+  /** Date range per membership year, e.g. { 2026: "15 Jan 2026 – 14 Jan 2027" }. */
+  membershipYearLabels?: Record<number, string>;
   defaultMembershipYear: number;
   /** Razorpay is switched on — the member can still choose to pay by cash / QR / bank and upload proof. */
   online: boolean;
@@ -115,11 +118,11 @@ export function MemberPaymentForm({
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
-            Membership year
+            Membership year (starts on your joining date)
             <select name="membershipYear" defaultValue={defaultMembershipYear} className={inputClass}>
               {membershipYears.map((y) => (
                 <option key={y} value={y}>
-                  {y}
+                  {membershipYearLabels?.[y] ?? y}
                 </option>
               ))}
             </select>

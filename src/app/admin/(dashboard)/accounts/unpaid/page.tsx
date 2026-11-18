@@ -15,7 +15,7 @@ const field = "rounded-lg border border-neutral-300 px-2 py-2 text-sm text-neutr
 export default async function UnpaidMembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ chapterId?: string; month?: string; from?: string; to?: string; pending?: string }>;
+  searchParams: Promise<{ chapterId?: string; month?: string; from?: string; to?: string; pending?: string; fee?: string }>;
 }) {
   await requirePermission("accounts:view");
   const filters = parseUnpaidFilters(await searchParams);
@@ -28,7 +28,7 @@ export default async function UnpaidMembersPage({
     c.items++;
     byChapter.set(r.chapter, c);
   }
-  const downloadParams = { chapterId: filters.chapterId, from: filters.from, to: filters.to, pending: filters.includePending ? "1" : undefined };
+  const downloadParams = { chapterId: filters.chapterId, month: filters.month, from: filters.from, to: filters.to, pending: filters.includePending ? "1" : undefined, fee: filters.fee === "all" ? undefined : filters.fee };
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,8 +38,12 @@ export default async function UnpaidMembersPage({
             <AdminPageIcon />Members who have not paid
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-            Active members with no <em>approved</em> payment for a month (meeting fee) or year (annual membership) in the range. Months before a member was
-            added to the system, and months that haven&rsquo;t started, are left out — payments made outside the system earlier can&rsquo;t be known.
+            Active members who have not paid. Click a member&rsquo;s name to see everything they have and haven&rsquo;t paid.
+            Annual fees depend on each member&rsquo;s joining date —{" "}
+            <Link href="/admin/members/membership" className="underline hover:text-emerald-800">
+              set joining dates &amp; paid years here
+            </Link>
+            .
           </p>
         </div>
         <ReportDownloads report="unpaid-members" params={downloadParams} />
@@ -58,6 +62,14 @@ export default async function UnpaidMembersPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+          Fee
+          <select name="fee" defaultValue={filters.fee} className={field}>
+            <option value="all">Annual + meeting fee</option>
+            <option value="annual">Annual membership only</option>
+            <option value="meeting">Meeting fee only</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
           Month
           <input type="month" name="month" defaultValue={filters.month} className={field} />
         </label>
@@ -72,7 +84,7 @@ export default async function UnpaidMembersPage({
         </label>
         <label className="flex items-center gap-2 pb-2 text-sm text-neutral-700">
           <input type="checkbox" name="pending" value="1" defaultChecked={filters.includePending} className="h-4 w-4 accent-emerald-800" />
-          Include payments awaiting approval
+          Also show payments waiting for approval
         </label>
         <button type="submit" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
           Apply
@@ -96,7 +108,7 @@ export default async function UnpaidMembersPage({
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
-              {["Chapter", "Member", "Phone", "Category", "Fee", "Period", "Status"].map((h) => (
+              {["Chapter", "Member (click for summary)", "Phone", "Category", "Fee", "Period", "Status"].map((h) => (
                 <th key={h} className="px-4 py-2.5 font-medium">
                   {h}
                 </th>
@@ -107,7 +119,11 @@ export default async function UnpaidMembersPage({
             {rows.slice(0, SHOW_LIMIT).map((r, i) => (
               <tr key={`${r.memberId}-${r.kind}-${r.period}-${i}`}>
                 <td className="px-4 py-2.5 text-neutral-600">{r.chapter}</td>
-                <td className="px-4 py-2.5 font-medium text-neutral-900">{r.member}</td>
+                <td className="px-4 py-2.5 font-medium">
+                  <Link href={`/admin/accounts/unpaid/${r.memberId}`} className="text-emerald-800 underline-offset-2 hover:underline">
+                    {r.member}
+                  </Link>
+                </td>
                 <td className="px-4 py-2.5 text-neutral-600">{r.phone || "—"}</td>
                 <td className="px-4 py-2.5 text-neutral-600">{r.category}</td>
                 <td className="px-4 py-2.5 text-neutral-600">{r.kind}</td>

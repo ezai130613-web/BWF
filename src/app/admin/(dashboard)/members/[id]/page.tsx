@@ -7,6 +7,8 @@ import { MemberPortalAccess } from "@/components/admin/member-portal-access";
 import { ReviewProfileRevisionForm } from "@/components/admin/review-profile-revision-form";
 import { MemberTestimonials } from "@/components/admin/member-testimonials";
 import { MemberInductionForm } from "@/components/admin/member-induction-form";
+import { MemberMembershipForm } from "@/components/admin/member-membership-form";
+import { istDateKey } from "@/lib/payments/dates";
 import { MemberBirthdayForm } from "@/components/admin/member-birthday-form";
 import { AdminPageIcon } from "@/components/admin/page-icon";
 import { AdminRemarksList } from "@/components/admin/admin-remarks";
@@ -52,6 +54,18 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     orderBy: { createdAt: "desc" },
   });
   const remarks = await getMemberRemarks(member.id);
+
+  // Which membership terms already have a payment recorded on the website (term = year it starts in).
+  const termPayments = await db.payment.findMany({
+    where: { memberId: member.id, type: "MEMBERSHIP", membershipYear: { not: null }, status: { in: ["APPROVED", "PENDING_APPROVAL", "CLARIFICATION_REQUESTED"] } },
+    select: { membershipYear: true, status: true },
+  });
+  const termStanding: Record<number, "APPROVED" | "PENDING"> = {};
+  for (const p of termPayments) {
+    if (p.membershipYear === null) continue;
+    if (p.status === "APPROVED") termStanding[p.membershipYear] = "APPROVED";
+    else if (termStanding[p.membershipYear] !== "APPROVED") termStanding[p.membershipYear] = "PENDING";
+  }
 
   const uniqueVisitorCount = new Set(invitedVisits.map((v) => v.visitorProfileId)).size;
 
@@ -114,6 +128,14 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         memberId={member.id}
         currentReferredByMemberId={member.referredByMemberId}
         candidates={inductionCandidates}
+      />
+
+      <MemberMembershipForm
+        memberId={member.id}
+        joinedKey={istDateKey(member.joinedAt)}
+        todayKey={istDateKey(new Date())}
+        paidTerms={member.membershipPaidTerms}
+        inSystem={termStanding}
       />
 
       <MemberBirthdayForm memberId={member.id} birthDay={member.birthDay} birthMonth={member.birthMonth} birthYear={member.birthYear} />

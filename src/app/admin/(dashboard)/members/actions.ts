@@ -15,6 +15,9 @@ import { GST_FORMAT_ERROR, isValidGstNumber, normalizeGstNumber } from "@/lib/co
 import { notifyProfileRevisionReviewed } from "@/lib/notifications";
 import { addAdminRemark } from "@/lib/remarks";
 import { birthdayFields, birthdayInputSchema, submittedBirthday, type SubmittedBirthday } from "@/lib/members/birthdays";
+import { istToUtc } from "@/lib/ist";
+import { termYearAt } from "@/lib/payments/membership-term";
+import { istDateKey } from "@/lib/payments/dates";
 import type { $Enums } from "@/generated/prisma/client";
 
 async function generateUniqueMemberSlug(name: string) {
@@ -298,6 +301,42 @@ export async function updateMemberBirthday(
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/member/socials");
+  return { saved: true };
+}
+
+/**
+ * 2026-11-18 — annual membership runs from the joining date. Admin sets the
+ * real joining date and ticks the terms paid before this system existed.
+ */
+export async function updateMemberMembership(_prevState: { error?: string; saved?: boolean } | undefined, formData: FormData) {
+  const memberId = String(formData.get("memberId") ?? "");
+  const member = await db.member.findUniqueOrThrow({ where: { id: memberId }, select: { chapterId: true, joinedAt: true } });
+  await requireChapterAccess(member.chapterId, "members:manage");
+
+  const joinedKey = String(formData.get("joinedAt") ?? "");
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(joinedKey);
+  if (!match) return { error: "Enter the joining date." };
+  const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const joinedAt = istToUtc(y, m - 1, d);
+  if (y < 2000 || istDateKey(joinedAt) !== joinedKey) return { error: "That joining date isn't valid." };
+  const todayKey = istDateKey(new Date());
+  if (joinedKey > todayKey) return { error: "The joining date can't be in the future." };
+
+  const lastTerm = termYearAt(joinedKey, todayKey);
+  const paidTerms = [...new Set(formData.getAll("paidTerm").map(Number))]
+    .filter((t) => Number.isInteger(t) && t >= y && t <= lastTerm)
+    .sort((a, b) => a - b);
+
+  await db.member.update({ where: { id: memberId }, data: { joinedAt, membershipPaidTerms: paidTerms } });
+  await logActivity({
+    action: "member.membership_term_updated",
+    entity: "Member",
+    entityId: memberId,
+    metadata: { joinedAt: joinedKey, previousJoinedAt: istDateKey(member.joinedAt), paidTerms },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/accounts/unpaid");
   return { saved: true };
 }
 

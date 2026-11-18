@@ -14,7 +14,7 @@ export function PaymentDuesBanner({ name, dues, showLink = false }: { name: stri
     const more = dues.unpaidSoon.length > 1 ? ` (${dues.unpaidSoon.length} meetings unpaid in the next 2 months)` : "";
     items.push(`Meeting fee — your next meeting is ${formatDateKey(dues.nextMeeting.date)}; pay by ${formatDateKey(dues.nextMeeting.payBy)}${more}.`);
   }
-  if (dues.membership.status === null) items.push(`Annual BWF membership for ${dues.membership.year}.`);
+  if (dues.membership.status === null) items.push(`Annual BWF membership (${dues.membership.label}).`);
   if (!items.length) return null;
 
   return (

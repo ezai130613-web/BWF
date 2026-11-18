@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const data =
     report === "unpaid-members"
-      ? await unpaidReport(parseUnpaidFilters({ chapterId: sp.get("chapterId"), month: sp.get("month"), from: sp.get("from"), to: sp.get("to"), pending: sp.get("pending") }))
+      ? await unpaidReport(parseUnpaidFilters({ chapterId: sp.get("chapterId"), month: sp.get("month"), from: sp.get("from"), to: sp.get("to"), pending: sp.get("pending"), fee: sp.get("fee") }))
       : report === "pending-items"
         ? await pendingItemsReport(parsePendingFilters({ chapterId: sp.get("chapterId"), assignedTo: sp.get("assignedTo"), from: sp.get("from"), to: sp.get("to"), status: sp.get("status") }))
         : notFound();

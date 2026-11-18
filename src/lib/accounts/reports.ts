@@ -29,7 +29,7 @@ export async function unpaidReport(filters: UnpaidFilters, scopeChapterId?: stri
   return {
     title: "Members who have not paid",
     sheetName: "Unpaid members",
-    note: `${await chapterName(chapterId)} · ${fmtDate(filters.from)} to ${fmtDate(filters.to)} · ${rows.length} unpaid item(s)`,
+    note: `${await chapterName(chapterId)} · ${fmtDate(filters.from)} to ${fmtDate(filters.to)} · ${filters.fee === "annual" ? "Annual membership only · " : filters.fee === "meeting" ? "Meeting fee only · " : ""}${rows.length} unpaid item(s)`,
     columns: [
       { header: "Chapter", key: "chapter", width: 18, pdfWidth: 100 },
       { header: "Member", key: "member", width: 28, pdfWidth: 160 },

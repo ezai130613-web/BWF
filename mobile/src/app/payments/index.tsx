@@ -39,7 +39,7 @@ export default function PaymentsScreen() {
               })()}
               icon="calendar-outline"
             />
-            <StatTile label={`Membership · ${data.membership.year}`} value={standing(data.membership.status)} icon="ribbon-outline" />
+            <StatTile label={`Membership · ${data.membership.label ?? data.membership.year}`} value={standing(data.membership.status)} icon="ribbon-outline" />
           </StatGrid>
 
           {data.meetingGrid ? (

@@ -272,8 +272,11 @@ export type PaymentsResponse = {
   paidThrough: string | null;
   /** First month not yet paid or awaiting approval — where a new meeting payment should start. */
   nextUnpaidMonth: { month: number; year: number };
-  membership: { year: number; status: "APPROVED" | "PENDING" | null };
+  /** `year` = the calendar year the membership year starts in; `label` (optional, newer servers) e.g. "15 Jan 2026 – 14 Jan 2027". */
+  membership: { year: number; status: "APPROVED" | "PENDING" | null; label?: string };
   membershipYears: number[];
+  /** Newer servers: the same years with their date ranges, for the year picker. */
+  membershipTerms?: { year: number; label: string }[];
   defaultMembershipYear: number;
   fees: { monthlyMeeting: string | null; annualMembership: string | null };
   meetingPayee: PayeeDetails;

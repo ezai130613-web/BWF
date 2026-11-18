@@ -32,3 +32,23 @@ export async function getBooleanSetting(key: SettingKey): Promise<boolean> {
 export async function setBooleanSetting(key: SettingKey, value: boolean) {
   await db.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
 }
+
+/**
+ * Number settings (2026-11-18). `membership.dueDaysBefore`: the annual
+ * membership fee falls due this many days BEFORE a member's year starts
+ * (their joining anniversary). 0 = due on the anniversary itself.
+ */
+const NUMBER_DEFAULTS = {
+  "membership.dueDaysBefore": 30,
+} as const;
+
+export type NumberSettingKey = keyof typeof NUMBER_DEFAULTS;
+
+export async function getNumberSetting(key: NumberSettingKey): Promise<number> {
+  const row = await db.appSetting.findUnique({ where: { key } });
+  return typeof row?.value === "number" && Number.isFinite(row.value) ? row.value : NUMBER_DEFAULTS[key];
+}
+
+export async function setNumberSetting(key: NumberSettingKey, value: number) {
+  await db.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+}
