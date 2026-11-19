@@ -114,6 +114,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/payments/members", label: "Member-wise Payments", icon: Receipt, permission: "accounts:view", workspace: "accounts" },
       // 2026-11-17 — unpaid-members summary and the Pending Points tracker (both downloadable).
       { href: "/admin/accounts/unpaid", label: "Unpaid Members", icon: UserX, permission: "accounts:view", workspace: "accounts" },
+      { href: "/admin/accounts/renewals", label: "Annual Renewals", icon: CalendarClock, permission: "accounts:view", workspace: "accounts" },
       { href: "/admin/accounts/pending-items", label: "Pending Points", icon: ClipboardList, permission: "accounts:view", workspace: "accounts" },
       { href: "/admin/payments/links", label: "Payment Links", icon: Link2, permission: "payments:view", workspace: ["performance", "accounts"] },
       // 2026-11-03 — cash / bank transfer entry + the "attendance requires payment" switch.
