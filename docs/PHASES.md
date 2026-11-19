@@ -5043,3 +5043,16 @@ Client correction: the annual membership year is **not** the calendar year. Join
   numbers never leave a gap, and the payment is deleted. If the invoice was emailed, the form shows the address to inform.
   Migration `20261118150000_invoice_void` (`invoices.paymentId` nullable, FK `ON DELETE SET NULL`, four new columns) —
   **not yet applied to the live DB**. No credit-note document is generated.
+
+### 2026-11-19 — score drill-down + editable slip points, payment follow-up remarks
+
+- **BWF App Activity → member page**: category shown beside the name; every breakdown row with activity links to its detail
+  list below ("view details"); Thank You Slips now a full table (date, who, category/company, what it was for, amount, % counts,
+  counted value, totals) so the ₹ figure can be checked.
+- **Edit slip points**: each slip has a **% that counts** (default 100; e.g. 20 for loans / real estate), editable by
+  `points_config:manage` with a required note when below 100. Score = floor(Σ amount × % ÷ perUnit) × points; the Recorded cell
+  reads "1 slip · ₹25,00,000 (₹5,00,000 counted)". Audit: `thank_you_slip.points_percent_changed`. `ThankYouSlip.pointsPercent/pointsNote`.
+  Mobile `quantity` is now the counted value (no API shape change).
+- **Payment follow-up remarks** (`PaymentFollowUp`, many per member, dated, annual/monthly, optional next follow-up date, who wrote it):
+  on `/admin/accounts/unpaid/[memberId]` (add/remove with `payments:approve`); latest remark + "(+N earlier)" column on the Unpaid list.
+- Migration `20261119120000_slip_points_and_payment_followups` — **not applied to the live DB**. Typecheck + lint only; not run in a browser.

@@ -46,6 +46,9 @@ const ACTIVITY_TYPES = Object.keys(ACTIVITY_LABELS) as ActivityType[];
 
 export type PointsRule = { points: number; perUnit: number };
 
+/** The part of a slip's value that counts for points — `percent` is 100 unless an admin lowered it (e.g. 20 for loans / real estate). */
+export const countedValue = (amountInr: number, percent: number) => (amountInr * percent) / 100;
+
 /** Whole multiples only — ₹1,400 at "every ₹500 = 1 pt" is 2 points. */
 const pointsFor = (quantity: number, rule: PointsRule) => Math.floor(quantity / Math.max(1, rule.perUnit)) * rule.points;
 
@@ -80,7 +83,7 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
     adjustments,
   ] = await Promise.all([
     db.referral.count({ where: { fromMemberId: memberId } }),
-    db.thankYouSlip.aggregate({ where: { toMemberId: memberId }, _count: { _all: true }, _sum: { amountInr: true } }),
+    db.thankYouSlip.findMany({ where: { toMemberId: memberId }, select: { amountInr: true, pointsPercent: true } }),
     db.oneToOne.count({ where: { OR: [{ memberId }, { withMemberId: memberId }] } }),
     db.powerDate.count({ where: { hostMemberId: memberId } }),
     db.conclave.count({
@@ -99,7 +102,7 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
   return {
     counts: {
       REFERRAL: referrals,
-      THANK_YOU_SLIP: thankYouSlips._count._all,
+      THANK_YOU_SLIP: thankYouSlips.length,
       ONE_TO_ONE: oneToOnes,
       POWER_DATE: powerDates,
       CONCLAVE: conclaves,
@@ -109,7 +112,8 @@ export async function getMemberActivityCounts(memberId: string): Promise<MemberA
       INDUCTION: inductions,
       ATTENDANCE: attendances,
     },
-    thankYouValueInr: thankYouSlips._sum.amountInr ?? 0,
+    thankYouValueInr: thankYouSlips.reduce((sum, s) => sum + countedValue(s.amountInr, s.pointsPercent), 0),
+    thankYouGrossInr: thankYouSlips.reduce((sum, s) => sum + s.amountInr, 0),
     adjustmentCount: adjustments._count._all,
     adjustmentPoints: adjustments._sum.points ?? 0,
   };
@@ -130,8 +134,10 @@ export type ScoreBreakdownRow = {
   label: string;
   /** How many were recorded (slips, Power Dates, meetings attended, …). */
   count: number;
-  /** What the rule is applied to — rupee total for Thank You Slips, else `count`. */
+  /** What the rule is applied to — rupee total that COUNTS for Thank You Slips (after any admin % reduction), else `count`. */
   quantity: number;
+  /** Thank You Slips only: the full rupee total of the slips, before any % reduction. */
+  grossInr?: number;
   pointsEach: number;
   perUnit: number;
   /** describeRule() — "Every ₹500 = 1 pt". */
@@ -142,6 +148,8 @@ export type ScoreBreakdownRow = {
 type MemberActivity = {
   counts: Record<ActivityType, number>;
   thankYouValueInr: number;
+  /** Full rupee value of the slips, before any admin % reduction. */
+  thankYouGrossInr: number;
   /** Manual admin corrections: how many, and their signed sum. */
   adjustmentCount: number;
   adjustmentPoints: number;
@@ -157,6 +165,7 @@ function buildBreakdown(activity: MemberActivity, config: Record<ActivityType, P
       label: ACTIVITY_LABELS[type],
       count,
       quantity,
+      grossInr: type === "THANK_YOU_SLIP" ? activity.thankYouGrossInr : undefined,
       pointsEach: rule.points,
       perUnit: rule.perUnit,
       rule: describeRule(type, rule),
@@ -179,9 +188,12 @@ function buildBreakdown(activity: MemberActivity, config: Record<ActivityType, P
 }
 
 /** The breakdown's "Recorded" cell — "3 slips · ₹2,500" for Thank You Slips, else the count. */
-export function recordedLabel(row: Pick<ScoreBreakdownRow, "type" | "count" | "quantity">): string {
+export function recordedLabel(row: Pick<ScoreBreakdownRow, "type" | "count" | "quantity" | "grossInr">): string {
   if (row.type === "ADJUSTMENT") return `${row.count} ${row.count === 1 ? "change" : "changes"}`;
-  return row.type === "THANK_YOU_SLIP" ? `${row.count} ${row.count === 1 ? "slip" : "slips"} · ${inr(row.quantity)}` : String(row.count);
+  if (row.type !== "THANK_YOU_SLIP") return String(row.count);
+  const gross = row.grossInr ?? row.quantity;
+  const base = `${row.count} ${row.count === 1 ? "slip" : "slips"} · ${inr(gross)}`;
+  return gross === row.quantity ? base : `${base} (${inr(row.quantity)} counted)`;
 }
 
 export async function computeMemberScore(memberId: string): Promise<{ total: number; breakdown: ScoreBreakdownRow[] }> {
@@ -214,6 +226,7 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
       {
         counts: Object.fromEntries(ACTIVITY_TYPES.map((type) => [type, 0])) as Record<ActivityType, number>,
         thankYouValueInr: 0,
+        thankYouGrossInr: 0,
         adjustmentCount: 0,
         adjustmentPoints: 0,
       },
@@ -244,7 +257,7 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
   ] = await Promise.all([
     db.referral.groupBy({ by: ["fromMemberId"], where: { fromMemberId: inScope }, _count: { _all: true } }),
     db.thankYouSlip.groupBy({
-      by: ["toMemberId"],
+      by: ["toMemberId", "pointsPercent"],
       where: { toMemberId: inScope },
       _count: { _all: true },
       _sum: { amountInr: true },
@@ -270,7 +283,9 @@ async function getActivityCountsForMembers(memberIds: string[]): Promise<Map<str
   thankYouSlips.forEach((r) => {
     add("THANK_YOU_SLIP", r.toMemberId, r._count._all);
     const row = counts.get(r.toMemberId);
-    if (row) row.thankYouValueInr += r._sum.amountInr ?? 0;
+    if (!row) return;
+    row.thankYouGrossInr += r._sum.amountInr ?? 0;
+    row.thankYouValueInr += countedValue(r._sum.amountInr ?? 0, r.pointsPercent);
   });
   oneToOnesAsMember.forEach((r) => add("ONE_TO_ONE", r.memberId, r._count._all));
   oneToOnesAsWith.forEach((r) => add("ONE_TO_ONE", r.withMemberId, r._count._all));

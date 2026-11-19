@@ -21,6 +21,15 @@ export default async function UnpaidMembersPage({
   const filters = parseUnpaidFilters(await searchParams);
   const [rows, chapters] = await Promise.all([getUnpaidRows(filters), db.chapter.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })]);
 
+  // Latest follow-up remark per member, shown beside each row so the chase history is visible at a glance.
+  const memberIds = [...new Set(rows.slice(0, SHOW_LIMIT).map((r) => r.memberId))];
+  const followUps = memberIds.length ? await db.paymentFollowUp.findMany({ where: { memberId: { in: memberIds } }, orderBy: { createdAt: "desc" } }) : [];
+  const latest = new Map<string, { note: string; at: Date; count: number }>();
+  for (const f of followUps) {
+    const cur = latest.get(f.memberId);
+    if (cur) cur.count++;
+    else latest.set(f.memberId, { note: f.note, at: f.createdAt, count: 1 });
+  }
   const byChapter = new Map<string, { members: Set<string>; items: number }>();
   for (const r of rows) {
     const c = byChapter.get(r.chapter) ?? { members: new Set<string>(), items: 0 };
@@ -108,7 +117,7 @@ export default async function UnpaidMembersPage({
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
-              {["Chapter", "Member (click for summary)", "Phone", "Category", "Fee", "Period", "Status"].map((h) => (
+              {["Chapter", "Member (click for summary)", "Phone", "Category", "Fee", "Period", "Status", "Latest remark"].map((h) => (
                 <th key={h} className="px-4 py-2.5 font-medium">
                   {h}
                 </th>
@@ -131,11 +140,22 @@ export default async function UnpaidMembersPage({
                 <td className="px-4 py-2.5">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.status === "Not paid" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>{r.status}</span>
                 </td>
+                <td className="max-w-xs px-4 py-2.5 text-xs text-neutral-600">
+                  {latest.get(r.memberId) ? (
+                    <Link href={`/admin/accounts/unpaid/${r.memberId}`} className="hover:text-emerald-800">
+                      <span className="text-neutral-400">{latest.get(r.memberId)!.at.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}</span>{" "}
+                      {latest.get(r.memberId)!.note}
+                      {latest.get(r.memberId)!.count > 1 ? <span className="text-neutral-400"> (+{latest.get(r.memberId)!.count - 1} earlier)</span> : null}
+                    </Link>
+                  ) : (
+                    <span className="text-neutral-300">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                   Nobody is unpaid for this range.
                 </td>
               </tr>

@@ -67,6 +67,39 @@ export async function deletePointsAdjustment(adjustmentId: string) {
   revalidateScorePages(adjustment.memberId);
 }
 
+/**
+ * 2026-11-19 — per-slip "counts for X%" (client: loans and real estate count
+ * only one-fifth, i.e. 20%). Same permission as the other points corrections;
+ * 100 puts a slip back to full value.
+ */
+const slipPointsSchema = z.object({
+  slipId: z.string().min(1),
+  percent: z.coerce.number("Enter a percentage").int("Enter a whole number").min(0, "Between 0 and 100").max(100, "Between 0 and 100"),
+  note: z.string().trim().max(300).optional(),
+});
+
+export async function updateSlipPoints(_prev: { error?: string; ok?: boolean } | undefined, formData: FormData) {
+  const session = await requirePermission("points_config:manage");
+  const parsed = slipPointsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  const { slipId, percent, note } = parsed.data;
+  if (percent !== 100 && !note) return { error: "Add a short note (e.g. “Loan — counts 1/5”) so the change can be understood later." };
+
+  const slip = await db.thankYouSlip.findUnique({ where: { id: slipId } });
+  if (!slip) return { error: "Thank You Slip not found." };
+
+  await db.thankYouSlip.update({ where: { id: slipId }, data: { pointsPercent: percent, pointsNote: percent === 100 ? null : note || null } });
+  await logActivity({
+    userId: session.user.id,
+    action: "thank_you_slip.points_percent_changed",
+    entity: "ThankYouSlip",
+    entityId: slipId,
+    metadata: { amountInr: slip.amountInr, from: slip.pointsPercent, to: percent, note: note ?? null },
+  });
+  revalidateScorePages(slip.toMemberId);
+  return { ok: true };
+}
+
 function revalidateScorePages(memberId: string) {
   revalidatePath(`/admin/app-activity/${memberId}`);
   revalidatePath("/admin/app-activity");

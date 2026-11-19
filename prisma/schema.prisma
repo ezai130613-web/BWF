@@ -514,6 +514,7 @@ model Member {
   thankYouSlipsGiven    ThankYouSlip[]        @relation("ThankYouSlipGiven")
   thankYouSlipsReceived ThankYouSlip[]        @relation("ThankYouSlipReceived")
   pointsAdjustments     PointsAdjustment[]
+  paymentFollowUps      PaymentFollowUp[]
   oneToOnesRecorded     OneToOne[]            @relation("OneToOneRecordedBy")
   oneToOnesWith         OneToOne[]            @relation("OneToOneWith")
   powerDatesHosted      PowerDate[]           @relation("PowerDateHost")
@@ -1800,6 +1801,12 @@ model ThankYouSlip {
   referralId String?
   referral   Referral? @relation(fields: [referralId], references: [id], onDelete: SetNull)
 
+  /// 2026-11-19 client request — share of this slip's value that counts for
+  /// points (100 = all of it; 20 = one-fifth, e.g. loans / real estate).
+  /// Set by an admin from the member's App Activity page; `pointsNote` says why.
+  pointsPercent Int     @default(100)
+  pointsNote    String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2733,4 +2740,26 @@ model PendingItem {
   @@index([chapterId])
   @@index([assignedToUserId])
   @@map("pending_items")
+}
+
+/// 2026-11-19 client request — dated remarks Accounts keeps while chasing an
+/// unpaid monthly / annual fee (called today, again tomorrow, again in 10
+/// days …) so the history is there until the member pays. Many per member.
+model PaymentFollowUp {
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// "MEETING" (monthly fee) or "MEMBERSHIP" (annual fee).
+  feeType String
+  note    String
+  /// Optional: when to follow up next.
+  nextFollowUpOn DateTime?
+
+  createdByUserId String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+
+  @@index([memberId, createdAt])
+  @@map("payment_follow_ups")
 }

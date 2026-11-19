@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePermission } from "@/lib/auth/rbac";
+import { getUserPermissionKeys, requirePermission } from "@/lib/auth/rbac";
+import { db } from "@/lib/db";
+import { PaymentFollowUps } from "@/components/admin/payment-follow-ups";
 import { getMemberUnpaidSummary } from "@/lib/accounts/unpaid";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payments/dates";
 import { AdminPageIcon } from "@/components/admin/page-icon";
@@ -24,10 +26,15 @@ const statusLabel: Record<string, string> = {
 
 /** One member's payment summary — opened by clicking a name on the Unpaid Members list. */
 export default async function MemberUnpaidSummaryPage({ params }: { params: Promise<{ memberId: string }> }) {
-  await requirePermission("accounts:view");
+  const session = await requirePermission("accounts:view");
   const { memberId } = await params;
-  const data = await getMemberUnpaidSummary(memberId);
+  const [data, followUps, perms] = await Promise.all([
+    getMemberUnpaidSummary(memberId),
+    db.paymentFollowUp.findMany({ where: { memberId }, orderBy: { createdAt: "desc" } }),
+    getUserPermissionKeys(session.user.id),
+  ]);
   if (!data) notFound();
+  const fmt = (d: Date) => d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
   const { member, terms, months } = data;
   const dueTerms = terms.filter((t) => t.status === "Not paid").length;
   const dueMonths = months.filter((m) => m.status === "Not paid").length;
@@ -90,6 +97,12 @@ export default async function MemberUnpaidSummaryPage({ params }: { params: Prom
           </ul>
         </section>
       </div>
+
+      <PaymentFollowUps
+        memberId={memberId}
+        canEdit={perms.has("payments:approve")}
+        items={followUps.map((f) => ({ id: f.id, feeType: f.feeType, note: f.note, date: fmt(f.createdAt), next: f.nextFollowUpOn ? fmt(f.nextFollowUpOn) : null, by: f.createdByName }))}
+      />
 
       <section className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-neutral-900">Payments on record</h2>
