@@ -1,7 +1,7 @@
 import { getContent } from "@/lib/content";
 import { formatAnnualMembershipFee, formatInr, withGst } from "@/lib/format";
 import { Container } from "@/components/ui/container";
-import { finalFee, formatRupees } from "@/lib/payments/fees";
+import { finalFee, formatRupees, packageName } from "@/lib/payments/fees";
 import { getMeetingPackages } from "@/lib/payments/packages";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -75,7 +75,7 @@ export async function MeetingCharges() {
                 <ul className="mt-2 flex flex-col gap-0.5 text-sm text-slate-300">
                   {packages.slice(1).map((p) => (
                     <li key={p.meetings}>
-                      {p.meetings} meetings — {withGst(formatRupees(finalFee(p)))}
+                      {packageName(p.meetings)} — {withGst(formatRupees(finalFee(p)))}
                       {p.discount ? <span className="text-gold-400"> (save {formatRupees(p.discount)})</span> : null}
                     </li>
                   ))}
