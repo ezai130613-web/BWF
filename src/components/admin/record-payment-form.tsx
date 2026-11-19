@@ -31,7 +31,7 @@ export function RecordPaymentForm({
   membershipTotal,
 }: {
   membershipFee: number | null;
-  members: { id: string; label: string }[];
+  members: { id: string; label: string; phone?: string }[];
   packages: MeetingPackage[];
   membershipTotal: number | null;
 }) {
@@ -50,7 +50,7 @@ export function RecordPaymentForm({
   const pickedMember = members.find((m) => m.id === memberId) ?? null;
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (q ? members.filter((m) => m.label.toLowerCase().includes(q)) : members).slice(0, 80);
+    return (q ? members.filter((m) => `${m.label} ${m.phone ?? ""}`.toLowerCase().includes(q)) : members).slice(0, 80);
   }, [members, query]);
 
   function autoSelect(opts: MemberPaymentOptions, n: number) {
@@ -127,7 +127,7 @@ export function RecordPaymentForm({
               <input
                 type="search"
                 autoComplete="off"
-                placeholder="Type a name, chapter or phone number…"
+                placeholder="Type a name, chapter, category or phone number…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setListOpen(true)}

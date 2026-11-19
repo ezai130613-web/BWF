@@ -18,7 +18,7 @@ export default async function RecordPaymentPage() {
   const [members, content, requirePayment] = await Promise.all([
     db.member.findMany({
       where: { status: "ACTIVE" },
-      select: { id: true, name: true, phone: true, chapter: { select: { name: true } } },
+      select: { id: true, name: true, phone: true, chapter: { select: { name: true } }, category: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
     getContent(["fees.annualMembership"]),
@@ -39,7 +39,7 @@ export default async function RecordPaymentPage() {
       <AttendancePaymentSwitch on={requirePayment} />
 
       <RecordPaymentForm
-        members={members.map((m) => ({ id: m.id, label: `${m.name} — ${m.chapter.name}${m.phone ? ` · ${m.phone}` : ""}` }))}
+        members={members.map((m) => ({ id: m.id, phone: m.phone ?? undefined, label: `${m.name} — ${m.chapter.name}${m.category?.name ? ` · ${m.category.name}` : ""}` }))}
         packages={await getMeetingPackages()}
         membershipFee={parseFee(content["fees.annualMembership"])}
         membershipTotal={quoteMembershipFee(parseFee(content["fees.annualMembership"]))}
