@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateMeetingPackages, type MeetingPackagesState } from "@/app/admin/(dashboard)/content/actions";
-import { MEETING_FEE_GST_PERCENT, packageError, plusGst, type MeetingPackage } from "@/lib/payments/fees";
+import { MEETING_FEE_GST_PERCENT, packageError, packageName, plusGst, type MeetingPackage } from "@/lib/payments/fees";
 
 const cell =
   "w-full min-w-0 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-right text-sm text-neutral-900 tabular-nums focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15";
@@ -25,7 +25,7 @@ export function MeetingPackagesEditor({ initial }: { initial: MeetingPackage[] }
       <div>
         <p className="text-sm font-medium text-neutral-700">Meeting fee packages</p>
         <p className="text-xs text-neutral-500">
-          Members can pay for meetings only in these four packages. All amounts are before GST — final fees = fees − discount, and{" "}
+          Members can pay for meetings only in these packages (the last row is for members who join mid-month). All amounts are before GST — final fees = fees − discount, and{" "}
           {MEETING_FEE_GST_PERCENT}% GST is added on top.
         </p>
       </div>
@@ -47,7 +47,7 @@ export function MeetingPackagesEditor({ initial }: { initial: MeetingPackage[] }
               const final = fee - discount;
               return (
                 <tr key={r.meetings} className="border-b border-neutral-100 last:border-0">
-                  <td className="py-2 pr-3 font-medium text-neutral-900">{r.meetings} meetings</td>
+                  <td className="py-2 pr-3 font-medium text-neutral-900">{packageName(r.meetings)}</td>
                   <td className="py-2 pr-3">
                     <input
                       type="number"
@@ -57,7 +57,7 @@ export function MeetingPackagesEditor({ initial }: { initial: MeetingPackage[] }
                       step="1"
                       value={r.fee}
                       onChange={(e) => set(r.meetings, "fee", e.target.value)}
-                      aria-label={`Fees for ${r.meetings} meetings`}
+                      aria-label={`Fees for ${packageName(r.meetings)}`}
                       className={cell}
                     />
                   </td>
@@ -69,7 +69,7 @@ export function MeetingPackagesEditor({ initial }: { initial: MeetingPackage[] }
                       step="1"
                       value={r.discount}
                       onChange={(e) => set(r.meetings, "discount", e.target.value)}
-                      aria-label={`Discount for ${r.meetings} meetings`}
+                      aria-label={`Discount for ${packageName(r.meetings)}`}
                       className={cell}
                     />
                   </td>

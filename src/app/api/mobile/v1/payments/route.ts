@@ -7,7 +7,7 @@ import { fieldsFromJson } from "@/lib/payments/member-payments";
 import { formatTerm, termFor } from "@/lib/payments/membership-term";
 import { istDateKey } from "@/lib/payments/dates";
 import { buildMonthGrid, summarizeMemberPayments } from "@/lib/payments/overview";
-import { MEETING_FEE_GST_PERCENT, packagesSummary, parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
+import { MEETING_FEE_GST_PERCENT, packageName, packagesSummary, parseFee, quoteMeetings, quoteMembershipFee } from "@/lib/payments/fees";
 import { getMeetingPackages } from "@/lib/payments/packages";
 import { submitMemberPaymentFor } from "@/lib/payments/submit";
 import { formatDateKey, getMemberPaymentContext, paymentCoverageLabel } from "@/lib/payments/coverage";
@@ -106,7 +106,7 @@ export const GET = mobileHandler(async (request: Request) => {
     meetingsPerMonth: context.perMonth,
     meetingPackages: packages.map((p) => {
       const q = quoteMeetings(p.meetings, packages)!;
-      return { meetings: p.meetings, priceInr: q.subtotal, originalInr: q.original, discountInr: q.discount, gstInr: q.gst, totalInr: q.total };
+      return { meetings: p.meetings, label: packageName(p.meetings), priceInr: q.subtotal, originalInr: q.original, discountInr: q.discount, gstInr: q.gst, totalInr: q.total };
     }),
     onlinePayments: isRazorpayConfigured(),
   };

@@ -310,6 +310,8 @@ export type PaymentsResponse = {
 
 export type MeetingPackage = {
   meetings: number;
+  /** Display name — "New member half month fee" for the 1-meeting package, else "N meetings". Newer app builds should show this. */
+  label?: string;
   /** Package price before GST, e.g. 5500. */
   priceInr: number;
   /** The admin-set fees for the package, before the discount. */

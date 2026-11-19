@@ -19,12 +19,23 @@ export function parseFee(value: string | null | undefined): number | null {
 
 /**
  * 2026-11-03 (client) — the meeting fee is sold only as meeting packages
- * (2, 6, 12, 24 meetings), never by month. For each package the admin sets
+ * (2, 6, 12, 24 meetings, plus the 1-meeting new-member fee), never by month. For each package the admin sets
  * the fee and a discount (Website Content → Fees, stored as JSON under
  * `fees.meetingPackages`); final fee = fee − discount, before 18% GST.
  * Defaults below apply until the admin saves their own.
  */
-export const MEETING_PACKAGE_SIZES: readonly number[] = [2, 6, 12, 24];
+export const MEETING_PACKAGE_SIZES: readonly number[] = [2, 6, 12, 24, 1];
+
+/**
+ * 2026-11-19 (client) — a single-meeting package for members who join mid-month:
+ * "New member half month fee", ₹1,000 + GST. It is always listed LAST (bottom of
+ * the picker / fee table) so existing members don't pick it instead of a bigger
+ * package.
+ */
+export const NEW_MEMBER_MEETINGS = 1;
+export const NEW_MEMBER_LABEL = "New member half month fee";
+/** "6 meetings", or "New member half month fee" for the single-meeting package. */
+export const packageName = (meetings: number) => (meetings === NEW_MEMBER_MEETINGS ? NEW_MEMBER_LABEL : `${meetings} meetings`);
 export const MAX_PACKAGE_MEETINGS = 24;
 export const MEETING_PACKAGES_KEY = "fees.meetingPackages";
 
@@ -35,6 +46,7 @@ export const DEFAULT_MEETING_PACKAGES: MeetingPackage[] = [
   { meetings: 6, fee: 6000, discount: 500 },
   { meetings: 12, fee: 12000, discount: 1000 },
   { meetings: 24, fee: 24000, discount: 3000 },
+  { meetings: 1, fee: 1000, discount: 0 },
 ];
 
 export const isMeetingPackage = (meetings: number) => MEETING_PACKAGE_SIZES.includes(meetings);
@@ -42,9 +54,9 @@ export const finalFee = (p: MeetingPackage) => p.fee - p.discount;
 
 /** Validates one package row; returns an error message or null. */
 export function packageError(p: MeetingPackage): string | null {
-  if (!Number.isFinite(p.fee) || p.fee <= 0) return `Enter the fees for ${p.meetings} meetings.`;
-  if (!Number.isFinite(p.discount) || p.discount < 0) return `The discount for ${p.meetings} meetings can't be negative.`;
-  if (p.discount >= p.fee) return `The discount for ${p.meetings} meetings must be less than its fees.`;
+  if (!Number.isFinite(p.fee) || p.fee <= 0) return `Enter the fees for ${packageName(p.meetings)}.`;
+  if (!Number.isFinite(p.discount) || p.discount < 0) return `The discount for ${packageName(p.meetings)} can't be negative.`;
+  if (p.discount >= p.fee) return `The discount for ${packageName(p.meetings)} must be less than its fees.`;
   return null;
 }
 
@@ -88,7 +100,7 @@ export function quoteMeetings(meetings: number, packages: MeetingPackage[]): Fee
 
 /** "6 meetings — ₹5,500 + GST (save ₹500)" — the package picker's option label. */
 export function packageLabel(p: MeetingPackage): string {
-  return `${p.meetings} meetings — ${plusGst(finalFee(p))}${p.discount ? ` (save ${formatRupees(p.discount)})` : ""}`;
+  return `${packageName(p.meetings)} — ${plusGst(finalFee(p))}${p.discount ? ` (save ${formatRupees(p.discount)})` : ""}`;
 }
 
 /** The annual membership fee plus GST, rounded to whole rupees. */
@@ -104,11 +116,11 @@ export const plusGst = (n: number) => `${formatRupees(n)} + GST`;
 
 /** "2 meetings ₹2,000 + GST · 6 meetings ₹5,500 + GST · …" — fee line on the Payments pages. */
 export function packagesSummary(packages: MeetingPackage[]): string {
-  return packages.map((p) => `${p.meetings} meetings ${plusGst(finalFee(p))}`).join(" · ");
+  return packages.map((p) => `${packageName(p.meetings)} ${plusGst(finalFee(p))}`).join(" · ");
 }
 
 /** "6 meetings: ₹6,000 − ₹500 discount = ₹5,500 + GST. 18% GST is ₹990, so you pay ₹6,490 in all." */
 export function describeQuote(q: FeeQuote): string {
   const base = q.discount ? `${formatRupees(q.original)} − ${formatRupees(q.discount)} discount = ${plusGst(q.subtotal)}` : plusGst(q.subtotal);
-  return `${q.meetings} meetings: ${base}. ${q.gstPercent}% GST is ${formatRupees(q.gst)}, so you pay ${formatRupees(q.total)} in all.`;
+  return `${packageName(q.meetings)}: ${base}. ${q.gstPercent}% GST is ${formatRupees(q.gst)}, so you pay ${formatRupees(q.total)} in all.`;
 }

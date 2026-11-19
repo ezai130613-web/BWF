@@ -256,7 +256,7 @@ export function monthsForMeetings(meetings: number, chapter: ChapterSchedule): n
 }
 
 /** Shown to anyone who tries to pay the meeting fee any way other than a package (e.g. an old app build sending months). */
-export const PACKAGE_ONLY_ERROR = `The meeting fee can only be paid as a package of ${MEETING_PACKAGE_SIZES.join(", ").replace(/, (\d+)$/, " or $1")} meetings. If you're using the app, please update it.`;
+export const PACKAGE_ONLY_ERROR = `The meeting fee can only be paid as a package of ${[...MEETING_PACKAGE_SIZES].sort((a, b) => a - b).join(", ").replace(/, (\d+)$/, " or $1")} meetings. If you're using the app, please update it.`;
 
 /**
  * Which meetings a member's meeting payment covers. The meeting fee can be
