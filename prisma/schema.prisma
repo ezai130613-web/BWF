@@ -2152,6 +2152,13 @@ model Roster {
   /// until they switch back to auto (2026-10-03 correction).
   orderMode RosterOrderMode @default(AUTO)
 
+  /// Admin tick-boxes: also list this chapter's Coordinators / Founders
+  /// (Founder + Co-Founder) in the bottom "All Other Members" table of this
+  /// roster. Off by default — they aren't at every meeting. When on, they
+  /// are always placed after the regular members.
+  includeCoordinators Boolean @default(false)
+  includeFounders     Boolean @default(false)
+
   /// Which Chief Guest(s) are featured on this specific roster's cover —
   /// independent of Meeting.chiefGuestId (that field is the single speaker
   /// shown on the public meeting/visit page; a roster cover can feature more

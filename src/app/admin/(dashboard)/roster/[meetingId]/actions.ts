@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdminSession, requireChapterAccess } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/audit";
-import { addOpenCategoryForChapter, getExcludedMemberIds } from "@/lib/roster/manage";
+import { addOpenCategoryForChapter, getSpecialMemberIds, isHiddenSpecialMember } from "@/lib/roster/manage";
 import { getLeaderboard } from "@/lib/points/score";
 
 /**
@@ -39,6 +39,9 @@ export type SaveRosterInput = {
   chiefGuestIds: string[];
   openCategoryIds: string[];
   notesEnabled: boolean;
+  /** Also list the chapter's Coordinators / Founders at the bottom of "All Other Members". */
+  includeCoordinators: boolean;
+  includeFounders: boolean;
   /** AUTO re-ranks by score on save; MANUAL keeps the submitted order (admin override). */
   orderMode: "AUTO" | "MANUAL";
   members: SaveRosterMemberInput[];
@@ -54,13 +57,19 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
   // meeting's chapter, categories must be real rows, and members must still
   // be genuinely eligible "All Other Members" for this chapter right now —
   // same discipline as the old route's chiefGuestIds re-check.
-  const eligibleMemberIds = await getExcludedMemberIds(meeting.chapterId).then(async (excluded) => {
-    const members = await db.member.findMany({
-      where: { chapterId: meeting.chapterId, status: "ACTIVE", rosterEligible: true, id: { notIn: [...excluded] } },
-      select: { id: true },
-    });
-    return new Set(members.map((m) => m.id));
-  });
+  const includeCoordinators = Boolean(input.includeCoordinators);
+  const includeFounders = Boolean(input.includeFounders);
+  const { coordinatorIds, founderIds } = await getSpecialMemberIds(meeting.chapterId);
+  const eligibleMemberIds = new Set(
+    (
+      await db.member.findMany({
+        where: { chapterId: meeting.chapterId, status: "ACTIVE", rosterEligible: true },
+        select: { id: true },
+      })
+    )
+      .map((m) => m.id)
+      .filter((id) => !isHiddenSpecialMember({ isCoordinator: coordinatorIds.has(id), isFounder: founderIds.has(id) }, includeCoordinators, includeFounders)),
+  );
 
   const [validChiefGuests, validCategories] = await Promise.all([
     input.chiefGuestIds.length
@@ -80,7 +89,11 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
   // AUTO: stable sort — equal scores keep their submitted relative order,
   // which is already whatever order the wizard displayed them in. MANUAL:
   // the admin's own order is the order, untouched.
-  const ranked = orderMode === "AUTO" ? [...submittedMembers].sort((a, b) => b.score - a.score) : submittedMembers;
+  // Coordinators / founders (when ticked) always go after the regular members.
+  const isSpecial = (id: string) => coordinatorIds.has(id) || founderIds.has(id);
+  const ranked = (orderMode === "AUTO" ? [...submittedMembers].sort((a, b) => b.score - a.score) : [...submittedMembers]).sort(
+    (a, b) => Number(isSpecial(a.memberId)) - Number(isSpecial(b.memberId)),
+  );
 
   // Snapshot of the system value next to each (possibly hand-edited) score,
   // recomputed here rather than trusted from the browser.
@@ -93,6 +106,8 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
         create: {
           meetingId: input.meetingId,
           notesEnabled: input.notesEnabled,
+          includeCoordinators,
+          includeFounders,
           orderMode,
           savedAt: new Date(),
           chiefGuests: { connect: validChiefGuests.map((g) => ({ id: g.id })) },
@@ -100,6 +115,8 @@ export async function saveRoster(input: SaveRosterInput): Promise<{ error?: stri
         },
         update: {
           notesEnabled: input.notesEnabled,
+          includeCoordinators,
+          includeFounders,
           orderMode,
           savedAt: new Date(),
           chiefGuests: { set: validChiefGuests.map((g) => ({ id: g.id })) },

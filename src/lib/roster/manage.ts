@@ -58,6 +58,10 @@ export type RosterWizardMember = {
   score: number;
   /** Live overall activity points (src/lib/points/score.ts) — the system value the score defaults to. */
   systemPoints: number;
+  /** Holds a Coordinator role (RosterAssignment) — listed only when "include coordinators" is ticked. */
+  isCoordinator: boolean;
+  /** Is the chapter's Founder / Co-Founder — listed only when "include founders" is ticked. */
+  isFounder: boolean;
 };
 
 export type RosterWizardData = {
@@ -82,29 +86,40 @@ export type RosterWizardData = {
   addableOpenCategories: RosterWizardCategory[];
 
   notesEnabled: boolean;
+  includeCoordinators: boolean;
+  includeFounders: boolean;
   isSaved: boolean;
   orderMode: "AUTO" | "MANUAL";
 };
 
 /**
- * The chapter's Coordinator member ids — excluded from "All Other Members"
- * since Coordinators keep their own dedicated section with no separate
- * score. Shared between the wizard loader below and the save action
+ * Coordinator and Founder/Co-Founder member ids for a chapter. They keep
+ * their own sections at the top of the roster; whether they *also* appear
+ * in the bottom "All Other Members" table is a per-roster choice
+ * (`Roster.includeCoordinators` / `includeFounders`), off by default. Shared
+ * between the wizard loader below and the save action
  * (src/app/admin/(dashboard)/roster/[meetingId]/actions.ts), which
- * re-derives this server-side rather than trusting whatever member ids the
- * client submits.
+ * re-derives this server-side rather than trusting the client.
  *
- * Founding Team and Leadership Team members are deliberately NOT excluded
- * here (2026-09-16 client correction, reversing the original planning
- * decision): they're shown in their own section at the top of the roster
- * *and* appear again, scored, in "All Other Members" — the client's own
- * reasoning is that they're also members with their own specific Give/Ask,
- * so their name and score belong in the general list too, duplication and
- * all.
+ * Leadership Team members (President, Secretary, …) are unaffected: they
+ * appear in "All Other Members" as before (2026-09-16 client correction).
  */
-export async function getExcludedMemberIds(chapterId: string): Promise<Set<string>> {
-  const assignments = await db.rosterAssignment.findMany({ where: { chapterId }, select: { memberId: true } });
-  return new Set(assignments.map((a) => a.memberId));
+export async function getSpecialMemberIds(chapterId: string): Promise<{ coordinatorIds: Set<string>; founderIds: Set<string> }> {
+  const [assignments, founders] = await Promise.all([
+    db.rosterAssignment.findMany({ where: { chapterId }, select: { memberId: true } }),
+    db.chapterLeadership.findMany({ where: { chapterId, role: { key: { in: [...FOUNDING_ROLE_ORDER] } } }, select: { memberId: true } }),
+  ]);
+  return { coordinatorIds: new Set(assignments.map((a) => a.memberId)), founderIds: new Set(founders.map((f) => f.memberId)) };
+}
+
+/** True when a member should be left out of "All Other Members" given the roster's two tick-boxes. */
+export function isHiddenSpecialMember(
+  m: { isCoordinator: boolean; isFounder: boolean },
+  includeCoordinators: boolean,
+  includeFounders: boolean,
+): boolean {
+  if (!m.isCoordinator && !m.isFounder) return false;
+  return !((m.isCoordinator && includeCoordinators) || (m.isFounder && includeFounders));
 }
 
 /** Returns null if the meeting doesn't exist. Throws (via requireChapterAccess) if the caller can't manage this meeting's chapter's roster. */
@@ -153,14 +168,13 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     group: a.group,
   }));
 
-  const excludedMemberIds = await getExcludedMemberIds(meeting.chapterId);
+  const { coordinatorIds, founderIds } = await getSpecialMemberIds(meeting.chapterId);
 
   const members = await db.member.findMany({
     where: {
       chapterId: meeting.chapterId,
       status: "ACTIVE",
       rosterEligible: true,
-      id: { notIn: [...excludedMemberIds] },
     },
     include: { company: true, category: true },
     orderBy: { joinedAt: "asc" },
@@ -194,7 +208,10 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     const order = existing ? existing.order : existingRoster ? maxExistingOrder + 1 + idx : autoRank.get(m.id)!;
     return { id: m.id, name: m.name, designation: m.designation, company: m.company.name, email: m.email, phone: m.phone, categoryName: m.category.name, photoUrl: m.photoUrl, score, systemPoints, order };
   });
-  membersWithOrder.sort((a, b) => a.order - b.order);
+  // Coordinators / founders (when listed at all) always sit after the regular
+  // members; within each group the saved / ranked order applies.
+  const isSpecial = (id: string) => coordinatorIds.has(id) || founderIds.has(id);
+  membersWithOrder.sort((a, b) => Number(isSpecial(a.id)) - Number(isSpecial(b.id)) || a.order - b.order);
   const allOtherMembers: RosterWizardMember[] = membersWithOrder.map((m) => ({
     id: m.id,
     name: m.name,
@@ -206,6 +223,8 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     photoUrl: m.photoUrl,
     score: m.score,
     systemPoints: m.systemPoints,
+    isCoordinator: coordinatorIds.has(m.id),
+    isFounder: founderIds.has(m.id),
   }));
 
   const selectedChiefGuestIds = existingRoster
@@ -245,6 +264,8 @@ export async function getRosterWizardData(meetingId: string): Promise<RosterWiza
     addableOpenCategories,
 
     notesEnabled: existingRoster?.notesEnabled ?? false,
+    includeCoordinators: existingRoster?.includeCoordinators ?? false,
+    includeFounders: existingRoster?.includeFounders ?? false,
     isSaved: Boolean(existingRoster?.savedAt),
     orderMode: existingRoster?.orderMode ?? "AUTO",
   };

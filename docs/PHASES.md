@@ -5056,3 +5056,12 @@ Client correction: the annual membership year is **not** the calendar year. Join
 - **Payment follow-up remarks** (`PaymentFollowUp`, many per member, dated, annual/monthly, optional next follow-up date, who wrote it):
   on `/admin/accounts/unpaid/[memberId]` (add/remove with `payments:approve`); latest remark + "(+N earlier)" column on the Unpaid list.
 - Migration `20261119120000_slip_points_and_payment_followups` — **not applied to the live DB**. Typecheck + lint only; not run in a browser.
+
+### 2026-11-21 — roster: optionally list Coordinators / Founders at the bottom
+
+- Roster wizard step 3 (All Other Members) has two tick-boxes: **Coordinators / Key Persons** and **Founders** (Founder + Co-Founder).
+  Ticked → those members are added to the bottom table (always after regular members, even on auto re-rank); unticked → left out.
+  Both default off, per roster (`Roster.includeCoordinators/includeFounders`). Ticks are part of the dirty check (re-save before download).
+  Save re-derives eligibility server-side (`getSpecialMemberIds`). PDF unchanged — it prints the saved scores list.
+- Behaviour change: Founders were previously always in the bottom list; now only when ticked. Leadership Team is unchanged.
+- Migration `20261121120000_roster_include_coordinators_founders` — **not applied to the live DB**. Typecheck only; not run in a browser.

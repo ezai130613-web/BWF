@@ -46,28 +46,45 @@ function snapshotFor(
   notesEnabled: boolean,
   orderMode: OrderMode,
   members: { id: string; score: number }[],
+  includeCoordinators: boolean,
+  includeFounders: boolean,
 ) {
   return JSON.stringify({
     chiefGuestIds: [...chiefGuestIds].sort(),
     openCategoryIds: [...openCategoryIds].sort(),
     notesEnabled,
+    includeCoordinators,
+    includeFounders,
     orderMode,
     // Order-sensitive only in manual mode — in auto mode Save re-ranks anyway.
     members: orderMode === "MANUAL" ? members.map((m) => `${m.id}:${m.score}`) : members.map((m) => `${m.id}:${m.score}`).sort(),
   });
 }
 
+const isSpecial = (m: RosterWizardMember) => m.isCoordinator || m.isFounder;
+
+/** Members shown in the table given the two tick-boxes — a coordinator/founder is listed only when their box is ticked. */
+function visibleMembers(members: RosterWizardMember[], includeCoordinators: boolean, includeFounders: boolean): RosterWizardMember[] {
+  return members.filter((m) => !isSpecial(m) || (m.isCoordinator && includeCoordinators) || (m.isFounder && includeFounders));
+}
+
 function rankedByScore(members: RosterWizardMember[]): RosterWizardMember[] {
   // Array.prototype.sort is stable — equal scores keep their current
   // relative (already-displayed) order, satisfying "retain previous
-  // relative order" with no extra bookkeeping.
-  return [...members].sort((a, b) => b.score - a.score);
+  // relative order" with no extra bookkeeping. Coordinators / founders
+  // always stay below the regular members.
+  return [...members].sort((a, b) => Number(isSpecial(a)) - Number(isSpecial(b)) || b.score - a.score);
 }
 
 export function RosterWizard({ data }: { data: RosterWizardData }) {
   const [step, setStep] = useState<StepNumber>(3);
   const [chiefGuestIds, setChiefGuestIds] = useState<string[]>(data.selectedChiefGuestIds);
-  const [members, setMembers] = useState<RosterWizardMember[]>(data.allOtherMembers);
+  // Every eligible member, including coordinators/founders; `members` below is the subset actually listed.
+  const [allMembers, setAllMembers] = useState<RosterWizardMember[]>(data.allOtherMembers);
+  const [includeCoordinators, setIncludeCoordinators] = useState(data.includeCoordinators);
+  const [includeFounders, setIncludeFounders] = useState(data.includeFounders);
+  const members = useMemo(() => visibleMembers(allMembers, includeCoordinators, includeFounders), [allMembers, includeCoordinators, includeFounders]);
+  const setMembers = setAllMembers;
   const [openCategoryIds, setOpenCategoryIds] = useState<string[]>(data.selectedOpenCategoryIds);
   // Grows when "Add more" puts a category into the list (already persisted
   // server-side by addOpenCategory; the selection itself still waits for Save).
@@ -78,12 +95,20 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
 
   const [isSaved, setIsSaved] = useState(data.isSaved);
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
-    snapshotFor(data.selectedChiefGuestIds, data.selectedOpenCategoryIds, data.notesEnabled, data.orderMode, data.allOtherMembers),
+    snapshotFor(
+      data.selectedChiefGuestIds,
+      data.selectedOpenCategoryIds,
+      data.notesEnabled,
+      data.orderMode,
+      visibleMembers(data.allOtherMembers, data.includeCoordinators, data.includeFounders),
+      data.includeCoordinators,
+      data.includeFounders,
+    ),
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
 
-  const currentSnapshot = snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, members);
+  const currentSnapshot = snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, members, includeCoordinators, includeFounders);
   const dirty = currentSnapshot !== savedSnapshot;
   const canDownload = isSaved && !dirty;
 
@@ -113,13 +138,15 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
   /** Any hand re-ordering is a manual override — kept as-is on Save. */
   function moveMember(memberId: string, toIndex: number) {
     setMembers((prev) => {
-      const from = prev.findIndex((m) => m.id === memberId);
-      const target = Math.min(Math.max(0, toIndex), prev.length - 1);
+      const shown = visibleMembers(prev, includeCoordinators, includeFounders);
+      const hidden = prev.filter((m) => !shown.includes(m));
+      const from = shown.findIndex((m) => m.id === memberId);
+      const target = Math.min(Math.max(0, toIndex), shown.length - 1);
       if (from === -1 || from === target) return prev;
-      const next = [...prev];
+      const next = [...shown];
       const [moved] = next.splice(from, 1);
       next.splice(target, 0, moved);
-      return next;
+      return [...next, ...hidden];
     });
     setOrderMode("MANUAL");
   }
@@ -142,6 +169,8 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
         chiefGuestIds,
         openCategoryIds,
         notesEnabled,
+        includeCoordinators,
+        includeFounders,
         orderMode,
         members: members.map((m) => ({ memberId: m.id, score: m.score })),
       });
@@ -150,9 +179,10 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
         return;
       }
       const saved = orderMode === "AUTO" ? rankedByScore(members) : members;
-      setMembers(saved);
+      const hidden = allMembers.filter((m) => !members.includes(m));
+      setMembers([...saved, ...hidden]);
       setIsSaved(true);
-      setSavedSnapshot(snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, saved));
+      setSavedSnapshot(snapshotFor(chiefGuestIds, openCategoryIds, notesEnabled, orderMode, saved, includeCoordinators, includeFounders));
     });
   }
 
@@ -190,6 +220,10 @@ export function RosterWizard({ data }: { data: RosterWizardData }) {
           chiefGuestIds={chiefGuestIds}
           onToggleChiefGuest={toggleChiefGuest}
           members={members}
+          includeCoordinators={includeCoordinators}
+          includeFounders={includeFounders}
+          onIncludeCoordinators={setIncludeCoordinators}
+          onIncludeFounders={setIncludeFounders}
           onScoreChange={updateScore}
           orderMode={orderMode}
           onMove={moveMember}
@@ -317,6 +351,10 @@ function ManageMembersStep({
   chiefGuestIds,
   onToggleChiefGuest,
   members,
+  includeCoordinators,
+  includeFounders,
+  onIncludeCoordinators,
+  onIncludeFounders,
   onScoreChange,
   orderMode,
   onMove,
@@ -327,6 +365,10 @@ function ManageMembersStep({
   chiefGuestIds: string[];
   onToggleChiefGuest: (id: string) => void;
   members: RosterWizardMember[];
+  includeCoordinators: boolean;
+  includeFounders: boolean;
+  onIncludeCoordinators: (v: boolean) => void;
+  onIncludeFounders: (v: boolean) => void;
   onScoreChange: (memberId: string, value: string) => void;
   orderMode: OrderMode;
   onMove: (memberId: string, toIndex: number) => void;
@@ -373,6 +415,27 @@ function ManageMembersStep({
             ? "Auto-generated ranking: scores start from each member's overall points and the order is re-ranked by score (highest first) when you Save Roster. Moving a member or changing a serial number switches to a manual override."
             : "Manual override: the order below is kept exactly as you arranged it when you Save Roster — scores no longer re-rank it. Switch back to auto ranking at any time."}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              checked={includeCoordinators}
+              onChange={(e) => onIncludeCoordinators(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300"
+            />
+            Also list Coordinators / Key Persons at the bottom of this list
+          </label>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              checked={includeFounders}
+              onChange={(e) => onIncludeFounders(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300"
+            />
+            Also list Founders at the bottom of this list
+          </label>
+          <p className="text-xs text-neutral-500">Leave unticked when they won&rsquo;t attend this meeting. Ticked members appear after all regular members.</p>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
